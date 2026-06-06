@@ -6,7 +6,8 @@ let db = {};
 let active = {
   usuario_id: localStorage.getItem("fl_active_usuario_id") || "",
   carreira_id: localStorage.getItem("fl_active_carreira_id") || "",
-  protagonista_id: localStorage.getItem("fl_active_protagonista_id") || ""
+  protagonista_id: localStorage.getItem("fl_active_protagonista_id") || "",
+  temporada: localStorage.getItem("fl_active_temporada") || ""
 };
 
 const tableMap = {
@@ -56,7 +57,12 @@ function getActiveProtagonist(){return byId("PERSONAGENS",active.protagonista_id
 function getCareerSeasons(){const c=getActiveCareer(); if(!c)return[]; return getTable("TEMPORADAS").filter(t=>String(t.carreira_id)===String(c.id))}
 function getCareerMedia(){const c=getActiveCareer(); if(!c)return[]; return getTable("MIDIAS").filter(m=>String(m.carreira_id)===String(c.id))}
 function getProtagonistStats(){const p=getActiveProtagonist(); if(!p)return[]; return getTable("ESTATISTICAS").filter(s=>String(s.personagem_id)===String(p.id))}
-function saveActive(){localStorage.setItem("fl_active_usuario_id",active.usuario_id||"");localStorage.setItem("fl_active_carreira_id",active.carreira_id||"");localStorage.setItem("fl_active_protagonista_id",active.protagonista_id||"")}
+function saveActive(){
+  localStorage.setItem("fl_active_usuario_id",active.usuario_id||"");
+  localStorage.setItem("fl_active_carreira_id",active.carreira_id||"");
+  localStorage.setItem("fl_active_protagonista_id",active.protagonista_id||"");
+  localStorage.setItem("fl_active_temporada",active.temporada||"");
+}
 
 function ensureActive(){
   const users=getTable("USUARIOS"); if(!active.usuario_id&&users[0])active.usuario_id=String(users[0].id);
@@ -76,9 +82,9 @@ function renderSelectors(){
 }
 
 function bindSelectors(){
-  $("userSelect").onchange=e=>{active.usuario_id=e.target.value;const c=getCareersForUser(active.usuario_id);active.carreira_id=c[0]?String(c[0].id):"";active.protagonista_id="";const chars=getCareerCharacters();active.protagonista_id=chars[0]?String(chars[0].id):"";saveActive();renderAll()};
-  $("careerSelect").onchange=e=>{active.carreira_id=e.target.value;active.protagonista_id="";const chars=getCareerCharacters();active.protagonista_id=chars[0]?String(chars[0].id):"";saveActive();renderAll()};
-  $("protagonistSelect").onchange=e=>{active.protagonista_id=e.target.value;saveActive();renderAll()};
+  $("userSelect").onchange=e=>{active.usuario_id=e.target.value;const c=getCareersForUser(active.usuario_id);active.carreira_id=c[0]?String(c[0].id):"";active.protagonista_id="";const chars=getCareerCharacters();active.protagonista_id=chars[0]?String(chars[0].id):"";active.temporada="";saveActive();renderAll()};
+  $("careerSelect").onchange=e=>{active.carreira_id=e.target.value;active.protagonista_id="";const chars=getCareerCharacters();active.protagonista_id=chars[0]?String(chars[0].id):"";active.temporada="";saveActive();renderAll()};
+  $("protagonistSelect").onchange=e=>{active.protagonista_id=e.target.value;active.temporada="";saveActive();renderAll()};
 }
 
 async function loadData(){
@@ -223,17 +229,65 @@ function safeText(id,value){
 }
 
 function getCurrentSeason(stats){
-  const seasons = stats.map(s=>s.temporada).filter(Boolean);
-  if(seasons.length){
-    return seasons.slice().sort().reverse()[0];
+  const seasonsFromStats = stats.map(s=>s.temporada).filter(Boolean);
+  const seasonsFromCareer = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
+  const allSeasons = [...new Set([...seasonsFromStats, ...seasonsFromCareer])]
+    .sort(compareSeasonsDesc);
+
+  if(active.temporada && allSeasons.includes(active.temporada)){
+    return active.temporada;
   }
 
-  const careerSeasons = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
-  if(careerSeasons.length){
-    return careerSeasons.slice().sort().reverse()[0];
+  active.temporada = allSeasons[0] || "";
+  saveActive();
+  return active.temporada;
+}
+
+function compareSeasonsDesc(a,b){
+  return seasonKey(b) - seasonKey(a);
+}
+
+function seasonKey(value){
+  const text = String(value || "");
+  const matches = text.match(/\d{4}/g);
+  if(matches && matches.length){
+    return Number(matches[matches.length - 1]);
+  }
+  const n = Number(text);
+  return isNaN(n) ? 0 : n;
+}
+
+function getAvailableSeasonsForActivePlayer(){
+  const stats = getProtagonistStats();
+  const seasonsFromStats = stats.map(s=>s.temporada).filter(Boolean);
+  const seasonsFromCareer = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
+
+  return [...new Set([...seasonsFromStats, ...seasonsFromCareer])]
+    .sort(compareSeasonsDesc);
+}
+
+function renderSeasonSelector(){
+  const select = $("seasonSelect");
+  if(!select) return;
+
+  const seasons = getAvailableSeasonsForActivePlayer();
+  const current = getCurrentSeason(getProtagonistStats());
+
+  if(!seasons.length){
+    select.innerHTML = `<option value="">-</option>`;
+    select.value = "";
+    return;
   }
 
-  return "";
+  select.innerHTML = seasons.map(s => `<option value="${s}" ${String(s)===String(current)?"selected":""}>${s}</option>`).join("");
+  select.value = current;
+
+  select.onchange = e => {
+    active.temporada = e.target.value;
+    saveActive();
+    renderDashboard();
+    renderStats();
+  };
 }
 
 function renderAll(){
@@ -345,7 +399,7 @@ function renderDashboard(){
   safeText("activePosition", protagonist?protagonist.posicao||"-":"-");
   safeText("activeNationality", protagonist?protagonist.nacionalidade||"-":"-");
   safeText("activeSeasonsCount", new Set(stats.map(s=>s.temporada)).size);
-  safeText("activeCurrentSeason", currentSeason||"-");
+  renderSeasonSelector();
   safeText("currentGamesHero", currentGames);
   safeText("currentGoalsHero", currentGoals);
   safeText("currentAssistsHero", currentAssists);
@@ -408,7 +462,9 @@ function renderClubes(){
 }
 
 function renderStats(){
-  const stats=getProtagonistStats();
+  const allStats=getProtagonistStats();
+  const currentSeason=getCurrentSeason(allStats);
+  const stats=currentSeason?allStats.filter(s=>String(s.temporada)===String(currentSeason)):allStats;
   $("stats-table").innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
     stats.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return `<div class="table-row"><div>${s.temporada||"-"}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
 }
@@ -548,7 +604,7 @@ function openPlayerByName(name){
 }
 
 function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
-function setActiveProtagonist(id){active.protagonista_id=String(id);saveActive();renderAll()}
+function setActiveProtagonist(id){active.protagonista_id=String(id);active.temporada="";saveActive();renderAll()}
 
 
 function editActiveProtagonist(){

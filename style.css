@@ -913,3 +913,21 @@ select, option{background:#0f172a;color:white}
   text-transform:uppercase;
   margin-top:5px;
 }
+
+
+/* ===== V1.7 SEASON SELECTOR ===== */
+.season-meta-select select{
+  width:100%;
+  margin-top:6px;
+  background:#0f172a;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:8px 10px;
+  color:white;
+  font-weight:900;
+  outline:none;
+}
+.season-meta-select option{
+  background:#0f172a;
+  color:white;
+}

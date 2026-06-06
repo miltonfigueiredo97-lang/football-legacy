@@ -1,3 +1,3 @@
-# Football Legacy V1.6 Dashboard Photo Fix
+# Football Legacy V1.7
 
-Corrige erro `Cannot set properties of null (setting onload)` e garante carregamento robusto da foto do protagonista.
+Temporada atual virou seletor dentro do resumo. O seletor sempre começa na temporada mais recente e filtra os dados principais por temporada.
