@@ -10,200 +10,193 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">FL</div>
+        <div class="brand-badge">FL</div>
         <div>
           <h1>Football Legacy</h1>
           <p>Career Universe</p>
         </div>
       </div>
 
-      <div class="career-switch">
+      <div class="active-career edit-trigger" data-edit="career">
         <span>Carreira ativa</span>
-        <strong>Milton Save</strong>
-        <small>EA FC 31 • 2037/2038</small>
+        <strong id="sideCareerName">Milton Save</strong>
+        <small id="sideCareerMeta">EA FC 31 • 2037/2038</small>
       </div>
 
       <nav class="menu">
         <button class="menu-item active" data-page="dashboard">🏠 <span>Resumo</span></button>
         <button class="menu-item" data-page="historia">📖 <span>História</span></button>
-        <button class="menu-item" data-page="personagens">👤 <span>Personagens</span></button>
+        <button class="menu-item" data-page="personagens">👥 <span>Personagens</span></button>
         <button class="menu-item" data-page="estatisticas">📊 <span>Estatísticas</span></button>
         <button class="menu-item" data-page="trofeus">🏆 <span>Troféus</span></button>
         <button class="menu-item" data-page="top11">⚽ <span>Top 11</span></button>
         <button class="menu-item" data-page="bolaouro">⭐ <span>Bola de Ouro</span></button>
-        <button class="menu-item" data-page="clubes">🏟 <span>Clubes</span></button>
-        <button class="menu-item" data-page="museu">🖼 <span>Museu</span></button>
+        <button class="menu-item" data-page="clubes">🛡 <span>Clubes</span></button>
+        <button class="menu-item" data-page="museu">🏛 <span>Museu</span></button>
         <button class="menu-item" data-page="admin">⚙ <span>Administração</span></button>
       </nav>
+
+      <div class="legacy-callout">
+        <p>Escreva sua lenda.</p>
+        <strong>Deixe seu legado.</strong>
+      </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <div>
-          <span class="eyebrow">Visão da carreira</span>
-          <h2 id="page-title">Resumo</h2>
-        </div>
+        <div class="search">⌕ Pesquisar na carreira...</div>
         <div class="top-actions">
-          <button class="ghost-btn">Milton</button>
-          <button class="gold-btn" data-open-admin>+ Novo Registro</button>
+          <button class="bell">🔔<span>3</span></button>
+          <div class="profile-name"><strong id="topCareerName">Milton Save</strong><small>Manager</small></div>
+          <div class="profile-avatar">MS</div>
         </div>
       </header>
 
-      <section class="page active" id="dashboard">
-        <div class="hero-card">
-          <div class="hero-content">
-            <span class="season-pill">Temporada 2037/2038</span>
-            <h3>Milton Save</h3>
-            <p>Uma carreira documentada como uma história viva: protagonistas, troféus, transferências, mídia e recordes.</p>
+      <section id="dashboard" class="page active">
+        <div class="dashboard-grid">
+          <section class="hero edit-card" data-edit="career">
+            <button class="edit-btn" data-edit="career">✎</button>
+            <span class="season-pill" id="seasonText">Temporada 2037/2038</span>
+            <h2 id="careerTitle">Milton Save</h2>
+            <p id="careerDescription">Uma carreira documentada como uma história viva: protagonistas, troféus, transferências, mídia e recordes.</p>
 
-            <div class="hero-meta">
-              <div><small>Clube atual</small><strong>Milan</strong></div>
-              <div><small>Protagonista</small><strong>Leon Gomes</strong></div>
-              <div><small>Universo</small><strong>EA FC 31</strong></div>
-            </div>
-          </div>
-
-          <div class="hero-player">
-            <div class="rating">94</div>
-            <div class="player-avatar">LG</div>
-            <strong>Leon Gomes</strong>
-            <span>ATA • Brasil</span>
-          </div>
-        </div>
-
-        <div class="stat-grid">
-          <article class="stat-card"><span>🏆</span><strong>27</strong><small>Títulos</small></article>
-          <article class="stat-card"><span>⚽</span><strong>684</strong><small>Gols</small></article>
-          <article class="stat-card"><span>🅰</span><strong>241</strong><small>Assistências</small></article>
-          <article class="stat-card"><span>🎮</span><strong>811</strong><small>Jogos</small></article>
-          <article class="stat-card"><span>⭐</span><strong>4</strong><small>Bolas de Ouro</small></article>
-          <article class="stat-card"><span>💰</span><strong>€180M</strong><small>Maior transferência</small></article>
-        </div>
-
-        <div class="grid-2">
-          <section class="panel">
-            <div class="panel-header">
-              <h3>Últimos acontecimentos</h3>
-              <button class="link-btn" data-page-link="historia">Ver história</button>
-            </div>
-            <div class="timeline">
-              <div class="timeline-item"><span>2038</span><div><strong>Champions League</strong><p>Milan campeão com gol decisivo de Leon Gomes.</p></div></div>
-              <div class="timeline-item"><span>2038</span><div><strong>Bola de Ouro</strong><p>Leon Gomes termina como melhor do mundo.</p></div></div>
-              <div class="timeline-item"><span>2037</span><div><strong>Transferência histórica</strong><p>Chegada ao Milan por €180M.</p></div></div>
+            <div class="hero-info">
+              <div><span>🛡</span><small>Clube atual</small><strong id="currentClub">Milan</strong></div>
+              <div><span>👤</span><small>Protagonista</small><strong id="currentProtagonist">Leon Gomes</strong></div>
+              <div><span>🌐</span><small>Universo</small><strong id="currentUniverse">EA FC 31</strong></div>
+              <div><span>🏆</span><small>Liga</small><strong id="currentLeague">Serie A</strong></div>
             </div>
           </section>
 
-          <section class="panel">
-            <div class="panel-header">
+          <section class="ultimate-card edit-card" data-edit="player">
+            <button class="edit-btn" data-edit="player">✎</button>
+            <div class="card-top">
+              <div>
+                <strong id="playerOverall">94</strong>
+                <span id="playerPosition">ATA</span>
+                <em>🇧🇷</em>
+              </div>
+            </div>
+            <div class="player-circle" id="playerInitials">LG</div>
+            <h3 id="playerName">Leon Gomes</h3>
+            <p id="playerSub">ATA • Brasil</p>
+            <div class="attrs">
+              <div><span>RIT</span><strong id="pace">96</strong></div>
+              <div><span>FIN</span><strong id="shoot">95</strong></div>
+              <div><span>PAS</span><strong id="pass">88</strong></div>
+              <div><span>CON</span><strong id="drib">93</strong></div>
+              <div><span>DEF</span><strong id="def">45</strong></div>
+              <div><span>FIS</span><strong id="phy">87</strong></div>
+            </div>
+          </section>
+
+          <section class="stats-strip" id="statsStrip"></section>
+
+          <section class="panel events">
+            <div class="panel-head">
+              <h3>🗓 Últimos acontecimentos</h3>
+              <button class="small-btn" data-edit="event">+ Evento</button>
+            </div>
+            <div id="eventsList"></div>
+          </section>
+
+          <section class="panel protagonists">
+            <div class="panel-head">
               <h3>Protagonistas</h3>
-              <button class="link-btn" data-page-link="personagens">Gerenciar</button>
+              <button class="small-btn" data-page-link="personagens">Gerenciar</button>
             </div>
-            <div class="character-row">
-              <div class="mini-player"><div>MF</div><strong>Milton</strong><span>2030-2038</span></div>
-              <div class="mini-player"><div>LG</div><strong>Leon Gomes</strong><span>2038-Atual</span></div>
-              <div class="mini-player"><div>DC</div><strong>Diego Campos</strong><span>Coadjuvante</span></div>
+            <div id="protagonistsList"></div>
+          </section>
+
+          <section class="panel objectives">
+            <div class="panel-head">
+              <h3>🎯 Objetivos da temporada</h3>
+              <button class="small-btn" data-edit="objective">+ Objetivo</button>
             </div>
+            <div id="objectivesList"></div>
+          </section>
+
+          <section class="panel match edit-card" data-edit="match">
+            <button class="edit-btn" data-edit="match">✎</button>
+            <div class="panel-head"><h3>📅 Próxima partida</h3></div>
+            <div class="match-row">
+              <div class="club-side"><div class="shield">M</div><strong id="matchHome">Milan</strong><small id="matchHomeInfo">1º • Serie A</small></div>
+              <div class="vs">VS</div>
+              <div class="club-side"><div class="shield blue">L</div><strong id="matchAway">Lazio</strong><small id="matchAwayInfo">4º • Serie A</small></div>
+              <div class="match-info"><span id="matchDate">25 Mai 2038</span><span id="matchTime">20:45</span><span id="matchStadium">San Siro</span></div>
+            </div>
+          </section>
+
+          <section class="panel club-history">
+            <div class="panel-head">
+              <h3>🏟 Histórico de clubes</h3>
+              <button class="small-btn" data-edit="clubHistory">+ Clube</button>
+            </div>
+            <div id="clubPath" class="club-path"></div>
           </section>
         </div>
       </section>
 
-      <section class="page" id="historia">
-        <div class="panel large">
-          <h3>Linha do tempo da carreira</h3>
-          <div class="big-timeline">
-            <div><span>2030</span><strong>Estreia profissional</strong><p>Milton inicia a carreira como jovem promessa.</p></div>
-            <div><span>2032</span><strong>Transferência para Arsenal</strong><p>Primeira grande mudança de clube.</p></div>
-            <div><span>2035</span><strong>Primeira Champions League</strong><p>A carreira entra para a história continental.</p></div>
-            <div><span>2038</span><strong>Início da Era Leon Gomes</strong><p>Novo protagonista assume a narrativa.</p></div>
-          </div>
-        </div>
+      <section id="historia" class="page">
+        <div class="section-title"><h2>História da Carreira</h2><button class="gold-btn" data-edit="event">+ Evento</button></div>
+        <div class="panel wide"><div id="bigTimeline" class="big-timeline"></div></div>
       </section>
 
-      <section class="page" id="personagens">
-        <div class="section-header">
-          <div><h3>Personagens</h3><p>Protagonistas, coadjuvantes e jogadores reais importados.</p></div>
-          <button class="gold-btn" data-form="personagem">+ Novo Personagem</button>
-        </div>
-        <div class="cards-list" id="personagens-list"></div>
+      <section id="personagens" class="page">
+        <div class="section-title"><h2>Personagens</h2><button class="gold-btn" data-edit="personagem">+ Personagem</button></div>
+        <div id="personagensList" class="cards-grid"></div>
       </section>
 
-      <section class="page" id="estatisticas">
-        <div class="section-header">
-          <div><h3>Estatísticas do protagonista</h3><p>Dados por temporada e competição.</p></div>
-          <button class="gold-btn" data-form="estatistica">+ Estatística</button>
-        </div>
-        <div class="data-table" id="stats-table"></div>
+      <section id="estatisticas" class="page">
+        <div class="section-title"><h2>Estatísticas</h2><button class="gold-btn" data-edit="stat">+ Estatística</button></div>
+        <div id="statsTable" class="table"></div>
       </section>
 
-      <section class="page" id="trofeus">
-        <div class="section-header">
-          <div><h3>Sala de troféus</h3><p>Títulos conquistados e campeões cadastrados na carreira.</p></div>
-          <button class="gold-btn" data-form="trofeu">+ Título</button>
-        </div>
-        <div class="trophy-grid" id="trophy-grid"></div>
+      <section id="trofeus" class="page">
+        <div class="section-title"><h2>Troféus</h2><button class="gold-btn" data-edit="trophy">+ Título</button></div>
+        <div id="trophyGrid" class="cards-grid"></div>
       </section>
 
-      <section class="page" id="top11">
-        <div class="section-header">
-          <div><h3>Top 11 da carreira</h3><p>Campo visual com titulares e reservas opcionais.</p></div>
-          <button class="gold-btn" data-form="top11">+ Jogador</button>
-        </div>
+      <section id="top11" class="page">
+        <div class="section-title"><h2>Top 11</h2><button class="gold-btn" data-edit="top11">+ Jogador</button></div>
         <div class="pitch">
-          <div class="line attack"><div class="field-player">94<br><span>Leon</span></div></div>
-          <div class="line midfield"><div class="field-player">91<br><span>Milton</span></div><div class="field-player">90<br><span>Diego</span></div><div class="field-player">92<br><span>Mbappé</span></div></div>
-          <div class="line defense"><div class="field-player">88<br><span>Theo</span></div><div class="field-player">89<br><span>Van Dijk</span></div><div class="field-player">87<br><span>Araújo</span></div><div class="field-player">88<br><span>Hakimi</span></div></div>
-          <div class="line keeper"><div class="field-player">91<br><span>Courtois</span></div></div>
+          <div class="line"><div class="field-player">94<br><span>Leon</span></div></div>
+          <div class="line"><div class="field-player">91<br><span>Milton</span></div><div class="field-player">90<br><span>Diego</span></div><div class="field-player">92<br><span>Mbappé</span></div></div>
+          <div class="line"><div class="field-player">88<br><span>Theo</span></div><div class="field-player">89<br><span>Van Dijk</span></div><div class="field-player">87<br><span>Araújo</span></div><div class="field-player">88<br><span>Hakimi</span></div></div>
+          <div class="line"><div class="field-player">91<br><span>Courtois</span></div></div>
         </div>
       </section>
 
-      <section class="page" id="bolaouro">
-        <div class="section-header">
-          <div><h3>Bola de Ouro</h3><p>Top 5 anual com destaque para o vencedor.</p></div>
-          <button class="gold-btn" data-form="bolaouro">+ Ranking</button>
-        </div>
-        <div class="podium">
-          <div class="podium-card second">🥈<strong>Mbappé</strong><span>93 OVR</span></div>
-          <div class="podium-card first">🥇<strong>Leon Gomes</strong><span>94 OVR</span></div>
-          <div class="podium-card third">🥉<strong>Haaland</strong><span>92 OVR</span></div>
-        </div>
-        <div class="rank-list">
-          <div>4º Bellingham <span>91 OVR</span></div>
-          <div>5º Vinicius Jr <span>91 OVR</span></div>
-        </div>
+      <section id="bolaouro" class="page">
+        <div class="section-title"><h2>Bola de Ouro</h2><button class="gold-btn" data-edit="ballon">+ Ranking</button></div>
+        <div class="podium"><div>🥈<strong>Mbappé</strong><span>93 OVR</span></div><div class="first">🥇<strong>Leon Gomes</strong><span>94 OVR</span></div><div>🥉<strong>Haaland</strong><span>92 OVR</span></div></div>
       </section>
 
-      <section class="page" id="clubes">
-        <div class="section-header">
-          <div><h3>Clubes</h3><p>Clubes reais ou fictícios presentes na carreira.</p></div>
-          <button class="gold-btn" data-form="clube">+ Novo Clube</button>
-        </div>
-        <div class="cards-list" id="clubes-list"></div>
+      <section id="clubes" class="page">
+        <div class="section-title"><h2>Clubes</h2><button class="gold-btn" data-edit="clube">+ Clube</button></div>
+        <div id="clubesList" class="cards-grid"></div>
       </section>
 
-      <section class="page" id="museu">
-        <div class="section-header">
-          <div><h3>Museu da carreira</h3><p>Fotos, vídeos e momentos históricos.</p></div>
-          <button class="gold-btn" data-form="midia">+ Nova Mídia</button>
-        </div>
-        <div class="media-grid">
-          <article class="media-card"><div>📸</div><strong>Primeira Champions</strong><span>Imagem exemplo</span></article>
-          <article class="media-card"><div>🎥</div><strong>Gol do título</strong><span>Vídeo exemplo</span></article>
-        </div>
+      <section id="museu" class="page">
+        <div class="section-title"><h2>Museu</h2><button class="gold-btn" data-edit="media">+ Mídia</button></div>
+        <div id="mediaGrid" class="cards-grid"></div>
       </section>
 
-      <section class="page" id="admin">
-        <div class="section-header">
-          <div><h3>Administração</h3><p>Por enquanto salva localmente no navegador. Próximo passo: Google Sheets.</p></div>
-        </div>
+      <section id="admin" class="page">
+        <div class="section-title"><h2>Administração</h2></div>
         <div class="admin-grid">
-          <button data-form="personagem">👤 Criar Personagem</button>
-          <button data-form="clube">🏟 Criar Clube</button>
-          <button data-form="estatistica">📊 Criar Estatística</button>
-          <button data-form="trofeu">🏆 Criar Título</button>
-          <button data-form="midia">🖼 Criar Mídia</button>
+          <button data-edit="career">🏠 Editar capa da carreira</button>
+          <button data-edit="player">⭐ Editar jogador principal</button>
+          <button data-edit="event">📖 Criar evento</button>
+          <button data-edit="objective">🎯 Criar objetivo</button>
+          <button data-edit="personagem">👤 Criar personagem</button>
+          <button data-edit="clube">🛡 Criar clube</button>
+          <button data-edit="stat">📊 Criar estatística</button>
+          <button data-edit="trophy">🏆 Criar título</button>
+          <button data-edit="media">🏛 Criar mídia</button>
         </div>
       </section>
     </main>
@@ -211,9 +204,9 @@
 
   <div class="modal" id="modal">
     <div class="modal-box">
-      <button class="close-modal" id="close-modal">×</button>
-      <h3 id="modal-title">Novo registro</h3>
-      <form id="dynamic-form"></form>
+      <button id="closeModal" class="close-modal">×</button>
+      <h3 id="modalTitle">Editar</h3>
+      <form id="form"></form>
     </div>
   </div>
 

@@ -1,3 +1,3 @@
-# Football Legacy
+# Football Legacy V0.3
 
-V0.2 visual com dashboard, administração local e páginas principais.
+Dashboard premium inspirado na referência enviada, com edição direta no painel.
