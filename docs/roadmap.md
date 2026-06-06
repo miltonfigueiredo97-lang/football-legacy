@@ -1,3 +1,3 @@
-# Football Legacy V1.0
+# Football Legacy V1.1
 
-Card amarelo do protagonista agora é clicável e abre a edição do personagem selecionado.
+Foto do protagonista no card amarelo, nomes de jogadores clicáveis e aba Bola de Ouro no modelo ranking + arte de destaque do vencedor.

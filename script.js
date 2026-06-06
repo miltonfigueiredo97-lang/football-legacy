@@ -25,7 +25,7 @@ const schemas = {
   competicao:[["nome","Nome","text"]],
   campeao:[["competicao_id","ID da competição","number"],["temporada","Temporada","text"],["clube","Clube campeão","text"]],
   estatistica:[["personagem_id","ID do personagem","number"],["competicao_id","ID da competição","number"],["temporada","Temporada","text"],["jogos","Jogos","number"],["gols","Gols","number"],["assistencias","Assistências","number"]],
-  bolaouro:[["temporada","Temporada","text"],["posicao","Posição","number"],["jogador","Jogador","text"],["overall","Overall","number"]],
+  bolaouro:[["temporada","Temporada","text"],["posicao","Posição","number"],["jogador","Jogador","text"],["idade","Idade","number"],["valor_mercado","Valor de mercado","text"],["nacionalidade","Nacionalidade / Bandeira","text"],["overall","Overall","number"],["imagem_destaque_url","Imagem destaque do vencedor","fileurl"]],
   top11:[["temporada","Temporada","text"],["posicao","Posição","text"],["jogador","Jogador","text"],["overall","Overall","number"]],
   midia:[["carreira_id","ID da carreira","number"],["temporada","Temporada","text"],["tipo","Tipo","select",["imagem","video"]],["titulo","Título","text"],["descricao","Descrição","textarea"],["url","URL","fileurl"]]
 };
@@ -258,7 +258,16 @@ function renderDashboard(){
   $("activeNationality").textContent=protagonist?protagonist.nacionalidade||"-":"-";
   $("activeSeasonsCount").textContent=new Set(stats.map(s=>s.temporada)).size;
   $("mainCharacter").textContent=protagonist?protagonist.nome:"Sem personagem";
-  $("mainInitials").textContent=initials(protagonist?protagonist.nome:"FL");
+  const avatar = $("mainInitials");
+  if(protagonist && protagonist.foto){
+    avatar.classList.add("has-photo");
+    avatar.style.backgroundImage = `url('${protagonist.foto}')`;
+    avatar.textContent = "";
+  }else{
+    avatar.classList.remove("has-photo");
+    avatar.style.backgroundImage = "";
+    avatar.textContent=initials(protagonist?protagonist.nome:"FL");
+  }
   $("mainCharacterSub").textContent=protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem";
   $("mainType").textContent=protagonist?protagonist.tipo:"FL";
   $("sumGames").textContent=games; $("sumGoals").textContent=goals; $("sumAssists").textContent=assists;
@@ -289,7 +298,7 @@ function renderSeasonSummary(stats){
 function renderPersonagens(){
   const personagens=getCareerCharacters();
   $("personagens-list").innerHTML=personagens.map(p=>`<article class="entity-card">
-    <div class="entity-top"><div class="entity-avatar">${initials(p.nome)}</div><div><h3>${p.nome||"-"}</h3><small>ID ${p.id} • ${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div>
+    <div class="entity-top"><div class="entity-avatar ${p.foto?'has-photo':''}" style="${p.foto?`background-image:url('${p.foto}')`:''}">${p.foto?'':initials(p.nome)}</div><div><h3><button class="clickable-player-name" onclick="openForm('personagem','${p.id}')">${p.nome||"-"}</button></h3><small>ID ${p.id} • ${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div>
     <small>Nacionalidade: ${p.nacionalidade||"-"}</small>
     <div class="entity-actions">
       <button class="select" onclick="setActiveProtagonist('${p.id}')">Selecionar</button>
@@ -325,14 +334,104 @@ function renderTop11(){
 }
 
 function renderBolaOuro(){
-  const bola=getTable("BOLA_DE_OURO");
-  $("ballon-table").innerHTML=`<div class="table-row compact header"><div>Temporada</div><div>Posição</div><div>Jogador</div><div>Overall</div><div>Ações</div></div>`+
-  bola.map(b=>`<div class="table-row compact"><div>${b.temporada||"-"}</div><div>${b.posicao||"-"}</div><div>${b.jogador||"-"}</div><div>${b.overall||"-"}</div><div><button onclick="openForm('bolaouro','${b.id}')">Editar</button></div></div>`).join("");
+  const bola = getTable("BOLA_DE_OURO")
+    .slice()
+    .sort((a,b)=>String(b.temporada||"").localeCompare(String(a.temporada||"")) || num(a.posicao)-num(b.posicao));
+
+  const activeSeason = bola[0]?.temporada || getCareerSeasons()[0]?.temporada || "-";
+  const seasonRows = bola
+    .filter(b=>String(b.temporada||"")===String(activeSeason))
+    .sort((a,b)=>num(a.posicao)-num(b.posicao))
+    .slice(0,10);
+
+  const winner = seasonRows.find(b=>String(b.posicao)==="1") || seasonRows[0];
+
+  const seasonLabel = $("ballonSeasonLabel");
+  if(seasonLabel) seasonLabel.textContent = activeSeason !== "-" ? `${activeSeason} • 1º ao 10º colocado` : "1º ao 10º colocado";
+
+  const art = $("ballon-winner-art");
+  if(art){
+    if(winner && winner.imagem_destaque_url){
+      art.classList.add("has-image");
+      art.style.backgroundImage = `url('${winner.imagem_destaque_url}')`;
+      art.innerHTML = "";
+    }else{
+      art.classList.remove("has-image");
+      art.style.backgroundImage = "";
+      art.innerHTML = `<div class="ballon-art-empty"><div><strong>Imagem do vencedor</strong><span>Cadastre a URL no 1º colocado</span></div></div>`;
+    }
+  }
+
+  const list = $("ballon-ranking-list");
+  if(!list) return;
+
+  list.innerHTML = `
+    <div class="ballon-head">
+      <div>#</div>
+      <div>Jogador</div>
+      <div>Idade</div>
+      <div>Valor</div>
+      <div>Ações</div>
+    </div>
+    ${seasonRows.map(row=>`
+      <div class="ballon-row ${String(row.posicao)==="1"?"first":""}">
+        <div class="ballon-pos">${row.posicao||"-"}</div>
+        <div class="ballon-player-cell">
+          <span class="flag-dot">${flagFrom(row.nacionalidade)}</span>
+          <button onclick="openPlayerByName('${escapeAttr(row.jogador||"")}')">${row.jogador||"-"}</button>
+        </div>
+        <div>${row.idade||"-"}</div>
+        <div>${row.valor_mercado||"-"}</div>
+        <div class="ballon-actions">
+          <button onclick="openForm('bolaouro','${row.id}')">Editar</button>
+          <button onclick="removeRecord('bolaouro','${row.id}')">Excluir</button>
+        </div>
+      </div>
+    `).join("")}
+  `;
+
+  if(!seasonRows.length){
+    list.innerHTML += `<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div>-</div></div>`;
+  }
 }
 
 function renderMuseu(){
   const midias=getCareerMedia();
   $("media-grid").innerHTML=midias.map(m=>`<article class="media-card"><div>${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button onclick="openForm('midia','${m.id}')">Editar</button><button class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia cadastrada nesta carreira.");
+}
+
+
+function flagFrom(value){
+  const v = String(value||"").trim().toLowerCase();
+  const map = {
+    brasil:"🇧🇷", brasileiro:"🇧🇷", brazil:"🇧🇷",
+    franca:"🇫🇷", frança:"🇫🇷", france:"🇫🇷", frances:"🇫🇷",
+    espanha:"🇪🇸", spain:"🇪🇸",
+    portugal:"🇵🇹",
+    inglaterra:"🏴", england:"🏴",
+    italia:"🇮🇹", italy:"🇮🇹",
+    alemanha:"🇩🇪", germany:"🇩🇪",
+    argentina:"🇦🇷",
+    holanda:"🇳🇱", netherlands:"🇳🇱",
+    egito:"🇪🇬", egypt:"🇪🇬",
+    marrocos:"🇲🇦", morocco:"🇲🇦"
+  };
+  return map[v] || value || "🌐";
+}
+
+function escapeAttr(value){
+  return String(value||"").replace(/'/g,"\\'").replace(/"/g,"&quot;");
+}
+
+function openPlayerByName(name){
+  const player = getTable("PERSONAGENS").find(p => String(p.nome||"").toLowerCase() === String(name||"").toLowerCase());
+
+  if(player){
+    openForm("personagem", String(player.id));
+    return;
+  }
+
+  alert("Jogador ainda não está cadastrado como personagem. Nome: " + name);
 }
 
 function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
@@ -439,6 +538,6 @@ async function uploadToCloudinary(event,key){
   setStatus("Mídia enviada ao Cloudinary. URL preenchida.", "ok");
 }
 
-window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
+window.openPlayerByName=openPlayerByName; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
 bindSelectors();
 loadData();
