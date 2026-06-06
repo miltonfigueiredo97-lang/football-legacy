@@ -41,6 +41,14 @@ schemas.carreiraRapida = [
 const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu",admin:"Administração"};
 
 function $(id){return document.getElementById(id)}
+function setHTML(id, value){
+  const el = $(id);
+  if(el) el.innerHTML = value;
+}
+function setText(id, value){
+  const el = $(id);
+  if(el) el.textContent = value;
+}
 function setStatus(msg,type=""){const el=$("statusBar"); el.textContent=msg; el.className="status-bar "+type}
 function num(v){const n=Number(v||0); return isNaN(n)?0:n}
 function initials(name){return String(name||"FL").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase()}
@@ -74,11 +82,23 @@ function ensureActive(){
 
 function renderSelectors(){
   const users=getTable("USUARIOS");
-  $("userSelect").innerHTML=users.map(u=>`<option value="${u.id}" ${String(u.id)===String(active.usuario_id)?"selected":""}>${u.nome||"Usuário "+u.id}</option>`).join("")||`<option value="">Nenhum usuário</option>`;
-  let careers=getCareersForUser(active.usuario_id); if(!careers.length)careers=getTable("CARREIRAS");
-  $("careerSelect").innerHTML=careers.map(c=>`<option value="${c.id}" ${String(c.id)===String(active.carreira_id)?"selected":""}>${c.nome||"Carreira "+c.id}</option>`).join("")||`<option value="">Nenhuma carreira</option>`;
+  const userSelect=$("userSelect");
+  if(userSelect){
+    userSelect.innerHTML=users.map(u=>`<option value="${u.id}" ${String(u.id)===String(active.usuario_id)?"selected":""}>${u.nome||"Usuário "+u.id}</option>`).join("")||`<option value="">Nenhum usuário</option>`;
+  }
+
+  let careers=getCareersForUser(active.usuario_id);
+  if(!careers.length) careers=getTable("CARREIRAS");
+  const careerSelect=$("careerSelect");
+  if(careerSelect){
+    careerSelect.innerHTML=careers.map(c=>`<option value="${c.id}" ${String(c.id)===String(active.carreira_id)?"selected":""}>${c.nome||"Carreira "+c.id}</option>`).join("")||`<option value="">Nenhuma carreira</option>`;
+  }
+
   const chars=getCareerCharacters();
-  $("protagonistSelect").innerHTML=chars.map(p=>`<option value="${p.id}" ${String(p.id)===String(active.protagonista_id)?"selected":""}>${p.nome||"Personagem "+p.id}</option>`).join("")||`<option value="">Nenhum personagem</option>`;
+  const protagonistSelect=$("protagonistSelect");
+  if(protagonistSelect){
+    protagonistSelect.innerHTML=chars.map(p=>`<option value="${p.id}" ${String(p.id)===String(active.protagonista_id)?"selected":""}>${p.nome||"Personagem "+p.id}</option>`).join("")||`<option value="">Nenhum personagem</option>`;
+  }
 }
 
 function bindSelectors(){
@@ -223,10 +243,7 @@ function setButtonLoading(btn,loading){
 }
 
 
-function safeText(id,value){
-  const el = $(id);
-  if(el) el.textContent = value;
-}
+function safeText(id,value){ setText(id,value); }
 
 function getCurrentSeason(stats){
   const seasonsFromStats = stats.map(s=>s.temporada).filter(Boolean);
@@ -288,16 +305,28 @@ function renderSeasonSelector(){
 
 function renderAll(){
   ensureActive();
-  renderSelectors();
-  renderPrimaryButton();
-  renderDashboard();
-  renderPersonagens();
-  renderClubes();
-  renderStats();
-  renderTrofeus();
-  renderTop11();
-  renderBolaOuro();
-  renderMuseu();
+
+  const steps = [
+    renderSelectors,
+    renderSeasonActionButtons,
+    renderDashboard,
+    renderPersonagens,
+    renderClubes,
+    renderStats,
+    renderTrofeus,
+    renderTop11,
+    renderBolaOuro,
+    renderMuseu
+  ];
+
+  for(const step of steps){
+    try{
+      if(typeof step === "function") step();
+    }catch(err){
+      console.error("Erro em", step.name, err);
+      setStatus("Erro ao renderizar " + step.name + ": " + err.message, "error");
+    }
+  }
 }
 
 
@@ -384,40 +413,44 @@ function renderDashboard(){
   const currentGoals=currentStats.reduce((a,b)=>a+num(b.gols),0);
   const currentAssists=currentStats.reduce((a,b)=>a+num(b.assistencias),0);
 
-  safeText("careerNameSide", career?career.nome:"Football Legacy");
-  safeText("careerMetaSide", user?user.nome:"Google Sheets conectado");
-  safeText("currentSeason", currentSeason||"Banco conectado");
+  setText("careerNameSide", career?career.nome:"Football Legacy");
+  setText("careerMetaSide", user?user.nome:"Google Sheets conectado");
+  setText("currentSeason", currentSeason||"Banco conectado");
+  setText("mainCharacterTitle", protagonist?protagonist.nome:"Protagonista");
+  setText("mainCharacterDesc", career?career.descricao||"Resumo da carreira do jogador selecionado.":"Crie uma carreira na Administração.");
 
-  safeText("mainCharacterTitle", protagonist?protagonist.nome:"Protagonista");
-  safeText("mainCharacterDesc", career?career.descricao||"Resumo da carreira do jogador selecionado.":"Crie uma carreira na Administração.");
-
-  safeText("activePosition", protagonist?protagonist.posicao||"-":"-");
-  safeText("activeNationality", protagonist?protagonist.nacionalidade||"-":"-");
-  safeText("activeSeasonsCount", new Set(stats.map(s=>s.temporada)).size);
-  safeText("currentGamesHero", currentGames);
-  safeText("currentGoalsHero", currentGoals);
-  safeText("currentAssistsHero", currentAssists);
-  safeText("currentAvgGoalsHero", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
-  safeText("currentAvgAssistsHero", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
+  setText("activePosition", protagonist?protagonist.posicao||"-":"-");
+  setText("activeNationality", protagonist?protagonist.nacionalidade||"-":"-");
+  setText("activeSeasonsCount", new Set(stats.map(s=>s.temporada)).size);
+  setText("activeCurrentSeason", currentSeason||"-");
+  setText("currentGamesHero", currentGames);
+  setText("currentGoalsHero", currentGoals);
+  setText("currentAssistsHero", currentAssists);
+  setText("currentAvgGoalsHero", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
+  setText("currentAvgAssistsHero", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
 
   renderSeasonSelector();
 
-  safeText("mainCharacter", protagonist?protagonist.nome:"Sem personagem");
-  safeText("mainCharacterSub", protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem");
+  setText("mainCharacter", protagonist?protagonist.nome:"Sem personagem");
+  setText("mainCharacterSub", protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem");
 
-  setPlayerPhoto(protagonist);
+  if(typeof setPlayerPhoto === "function") setPlayerPhoto(protagonist);
 
-  safeText("sumGames", currentGames);
-  safeText("sumGoals", currentGoals);
-  safeText("sumAssists", currentAssists);
-  safeText("avgGoals", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
-  safeText("avgAssists", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
-  safeText("countBallon", bola.filter(x=>String(x.posicao)==="1"&&(!protagonist||x.jogador===protagonist.nome)).length);
+  setText("sumGames", currentGames);
+  setText("sumGoals", currentGoals);
+  setText("sumAssists", currentAssists);
+  setText("avgGoals", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
+  setText("avgAssists", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
+  setText("countBallon", bola.filter(x=>String(x.posicao)==="1"&&(!protagonist||x.jogador===protagonist.nome)).length);
 
   renderSeasonSummary(stats);
+  if(typeof renderSeasonActionButtons === "function") renderSeasonActionButtons();
 }
 
 function renderSeasonSummary(stats){
+  const table=$("season-summary-table");
+  if(!table) return;
+
   const rows=stats.map(s=>{
     const games=num(s.jogos), goals=num(s.gols), assists=num(s.assistencias);
     const trophies=getTable("CAMPEOES").filter(t=>String(t.temporada)===String(s.temporada));
@@ -432,12 +465,17 @@ function renderSeasonSummary(stats){
       <div class="trophy-list">${trophies.map(t=>`<span class="trophy-icon" title="${compName(t.competicao_id)}">🏆</span>`).join("")||"-"}</div>
     </div>`;
   }).join("");
-  $("season-summary-table").innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Títulos</div></div>`+(rows||`<div class="table-row"><div>Nenhuma estatística cadastrada para este protagonista.</div></div>`);
+
+  table.innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Títulos</div></div>`+(rows||`<div class="table-row"><div>Nenhuma estatística cadastrada para este protagonista.</div></div>`);
 }
 
 function renderPersonagens(){
+  const list=$("personagens-list");
+  if(!list) return;
+
   const personagens=getCareerCharacters();
-  $("personagens-list").innerHTML=personagens.map(p=>`<article class="entity-card">
+
+  list.innerHTML=personagens.map(p=>`<article class="entity-card">
     <div class="entity-top"><div class="entity-avatar ${p.foto?'has-photo':''}" style="${p.foto?`background-image:url('${p.foto}')`:''}">${p.foto?'':initials(p.nome)}</div><div><h3><button class="clickable-player-name" onclick="openForm('personagem','${p.id}')">${p.nome||"-"}</button></h3><small>ID ${p.id} • ${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div>
     <small>Nacionalidade: ${p.nacionalidade||"-"}</small>
     <div class="entity-actions">
@@ -449,8 +487,11 @@ function renderPersonagens(){
 }
 
 function renderClubes(){
+  const list=$("clubes-list");
+  if(!list) return;
+
   const clubes=getTable("CLUBES");
-  $("clubes-list").innerHTML=clubes.map(c=>`<article class="entity-card">
+  list.innerHTML=clubes.map(c=>`<article class="entity-card">
     <div class="entity-top"><div class="entity-avatar">${c.escudo?`<img src="${c.escudo}" style="width:38px;height:38px;object-fit:contain">`:"🏟"}</div><div><h3>${c.nome||"-"}</h3><small>ID ${c.id} • ${c.pais||"-"}</small></div></div>
     <small>Estádio: ${c.estadio||"-"}</small>
     <div class="entity-actions"><button onclick="openForm('clube','${c.id}')">Editar</button><button class="delete" onclick="removeRecord('clube','${c.id}')">Excluir</button></div>
@@ -458,27 +499,35 @@ function renderClubes(){
 }
 
 function renderStats(){
+  const table=$("stats-table");
+  if(!table) return;
+
   const allStats=getProtagonistStats();
   const currentSeason=getCurrentSeason(allStats);
   const stats=currentSeason?allStats.filter(s=>String(s.temporada)===String(currentSeason)):allStats;
 
-  $("stats-table").innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
+  table.innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
     stats.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return `<div class="table-row"><div>${s.temporada||"-"}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
 }
 
 function renderTrofeus(){
+  const grid=$("trophy-grid");
+  if(!grid) return;
+
   const campeoes=getTable("CAMPEOES");
-  $("trophy-grid").innerHTML=campeoes.map(t=>`<article class="trophy-card"><h3>${compName(t.competicao_id)}</h3><div class="cups">🏆</div><span>${t.temporada||"-"} • ${t.clube||"-"}</span><div class="entity-actions"><button onclick="openForm('campeao','${t.id}')">Editar</button><button class="delete" onclick="removeRecord('campeao','${t.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum título cadastrado.");
+  grid.innerHTML=campeoes.map(t=>`<article class="trophy-card"><h3>${compName(t.competicao_id)}</h3><div class="cups">🏆</div><span>${t.temporada||"-"} • ${t.clube||"-"}</span><div class="entity-actions"><button onclick="openForm('campeao','${t.id}')">Editar</button><button class="delete" onclick="removeRecord('campeao','${t.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum título cadastrado.");
 }
 
 function renderTop11(){
+  const pitch=$("top11Pitch");
+  if(!pitch) return;
+
   const top11=getTable("TOP11");
-  $("top11Pitch").innerHTML=top11.map(p=>`<div class="field-player">${p.overall||"-"}<br><span>${p.posicao||""}</span><span>${p.jogador||"-"}</span></div>`).join("")||`<div class="field-player">+<br><span>Cadastre o Top 11</span></div>`;
+  pitch.innerHTML=top11.map(p=>`<div class="field-player">${p.overall||"-"}<br><span>${p.posicao||""}</span><span>${p.jogador||"-"}</span></div>`).join("")||`<div class="field-player">+<br><span>Cadastre o Top 11</span></div>`;
 }
 
 function renderBolaOuro(){
   const all = getTable("BOLA_DE_OURO").slice();
-
   const availableSeasons = [...new Set(all.map(b=>b.temporada).filter(Boolean))].sort().reverse();
   const activeSeason = availableSeasons[0] || getCareerSeasons()[0]?.temporada || "-";
 
@@ -489,13 +538,11 @@ function renderBolaOuro(){
 
   const winner = seasonRows.find(b=>String(b.posicao)==="1") || seasonRows[0];
 
-  const seasonLabel = $("ballonSeasonLabel");
-  if(seasonLabel) seasonLabel.textContent = activeSeason !== "-" ? `1º ao 10º colocado • ${activeSeason}` : "1º ao 10º colocado";
+  setText("ballonSeasonLabel", activeSeason !== "-" ? `1º ao 10º colocado • ${activeSeason}` : "1º ao 10º colocado");
 
   const poster = $("ballon-poster");
   if(poster){
     const imgUrl = winner ? (winner.imagem_destaque_url || winner.imagem || winner.url || "") : "";
-
     if(imgUrl){
       poster.classList.add("has-image");
       poster.style.backgroundImage = `url("${imgUrl}")`;
@@ -525,9 +572,7 @@ function renderBolaOuro(){
         </div>
         <div>${row.idade||"-"}</div>
         <div>${row.valor_mercado||row.valor||"-"}</div>
-        <div class="ballon-actions">
-          <button onclick="openForm('bolaouro','${row.id}')">Editar</button>
-        </div>
+        <div class="ballon-actions"><button onclick="openForm('bolaouro','${row.id}')">Editar</button></div>
       </div>
     `).join("")}
   `;
@@ -538,8 +583,11 @@ function renderBolaOuro(){
 }
 
 function renderMuseu(){
+  const grid=$("media-grid");
+  if(!grid) return;
+
   const midias=getCareerMedia();
-  $("media-grid").innerHTML=midias.map(m=>`<article class="media-card"><div>${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button onclick="openForm('midia','${m.id}')">Editar</button><button class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia cadastrada nesta carreira.");
+  grid.innerHTML=midias.map(m=>`<article class="media-card"><div>${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button onclick="openForm('midia','${m.id}')">Editar</button><button class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia cadastrada nesta carreira.");
 }
 
 
@@ -629,7 +677,7 @@ document.querySelectorAll("[data-ballon-batch]").forEach(b=>b.onclick=()=>openBa
 $("syncBtn").onclick=loadData;
 $("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
 if($("seasonCreateBtn")) $("seasonCreateBtn").onclick=openSeasonFlow;
-if($("protagonistEditCard")) $("protagonistEditCard").onclick=editActiveProtagonist;
+if($("protagonistEditCard")) if($("protagonistEditCard")) $("protagonistEditCard").onclick=editActiveProtagonist;
 
 const modal=$("modal"), form=$("dynamic-form"), modalTitle=$("modal-title");
 $("close-modal").onclick=closeModal;
@@ -1089,16 +1137,16 @@ async function saveSeasonFlow(data, button){
 }
 
 
-function getSelectedSeasonRecord(){
-  const season = active.temporada || getCurrentSeason(getProtagonistStats());
-  return getCareerSeasons().find(s => String(s.temporada) === String(season));
+function getCurrentSeasonRecord(){
+  const current = active.temporada || getCurrentSeason(getProtagonistStats());
+  return getCareerSeasons().find(s => String(s.temporada) === String(current));
 }
 
-function renderSeasonButtons(){
+function renderSeasonActionButtons(){
   const btn = $("seasonFinalizeBtn");
   if(!btn) return;
 
-  const season = getSelectedSeasonRecord();
+  const season = getCurrentSeasonRecord();
 
   if(!season){
     btn.textContent = "Finalizar temporada";
@@ -1106,9 +1154,7 @@ function renderSeasonButtons(){
     return;
   }
 
-  const status = String(season.status || "").toLowerCase();
-
-  if(status === "finalizada"){
+  if(String(season.status || "").toLowerCase() === "finalizada"){
     btn.textContent = "Temporada finalizada";
     btn.disabled = true;
   }else{
@@ -1117,6 +1163,8 @@ function renderSeasonButtons(){
     btn.onclick = openFinishSeasonFlow;
   }
 }
+
+let finishStatLines = [];
 
 function openFinishSeasonFlow(){
   const seasons = getAvailableSeasonsForActivePlayer();
@@ -1128,6 +1176,8 @@ function openFinishSeasonFlow(){
   }
 
   currentForm = {kind:"finalizarTemporada", id:null};
+  finishStatLines = [];
+
   modalTitle.textContent = "Finalizar temporada";
   document.querySelector(".modal-box").classList.add("ballon-modal");
 
@@ -1140,7 +1190,7 @@ function openFinishSeasonFlow(){
   const compOptions = comps.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 
   const top11Rows = Array.from({length:11}, (_,i)=>i+1).map(i => `
-    <div class="finish-row">
+    <div class="finish-top11-row">
       <strong>${i}</strong>
       <input name="top11_posicao_${i}" placeholder="POS">
       <input name="top11_jogador_${i}" placeholder="Jogador">
@@ -1149,7 +1199,7 @@ function openFinishSeasonFlow(){
   `).join("");
 
   const ballonRows = Array.from({length:10}, (_,i)=>i+1).map(i => `
-    <div class="finish-row">
+    <div class="finish-ballon-row">
       <strong>${i}</strong>
       <input name="bo_jogador_${i}" placeholder="Jogador">
       <input name="bo_nacionalidade_${i}" placeholder="País ou emoji">
@@ -1158,22 +1208,11 @@ function openFinishSeasonFlow(){
     </div>
   `).join("");
 
-  const majorCompetitions = [
-    "Champions League",
-    "Copa do Mundo",
-    "Premier League",
-    "La Liga",
-    "Serie A",
-    "Bundesliga",
-    "Ligue 1",
-    "Brasileirão",
-    "Libertadores",
-    "Mundial de Clubes"
-  ];
+  const majors = ["Champions League","Copa do Mundo","Premier League","La Liga","Serie A","Bundesliga","Ligue 1","Brasileirão","Libertadores","Mundial de Clubes"];
 
-  const championRows = majorCompetitions.map(name => `
-    <div class="finish-row">
-      <input name="champ_competicao" value="${name}" readonly>
+  const championRows = majors.map(name => `
+    <div class="finish-champ-row">
+      <input name="champ_nome_${escapeName(name)}" value="${name}" readonly>
       <input name="champ_campeao_${escapeName(name)}" placeholder="Time campeão">
       <input name="champ_artilheiro_${escapeName(name)}" placeholder="Artilheiro">
       <input name="champ_assist_${escapeName(name)}" placeholder="Líder assistências">
@@ -1185,17 +1224,13 @@ function openFinishSeasonFlow(){
     <div class="finish-season-form">
       <div class="finish-section">
         <h4>1. Temporada</h4>
-        <div class="form-field">
-          <label>Selecione a temporada que será finalizada</label>
-          <select name="temporada" id="finishSeasonSelect">${seasonOptions}</select>
-        </div>
+        <label>Temporada<select name="temporada">${seasonOptions}</select></label>
       </div>
 
       <div class="finish-section">
-        <h4>2. Estatísticas dos jogadores da carreira</h4>
-        <p>Escolha jogador por jogador e preencha competição, jogos, gols, assistências, cartões e nota geral.</p>
-
-        <div class="finish-add-line">
+        <h4>2. Estatísticas por jogador</h4>
+        <p>Adicione jogador por jogador. Pode deixar campos em branco e editar depois.</p>
+        <div class="finish-stat-line">
           <select id="finishPlayerSelect">${characterOptions}</select>
           <select id="finishCompSelect">${compOptions}</select>
           <input id="finishJogos" type="number" placeholder="Jogos">
@@ -1203,48 +1238,30 @@ function openFinishSeasonFlow(){
           <input id="finishAssists" type="number" placeholder="Assist.">
           <input id="finishCartoes" type="number" placeholder="Cartões">
           <input id="finishNota" placeholder="Nota">
-          <button type="button" onclick="addFinishStatLine()">Adicionar</button>
+          <button type="button" class="finish-add-btn" onclick="addFinishStatLine()">Adicionar</button>
         </div>
-
-        <div class="finish-stats-grid" id="finishStatsRows">
-          <div class="finish-head">
-            <div>Jogador</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>Cartões</div><div>Nota</div><div></div>
-          </div>
-        </div>
+        <div class="finish-stat-list" id="finishStatsRows"></div>
       </div>
 
       <div class="finish-section">
-        <h4>3. Top 11 da temporada</h4>
-        <div class="finish-top11-grid">
-          <div class="finish-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>
-          ${top11Rows}
-        </div>
+        <h4>3. Top 11</h4>
+        <div class="finish-ranking-grid">${top11Rows}</div>
       </div>
 
       <div class="finish-section">
         <h4>4. Melhores do mundo</h4>
-        <p>Preencha o ranking do 1º ao 10º. A imagem do vencedor pode ser vinculada abaixo.</p>
         <div class="ballon-batch-image">
-          <label>
-            Imagem de fundo do vencedor
-            <input name="bo_imagem" placeholder="URL gerada automaticamente">
-          </label>
+          <label>Imagem do vencedor<input name="bo_imagem" placeholder="URL gerada automaticamente"></label>
           <button type="button" class="upload-btn" onclick="triggerUpload('bo_imagem')">Importar</button>
           <input type="file" id="file_bo_imagem" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'bo_imagem')">
         </div>
-        <div class="finish-ballon-grid">
-          <div class="finish-head"><div>#</div><div>Jogador</div><div>País</div><div>Idade</div><div>Valor</div></div>
-          ${ballonRows}
-        </div>
+        <div class="finish-ranking-grid">${ballonRows}</div>
       </div>
 
       <div class="finish-section">
-        <h4>5. Times campeões e prêmios dos grandes torneios</h4>
-        <p>Preencha apenas o que tiver acontecido na temporada.</p>
-        <div class="finish-champs-grid">
-          <div class="finish-head"><div>Competição</div><div>Campeão</div><div>Artilheiro</div><div>Líder assist.</div><div>Melhor jogador</div></div>
-          ${championRows}
-        </div>
+        <h4>5. Campeões e prêmios</h4>
+        <p>Preencha apenas os torneios que quiser registrar.</p>
+        <div class="finish-ranking-grid">${championRows}</div>
       </div>
 
       <div class="form-actions">
@@ -1254,6 +1271,8 @@ function openFinishSeasonFlow(){
     </div>
   `;
 
+  renderFinishStatLines();
+
   form.onsubmit = async e => {
     e.preventDefault();
     const btn = $("saveBtn");
@@ -1261,7 +1280,7 @@ function openFinishSeasonFlow(){
     try{
       const data = Object.fromEntries(new FormData(form).entries());
       await saveFinishSeason(data, btn);
-      alert("Temporada finalizada com sucesso. Você já pode iniciar uma nova temporada.");
+      alert("Temporada finalizada com sucesso.");
       closeModal();
     }catch(err){
       setButtonLoading(btn,false);
@@ -1273,26 +1292,27 @@ function openFinishSeasonFlow(){
   modal.classList.add("active");
 }
 
-let finishStatLines = [];
-
 function addFinishStatLine(){
-  const playerId = $("finishPlayerSelect").value;
-  const compId = $("finishCompSelect").value;
+  const playerId = $("finishPlayerSelect")?.value || "";
+  const compId = $("finishCompSelect")?.value || "";
 
-  const line = {
+  if(!playerId || !compId){
+    alert("Selecione jogador e competição.");
+    return;
+  }
+
+  finishStatLines.push({
     id: Date.now() + Math.random(),
     personagem_id: playerId,
     competicao_id: compId,
     jogador: personagemName(playerId),
     competicao: compName(compId),
-    jogos: $("finishJogos").value || "",
-    gols: $("finishGols").value || "",
-    assistencias: $("finishAssists").value || "",
-    cartoes: $("finishCartoes").value || "",
-    media_geral: $("finishNota").value || ""
-  };
-
-  finishStatLines.push(line);
+    jogos: $("finishJogos")?.value || "",
+    gols: $("finishGols")?.value || "",
+    assistencias: $("finishAssists")?.value || "",
+    cartoes: $("finishCartoes")?.value || "",
+    media_geral: $("finishNota")?.value || ""
+  });
 
   ["finishJogos","finishGols","finishAssists","finishCartoes","finishNota"].forEach(id => {
     const el = $(id);
@@ -1311,14 +1331,8 @@ function renderFinishStatLines(){
   const wrap = $("finishStatsRows");
   if(!wrap) return;
 
-  const head = `
-    <div class="finish-head">
-      <div>Jogador</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>Cartões</div><div>Nota</div><div></div>
-    </div>
-  `;
-
-  const rows = finishStatLines.map(l => `
-    <div class="finish-row">
+  wrap.innerHTML = finishStatLines.map(l => `
+    <div class="finish-stat-row">
       <strong>${l.jogador}</strong>
       <span>${l.competicao}</span>
       <span>${l.jogos || "-"}</span>
@@ -1326,11 +1340,9 @@ function renderFinishStatLines(){
       <span>${l.assistencias || "-"}</span>
       <span>${l.cartoes || "-"}</span>
       <span>${l.media_geral || "-"}</span>
-      <button type="button" class="remove-line" onclick="removeFinishStatLine('${l.id}')">Remover</button>
+      <button type="button" class="finish-remove-btn" onclick="removeFinishStatLine('${l.id}')">Remover</button>
     </div>
-  `).join("");
-
-  wrap.innerHTML = head + (rows || `<div class="entity-card"><small>Nenhuma linha adicionada ainda.</small></div>`);
+  `).join("") || `<div class="entity-card"><small>Nenhuma estatística adicionada ainda.</small></div>`;
 }
 
 async function saveFinishSeason(data, button){
@@ -1340,7 +1352,6 @@ async function saveFinishSeason(data, button){
   setButtonLoading(button,true);
   setStatus("Finalizando temporada...");
 
-  // Estatísticas
   for(const line of finishStatLines){
     const existing = getTable("ESTATISTICAS").find(s =>
       String(s.temporada) === String(temporada) &&
@@ -1359,16 +1370,14 @@ async function saveFinishSeason(data, button){
       media_geral: line.media_geral
     };
 
-    if(existing){
-      const upd = await apiPost({action:"update", table:"ESTATISTICAS", id:existing.id, record});
-      if(!upd.ok) throw new Error(upd.error || "Erro ao atualizar estatística.");
-    }else{
-      const crt = await apiPost({action:"create", table:"ESTATISTICAS", record});
-      if(!crt.ok) throw new Error(crt.error || "Erro ao criar estatística.");
-    }
+    const payload = existing
+      ? {action:"update", table:"ESTATISTICAS", id:existing.id, record}
+      : {action:"create", table:"ESTATISTICAS", record};
+
+    const res = await apiPost(payload);
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar estatística.");
   }
 
-  // Limpa e recria Top 11 da temporada
   for(const old of getTable("TOP11").filter(r => String(r.temporada) === String(temporada))){
     await apiPost({action:"delete", table:"TOP11", id:old.id});
   }
@@ -1377,20 +1386,14 @@ async function saveFinishSeason(data, button){
     const jogador = data[`top11_jogador_${i}`];
     if(!jogador) continue;
 
-    const crt = await apiPost({
+    const res = await apiPost({
       action:"create",
       table:"TOP11",
-      record:{
-        temporada,
-        posicao:data[`top11_posicao_${i}`] || i,
-        jogador,
-        overall:data[`top11_overall_${i}`] || ""
-      }
+      record:{temporada, posicao:data[`top11_posicao_${i}`] || i, jogador, overall:data[`top11_overall_${i}`] || ""}
     });
-    if(!crt.ok) throw new Error(crt.error || "Erro ao salvar Top 11.");
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar Top 11.");
   }
 
-  // Limpa e recria Bola de Ouro
   for(const old of getTable("BOLA_DE_OURO").filter(r => String(r.temporada) === String(temporada))){
     await apiPost({action:"delete", table:"BOLA_DE_OURO", id:old.id});
   }
@@ -1399,7 +1402,7 @@ async function saveFinishSeason(data, button){
     const jogador = data[`bo_jogador_${i}`];
     if(!jogador) continue;
 
-    const crt = await apiPost({
+    const res = await apiPost({
       action:"create",
       table:"BOLA_DE_OURO",
       record:{
@@ -1412,21 +1415,23 @@ async function saveFinishSeason(data, button){
         imagem_destaque_url:i===1 ? (data.bo_imagem || "") : ""
       }
     });
-    if(!crt.ok) throw new Error(crt.error || "Erro ao salvar Bola de Ouro.");
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar Bola de Ouro.");
   }
 
-  // Limpa e recria campeões dos grandes campeonatos
   for(const old of getTable("CAMPEOES").filter(r => String(r.temporada) === String(temporada))){
     await apiPost({action:"delete", table:"CAMPEOES", id:old.id});
   }
 
-  const compsNames = [...document.querySelectorAll('input[name="champ_competicao"]')].map(i => i.value);
+  const majors = ["Champions League","Copa do Mundo","Premier League","La Liga","Serie A","Bundesliga","Ligue 1","Brasileirão","Libertadores","Mundial de Clubes"];
 
-  for(const name of compsNames){
+  for(const name of majors){
     const key = escapeName(name);
-    const campeao = data[`champ_campeao_${key}`];
+    const campeao = data[`champ_campeao_${key}`] || "";
+    const artilheiro = data[`champ_artilheiro_${key}`] || "";
+    const lider = data[`champ_assist_${key}`] || "";
+    const melhor = data[`champ_melhor_${key}`] || "";
 
-    if(!campeao && !data[`champ_artilheiro_${key}`] && !data[`champ_assist_${key}`] && !data[`champ_melhor_${key}`]) continue;
+    if(!campeao && !artilheiro && !lider && !melhor) continue;
 
     let comp = getTable("COMPETICOES").find(c => String(c.nome||"").toLowerCase() === String(name).toLowerCase());
 
@@ -1436,35 +1441,28 @@ async function saveFinishSeason(data, button){
       comp = compJson.data;
     }
 
-    const crt = await apiPost({
+    const res = await apiPost({
       action:"create",
       table:"CAMPEOES",
       record:{
         competicao_id:comp.id,
         temporada,
-        clube:campeao || "",
-        artilheiro:data[`champ_artilheiro_${key}`] || "",
-        lider_assistencias:data[`champ_assist_${key}`] || "",
-        melhor_jogador:data[`champ_melhor_${key}`] || ""
+        clube:campeao,
+        artilheiro,
+        lider_assistencias:lider,
+        melhor_jogador:melhor
       }
     });
-    if(!crt.ok) throw new Error(crt.error || "Erro ao salvar campeões.");
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar campeões.");
   }
 
-  // Marca temporada como finalizada
   const seasonRecord = getCareerSeasons().find(s => String(s.temporada) === String(temporada));
   if(seasonRecord){
-    await apiPost({
-      action:"update",
-      table:"TEMPORADAS",
-      id:seasonRecord.id,
-      record:{status:"finalizada"}
-    });
+    await apiPost({action:"update", table:"TEMPORADAS", id:seasonRecord.id, record:{status:"finalizada"}});
   }
 
   active.temporada = temporada;
   saveActive();
-
   await loadData();
   setButtonLoading(button,false);
 }
@@ -1540,3 +1538,9 @@ async function uploadToCloudinary(event,key){
 window.openBallonBatchForm=openBallonBatchForm; window.openPlayerByName=openPlayerByName; window.openFinishSeasonFlow=openFinishSeasonFlow; window.addFinishStatLine=addFinishStatLine; window.removeFinishStatLine=removeFinishStatLine; window.openSeasonFlow=openSeasonFlow; window.searchTeamsForSeason=searchTeamsForSeason; window.selectSeasonTeam=selectSeasonTeam; window.renderSeasonStatsRows=renderSeasonStatsRows; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
 bindSelectors();
 loadData();
+
+
+window.addEventListener('error', function(event){
+  console.error("Football Legacy runtime error:", event.error || event.message);
+  setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
+});

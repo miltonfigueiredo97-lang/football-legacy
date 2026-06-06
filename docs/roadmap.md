@@ -1,3 +1,3 @@
-# Football Legacy V1.9
+# Football Legacy V2.1
 
-Adiciona fluxo Finalizar Temporada: estatísticas por jogador/competição, Top 11, Bola de Ouro e campeões/prêmios dos grandes torneios. Ao finalizar, a temporada recebe status finalizada.
+Correção dura de estabilidade: todas as renderizações principais agora verificam se o elemento existe antes de usar innerHTML/textContent. Card do jogador ajustado para nome abaixo da imagem, sem sobreposição. Top 11 e Bola de Ouro preservados.
