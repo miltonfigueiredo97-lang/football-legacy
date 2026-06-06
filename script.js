@@ -399,21 +399,41 @@ function renderMuseu(){
 
 
 function flagFrom(value){
-  const v = String(value||"").trim().toLowerCase();
+  const raw = String(value||"").trim();
+  if(/\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(raw)) return raw;
+
+  const v = raw.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
+
   const map = {
     brasil:"🇧🇷", brasileiro:"🇧🇷", brazil:"🇧🇷",
-    franca:"🇫🇷", frança:"🇫🇷", france:"🇫🇷", frances:"🇫🇷",
-    espanha:"🇪🇸", spain:"🇪🇸",
-    portugal:"🇵🇹",
-    inglaterra:"🏴", england:"🏴",
-    italia:"🇮🇹", italy:"🇮🇹",
-    alemanha:"🇩🇪", germany:"🇩🇪",
-    argentina:"🇦🇷",
-    holanda:"🇳🇱", netherlands:"🇳🇱",
+    franca:"🇫🇷", france:"🇫🇷", frances:"🇫🇷",
+    espanha:"🇪🇸", spain:"🇪🇸", espanhol:"🇪🇸",
+    portugal:"🇵🇹", portugues:"🇵🇹",
+    inglaterra:"🏴", england:"🏴", ingles:"🏴",
+    italia:"🇮🇹", italy:"🇮🇹", italiano:"🇮🇹",
+    alemanha:"🇩🇪", germany:"🇩🇪", alemao:"🇩🇪",
+    argentina:"🇦🇷", argentino:"🇦🇷",
+    holanda:"🇳🇱", netherlands:"🇳🇱", paisesbaixos:"🇳🇱",
     egito:"🇪🇬", egypt:"🇪🇬",
-    marrocos:"🇲🇦", morocco:"🇲🇦"
+    marrocos:"🇲🇦", morocco:"🇲🇦",
+    belgica:"🇧🇪", belgium:"🇧🇪",
+    uruguai:"🇺🇾", uruguay:"🇺🇾",
+    noruega:"🇳🇴", norway:"🇳🇴",
+    suecia:"🇸🇪", sweden:"🇸🇪",
+    croacia:"🇭🇷", croatia:"🇭🇷",
+    servia:"🇷🇸", serbia:"🇷🇸",
+    suica:"🇨🇭", switzerland:"🇨🇭",
+    dinamarca:"🇩🇰", denmark:"🇩🇰",
+    polonia:"🇵🇱", poland:"🇵🇱",
+    senegal:"🇸🇳",
+    costaDoMarfim:"🇨🇮", costadomarfim:"🇨🇮", ivorycoast:"🇨🇮",
+    canada:"🇨🇦",
+    estadosunidos:"🇺🇸", eua:"🇺🇸", usa:"🇺🇸"
   };
-  return map[v] || value || "🌐";
+
+  return map[v] || raw || "🌐";
 }
 
 function escapeAttr(value){
@@ -456,6 +476,7 @@ function navigate(pageId){
 
 document.querySelectorAll(".menu-item").forEach(b=>b.onclick=()=>navigate(b.dataset.page));
 document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dataset.form));
+document.querySelectorAll("[data-ballon-batch]").forEach(b=>b.onclick=()=>openBallonBatchForm());
 $("syncBtn").onclick=loadData;
 $("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
 $("protagonistEditCard").onclick=editActiveProtagonist;
@@ -465,7 +486,122 @@ $("close-modal").onclick=closeModal;
 modal.onclick=e=>{if(e.target===modal)closeModal()};
 let currentForm=null;
 
-function closeModal(){modal.classList.remove("active");form.innerHTML=""}
+function closeModal(){modal.classList.remove("active");document.querySelector(".modal-box").classList.remove("ballon-modal");form.innerHTML=""}
+
+
+function openBallonBatchForm(){
+  currentForm = {kind:"bolaouroBatch", id:null};
+
+  const seasons = getCareerSeasons();
+  const defaultSeason = seasons[0]?.temporada || "";
+
+  modalTitle.textContent = "Novo ranking Bola de Ouro";
+  document.querySelector(".modal-box").classList.add("ballon-modal");
+
+  const rows = Array.from({length:10}, (_,i)=>i+1).map(pos=>`
+    <div class="ballon-batch-row">
+      <strong>${pos}</strong>
+      <input name="jogador_${pos}" placeholder="Nome do jogador">
+      <input name="nacionalidade_${pos}" placeholder="País ou emoji da bandeira">
+      <input name="idade_${pos}" type="number" placeholder="Idade">
+      <input name="valor_mercado_${pos}" placeholder="Ex: €90M">
+    </div>
+  `).join("");
+
+  form.innerHTML = `
+    <div class="ballon-batch-form">
+      <div class="ballon-batch-top">
+        <div class="form-field">
+          <label>Temporada</label>
+          <input name="temporada" value="${defaultSeason}" placeholder="Ex: 2035/2036">
+        </div>
+        <div class="ballon-batch-image">
+          <label>
+            Imagem de fundo do vencedor
+            <input name="imagem_destaque_url" placeholder="URL gerada automaticamente">
+          </label>
+          <button type="button" class="upload-btn" onclick="triggerUpload('imagem_destaque_url')">Importar</button>
+          <input type="file" id="file_imagem_destaque_url" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'imagem_destaque_url')">
+        </div>
+      </div>
+
+      <div class="ballon-batch-table">
+        <div class="ballon-batch-head">
+          <div>#</div>
+          <div>Jogador</div>
+          <div>País / Bandeira</div>
+          <div>Idade</div>
+          <div>Valor</div>
+        </div>
+        ${rows}
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="gold-btn" id="saveBtn">Salvar ranking</button>
+      </div>
+    </div>
+  `;
+
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const btn = $("saveBtn");
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      await saveBallonBatch(data, btn);
+      closeModal();
+    }catch(err){
+      setButtonLoading(btn,false);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+async function saveBallonBatch(data, button){
+  const temporada = data.temporada || "";
+  const imagem = data.imagem_destaque_url || "";
+
+  if(!temporada){
+    throw new Error("Informe a temporada.");
+  }
+
+  setButtonLoading(button,true);
+  setStatus("Salvando ranking Bola de Ouro...");
+
+  for(let pos=1; pos<=10; pos++){
+    const jogador = data[`jogador_${pos}`];
+
+    if(!jogador) continue;
+
+    const record = {
+      temporada,
+      posicao: pos,
+      jogador,
+      idade: data[`idade_${pos}`] || "",
+      valor_mercado: data[`valor_mercado_${pos}`] || "",
+      nacionalidade: data[`nacionalidade_${pos}`] || "",
+      overall: "",
+      imagem_destaque_url: pos === 1 ? imagem : ""
+    };
+
+    const json = await apiPost({
+      action:"create",
+      table:"BOLA_DE_OURO",
+      record
+    });
+
+    if(!json.ok){
+      throw new Error(json.error || "Erro ao salvar posição " + pos);
+    }
+  }
+
+  await loadData();
+  setButtonLoading(button,false);
+}
 
 function openForm(kind,id=null){
   currentForm={kind,id};
@@ -535,6 +671,6 @@ async function uploadToCloudinary(event,key){
   setStatus("Mídia enviada ao Cloudinary. URL preenchida.", "ok");
 }
 
-window.openPlayerByName=openPlayerByName; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
+window.openBallonBatchForm=openBallonBatchForm; window.openPlayerByName=openPlayerByName; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
 bindSelectors();
 loadData();
