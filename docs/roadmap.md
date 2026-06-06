@@ -1,3 +1,3 @@
-# Football Legacy V2.6
+# Football Legacy V2.7 Hotfix
 
-Bola de Ouro agora preserva rankings antigos. Adicionado seletor de temporada na aba Bola de Ouro. Salvar ranking atualiza posições preenchidas da temporada escolhida ou cria novas, sem apagar rankings de outras temporadas.
+Baseada na V2.5 para restaurar carregamento do Sheets. Reaplica histórico da Bola de Ouro com estado independente, seletor de temporada e atualização por posição sem apagar rankings antigos.

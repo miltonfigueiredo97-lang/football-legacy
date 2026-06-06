@@ -3,12 +3,12 @@ const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
 
 let db = {};
+let activeBallonSeason = localStorage.getItem("fl_active_ballon_season") || "";
 let active = {
   usuario_id: localStorage.getItem("fl_active_usuario_id") || "",
   carreira_id: localStorage.getItem("fl_active_carreira_id") || "",
   protagonista_id: localStorage.getItem("fl_active_protagonista_id") || "",
-  temporada: localStorage.getItem("fl_active_temporada") || "",
-  bolaouro_temporada: localStorage.getItem("fl_active_bolaouro_temporada") || ""
+  temporada: localStorage.getItem("fl_active_temporada") || ""
 };
 
 const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO",top11:"TOP11",midia:"MIDIAS"};
@@ -295,20 +295,20 @@ function getBallonSeasons(){
 function getActiveBallonSeason(){
   const seasons = getBallonSeasons();
 
-  if(active.bolaouro_temporada && seasons.includes(active.bolaouro_temporada)){
-    return active.bolaouro_temporada;
+  if(activeBallonSeason && seasons.includes(activeBallonSeason)){
+    return activeBallonSeason;
   }
 
   const current = getCurrentSeason();
   if(current && seasons.includes(current)){
-    active.bolaouro_temporada = current;
-    saveActive();
-    return current;
+    activeBallonSeason = current;
+    localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+    return activeBallonSeason;
   }
 
-  active.bolaouro_temporada = seasons[0] || "";
-  saveActive();
-  return active.bolaouro_temporada;
+  activeBallonSeason = seasons[0] || "";
+  localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+  return activeBallonSeason;
 }
 
 function renderBallonSeasonSelector(){
@@ -316,17 +316,17 @@ function renderBallonSeasonSelector(){
   if(!select) return;
 
   const seasons = getBallonSeasons();
-  const activeSeason = getActiveBallonSeason();
+  const selected = getActiveBallonSeason();
 
   select.innerHTML = seasons.length
-    ? seasons.map(s=>`<option value="${s}" ${String(s)===String(activeSeason)?"selected":""}>${s}</option>`).join("")
+    ? seasons.map(s=>`<option value="${s}" ${String(s)===String(selected)?"selected":""}>${s}</option>`).join("")
     : `<option value="">Sem rankings</option>`;
 
-  select.value = activeSeason || "";
+  select.value = selected || "";
 
   select.onchange = e => {
-    active.bolaouro_temporada = e.target.value;
-    saveActive();
+    activeBallonSeason = e.target.value;
+    localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
     renderBolaOuro();
   };
 }
@@ -473,18 +473,16 @@ function openBallonBatchForm(){
   form.className="form-grid ballon-batch";
 
   const selectedSeason = getActiveBallonSeason() || getCurrentSeason();
-  const seasons = [...new Set([...getAvailableSeasonsForActivePlayer(), ...getBallonSeasons()])].sort(compareSeasonsDesc);
-  const seasonOptions = seasons.length
+  const seasons=[...new Set([...getAvailableSeasonsForActivePlayer(),...getBallonSeasons()])].sort(compareSeasonsDesc);
+  const seasonOptions=seasons.length
     ? seasons.map(s=>`<option value="${s}" ${s===selectedSeason?"selected":""}>${s}</option>`).join("")
     : `<option value="${selectedSeason||""}">${selectedSeason||"Sem temporada"}</option>`;
 
-  const existingRows = uniqueBallonRows(
-    getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(selectedSeason))
-  );
+  const existingRows=uniqueBallonRows(getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(selectedSeason)));
 
-  function existing(pos, field){
-    const row = existingRows.find(r=>String(r.posicao)===String(pos));
-    return row ? (row[field] || "") : "";
+  function existing(pos,field){
+    const row=existingRows.find(r=>String(r.posicao)===String(pos));
+    return row ? String(row[field] || "").replace(/"/g,"&quot;") : "";
   }
 
   const rows=Array.from({length:10},(_,i)=>i+1).map(i=>`<div class="batch-row">
@@ -517,20 +515,20 @@ function openBallonBatchForm(){
     e.preventDefault();
     const btn=$("saveBtn");
     if(btn.disabled) return;
-
     btn.disabled=true;
     btn.textContent="Salvando...";
 
     try{
       const data=Object.fromEntries(new FormData(form).entries());
       const season=data.temporada;
-
       if(!season) throw new Error("Selecione uma temporada.");
+
+      const seasonExisting=uniqueBallonRows(getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season)));
 
       for(let i=1;i<=10;i++){
         if(!data[`jogador_${i}`]) continue;
 
-        const record = {
+        const record={
           temporada:season,
           posicao:i,
           jogador:data[`jogador_${i}`],
@@ -540,20 +538,18 @@ function openBallonBatchForm(){
           imagem_destaque_url:i===1?(data.imagem||""):""
         };
 
-        const existing = uniqueBallonRows(
-          getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season))
-        ).find(r=>String(r.posicao)===String(i));
+        const existingRow=seasonExisting.find(r=>String(r.posicao)===String(i));
 
-        const payload = existing
-          ? {action:"update", table:"BOLA_DE_OURO", id:existing.id, record}
+        const payload=existingRow
+          ? {action:"update", table:"BOLA_DE_OURO", id:existingRow.id, record}
           : {action:"create", table:"BOLA_DE_OURO", record};
 
         const res=await apiPost(payload);
         if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + i);
       }
 
-      active.bolaouro_temporada = season;
-      saveActive();
+      activeBallonSeason=season;
+      localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
 
       closeModal();
       await loadData();
@@ -592,3 +588,9 @@ $("protagonistSelect").onchange=e=>{active.protagonista_id=e.target.value;active
 
 window.openForm=openForm;window.removeRecord=removeRecord;window.setActiveProtagonist=setActiveProtagonist;window.openPlayerByName=openPlayerByName;window.triggerUpload=triggerUpload;window.uploadToCloudinary=uploadToCloudinary;
 loadData();
+
+
+window.addEventListener('error', function(event){
+  console.error("Football Legacy error:", event.error || event.message);
+  setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
+});
