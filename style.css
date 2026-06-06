@@ -789,3 +789,37 @@ select, option{background:#0f172a;color:white}
     grid-template-columns:1fr;
   }
 }
+
+
+/* ===== V1.5 BALLON FIX ===== */
+.ballon-batch-top select{
+  width:100%;
+  background:#1e293b;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:10px;
+  color:white;
+  outline:none;
+}
+.ballon-save-note{
+  color:#94a3b8;
+  font-size:12px;
+  margin-top:4px;
+}
+.flag-dot{
+  overflow:hidden;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif;
+}
+.ballon-row.empty-row{
+  grid-template-columns:1fr!important;
+  padding:18px;
+}
+.ballon-error-note{
+  margin-top:12px;
+  color:#fecaca;
+  background:rgba(239,68,68,.12);
+  border:1px solid rgba(239,68,68,.25);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:13px;
+}

@@ -1,3 +1,3 @@
-# Football Legacy V1.4
+# Football Legacy V1.5
 
-Card amarelo removido: destaque do protagonista agora é moldura natural com foto. Resumo principal mostra apenas dados atuais da temporada: posição, temporada, jogos, gols, assistências, G/J e A/J.
+Correção da Bola de Ouro: temporada por seletor, salvamento em lote com confirmação, evita duplicação da temporada, leitura robusta de idade/valor/bandeira/imagem.

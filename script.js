@@ -211,8 +211,9 @@ async function removeRecord(kind,id){
 
 function setButtonLoading(btn,loading){
   if(!btn)return;
+  if(!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
   btn.disabled=loading;
-  btn.textContent=loading?"Salvando...":"Salvar";
+  btn.textContent=loading?"Salvando...":(btn.dataset.originalText || "Salvar");
 }
 
 
@@ -384,12 +385,12 @@ function renderTop11(){
 }
 
 function renderBolaOuro(){
-  const bola = getTable("BOLA_DE_OURO")
-    .slice()
-    .sort((a,b)=>String(b.temporada||"").localeCompare(String(a.temporada||"")) || num(a.posicao)-num(b.posicao));
+  const all = getTable("BOLA_DE_OURO").slice();
 
-  const activeSeason = bola[0]?.temporada || getCareerSeasons()[0]?.temporada || "-";
-  const seasonRows = bola
+  const availableSeasons = [...new Set(all.map(b=>b.temporada).filter(Boolean))].sort().reverse();
+  const activeSeason = availableSeasons[0] || getCareerSeasons()[0]?.temporada || "-";
+
+  const seasonRows = all
     .filter(b=>String(b.temporada||"")===String(activeSeason))
     .sort((a,b)=>num(a.posicao)-num(b.posicao))
     .slice(0,10);
@@ -401,9 +402,11 @@ function renderBolaOuro(){
 
   const poster = $("ballon-poster");
   if(poster){
-    if(winner && winner.imagem_destaque_url){
+    const imgUrl = winner ? (winner.imagem_destaque_url || winner.imagem || winner.url || "") : "";
+
+    if(imgUrl){
       poster.classList.add("has-image");
-      poster.style.backgroundImage = `url('${winner.imagem_destaque_url}')`;
+      poster.style.backgroundImage = `url("${imgUrl}")`;
     }else{
       poster.classList.remove("has-image");
       poster.style.backgroundImage = "";
@@ -425,11 +428,11 @@ function renderBolaOuro(){
       <div class="ballon-row ${String(row.posicao)==="1"?"first":""}">
         <div class="ballon-pos">${row.posicao||"-"}</div>
         <div class="ballon-player-cell">
-          <span class="flag-dot">${flagFrom(row.nacionalidade)}</span>
+          <span class="flag-dot">${flagFrom(row.nacionalidade || row.pais || row.país)}</span>
           <button onclick="openPlayerByName('${escapeAttr(row.jogador||"")}')">${row.jogador||"-"}</button>
         </div>
         <div>${row.idade||"-"}</div>
-        <div>${row.valor_mercado||"-"}</div>
+        <div>${row.valor_mercado||row.valor||"-"}</div>
         <div class="ballon-actions">
           <button onclick="openForm('bolaouro','${row.id}')">Editar</button>
         </div>
@@ -438,7 +441,7 @@ function renderBolaOuro(){
   `;
 
   if(!seasonRows.length){
-    list.innerHTML += `<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div></div></div>`;
+    list.innerHTML += `<div class="ballon-row empty-row"><div>Nenhum ranking cadastrado para a temporada selecionada.</div></div>`;
   }
 }
 
@@ -450,11 +453,15 @@ function renderMuseu(){
 
 function flagFrom(value){
   const raw = String(value||"").trim();
-  if(/\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(raw)) return raw;
+  if(!raw) return "🌐";
+
+  // Se já vier emoji de bandeira, usa direto.
+  if(raw.length <= 4 && /[\uD83C][\uDDE6-\uDDFF]/.test(raw)) return raw;
 
   const v = raw.toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"");
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g,"");
 
   const map = {
     brasil:"🇧🇷", brasileiro:"🇧🇷", brazil:"🇧🇷",
@@ -478,12 +485,12 @@ function flagFrom(value){
     dinamarca:"🇩🇰", denmark:"🇩🇰",
     polonia:"🇵🇱", poland:"🇵🇱",
     senegal:"🇸🇳",
-    costaDoMarfim:"🇨🇮", costadomarfim:"🇨🇮", ivorycoast:"🇨🇮",
+    costadomarfim:"🇨🇮", ivorycoast:"🇨🇮",
     canada:"🇨🇦",
     estadosunidos:"🇺🇸", eua:"🇺🇸", usa:"🇺🇸"
   };
 
-  return map[v] || raw || "🌐";
+  return map[v] || "🌐";
 }
 
 function escapeAttr(value){
@@ -539,20 +546,31 @@ let currentForm=null;
 function closeModal(){modal.classList.remove("active");document.querySelector(".modal-box").classList.remove("ballon-modal");form.innerHTML=""}
 
 
+
 function openBallonBatchForm(){
   currentForm = {kind:"bolaouroBatch", id:null};
 
-  const seasons = getCareerSeasons();
-  const defaultSeason = seasons[0]?.temporada || "";
+  const seasons = getCareerSeasons().map(s => s.temporada).filter(Boolean);
+  const uniqueSeasons = [...new Set(seasons)];
+
+  if(!uniqueSeasons.length){
+    alert("Crie uma TEMPORADA antes de cadastrar o ranking Bola de Ouro. Assim o ranking fica vinculado a uma temporada existente.");
+    openForm("temporada");
+    return;
+  }
+
+  const defaultSeason = uniqueSeasons[0];
 
   modalTitle.textContent = "Novo ranking Bola de Ouro";
   document.querySelector(".modal-box").classList.add("ballon-modal");
+
+  const seasonOptions = uniqueSeasons.map(s => `<option value="${s}">${s}</option>`).join("");
 
   const rows = Array.from({length:10}, (_,i)=>i+1).map(pos=>`
     <div class="ballon-batch-row">
       <strong>${pos}</strong>
       <input name="jogador_${pos}" placeholder="Nome do jogador">
-      <input name="nacionalidade_${pos}" placeholder="País ou emoji da bandeira">
+      <input name="nacionalidade_${pos}" placeholder="País ou emoji. Ex: França ou 🇫🇷">
       <input name="idade_${pos}" type="number" placeholder="Idade">
       <input name="valor_mercado_${pos}" placeholder="Ex: €90M">
     </div>
@@ -563,7 +581,8 @@ function openBallonBatchForm(){
       <div class="ballon-batch-top">
         <div class="form-field">
           <label>Temporada</label>
-          <input name="temporada" value="${defaultSeason}" placeholder="Ex: 2035/2036">
+          <select name="temporada">${seasonOptions}</select>
+          <div class="ballon-save-note">O ranking será salvo nessa temporada. Para editar temporadas antigas, selecione aqui.</div>
         </div>
         <div class="ballon-batch-image">
           <label>
@@ -600,11 +619,15 @@ function openBallonBatchForm(){
     try{
       const data = Object.fromEntries(new FormData(form).entries());
       await saveBallonBatch(data, btn);
+      alert("Ranking Bola de Ouro salvo com sucesso.");
       closeModal();
     }catch(err){
       setButtonLoading(btn,false);
       console.error(err);
       setStatus("Erro ao salvar ranking: " + err.message, "error");
+      const existing = form.querySelector(".ballon-error-note");
+      if(existing) existing.remove();
+      form.insertAdjacentHTML("beforeend", `<div class="ballon-error-note">${err.message}</div>`);
     }
   };
 
@@ -616,18 +639,17 @@ async function saveBallonBatch(data, button){
   const imagem = data.imagem_destaque_url || "";
 
   if(!temporada){
-    throw new Error("Informe a temporada.");
+    throw new Error("Selecione uma temporada.");
   }
 
-  setButtonLoading(button,true);
-  setStatus("Salvando ranking Bola de Ouro...");
+  const registros = [];
 
   for(let pos=1; pos<=10; pos++){
-    const jogador = data[`jogador_${pos}`];
+    const jogador = (data[`jogador_${pos}`] || "").trim();
 
     if(!jogador) continue;
 
-    const record = {
+    registros.push({
       temporada,
       posicao: pos,
       jogador,
@@ -636,8 +658,24 @@ async function saveBallonBatch(data, button){
       nacionalidade: data[`nacionalidade_${pos}`] || "",
       overall: "",
       imagem_destaque_url: pos === 1 ? imagem : ""
-    };
+    });
+  }
 
+  if(!registros.length){
+    throw new Error("Preencha pelo menos o 1º colocado.");
+  }
+
+  setButtonLoading(button,true);
+  setStatus("Salvando ranking Bola de Ouro...");
+
+  // Evita duplicar a mesma temporada: remove ranking antigo da temporada antes de salvar o novo.
+  const antigos = getTable("BOLA_DE_OURO").filter(r => String(r.temporada) === String(temporada));
+  for(const antigo of antigos){
+    const del = await apiPost({action:"delete", table:"BOLA_DE_OURO", id:antigo.id});
+    if(!del.ok) throw new Error(del.error || "Erro ao limpar ranking antigo.");
+  }
+
+  for(const record of registros){
     const json = await apiPost({
       action:"create",
       table:"BOLA_DE_OURO",
@@ -645,11 +683,20 @@ async function saveBallonBatch(data, button){
     });
 
     if(!json.ok){
-      throw new Error(json.error || "Erro ao salvar posição " + pos);
+      throw new Error(json.error || "Erro ao salvar posição " + record.posicao);
     }
   }
 
   await loadData();
+
+  const salvos = getTable("BOLA_DE_OURO").filter(r => String(r.temporada) === String(temporada));
+
+  // Checagem útil: se colunas novas não existem no Apps Script/planilha, valores voltam vazios.
+  const primeiro = salvos.find(r => String(r.posicao) === "1");
+  if(primeiro && registros[0].idade && !primeiro.idade){
+    throw new Error("O ranking foi criado, mas idade/valor/imagem não voltaram da planilha. Atualize o Apps Script V1.5 e execute setupDatabase.");
+  }
+
   setButtonLoading(button,false);
 }
 
