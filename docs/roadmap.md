@@ -1,3 +1,3 @@
-# Football Legacy V2.2
+# Football Legacy V2.3 Clean Fixed
 
-Restaura os botões das abas Top 11 e Bola de Ouro: + Jogador e + Ranking. Mantém a estabilidade da V2.1.
+Base limpa: Administração removida, Top 11 e Bola de Ouro com botões próprios funcionando, tabela de temporadas jogadas no resumo.
