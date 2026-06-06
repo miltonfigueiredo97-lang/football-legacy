@@ -347,18 +347,16 @@ function renderBolaOuro(){
   const winner = seasonRows.find(b=>String(b.posicao)==="1") || seasonRows[0];
 
   const seasonLabel = $("ballonSeasonLabel");
-  if(seasonLabel) seasonLabel.textContent = activeSeason !== "-" ? `${activeSeason} • 1º ao 10º colocado` : "1º ao 10º colocado";
+  if(seasonLabel) seasonLabel.textContent = activeSeason !== "-" ? `1º ao 10º colocado • ${activeSeason}` : "1º ao 10º colocado";
 
-  const art = $("ballon-winner-art");
-  if(art){
+  const poster = $("ballon-poster");
+  if(poster){
     if(winner && winner.imagem_destaque_url){
-      art.classList.add("has-image");
-      art.style.backgroundImage = `url('${winner.imagem_destaque_url}')`;
-      art.innerHTML = "";
+      poster.classList.add("has-image");
+      poster.style.backgroundImage = `url('${winner.imagem_destaque_url}')`;
     }else{
-      art.classList.remove("has-image");
-      art.style.backgroundImage = "";
-      art.innerHTML = `<div class="ballon-art-empty"><div><strong>Imagem do vencedor</strong><span>Cadastre a URL no 1º colocado</span></div></div>`;
+      poster.classList.remove("has-image");
+      poster.style.backgroundImage = "";
     }
   }
 
@@ -370,8 +368,8 @@ function renderBolaOuro(){
       <div>#</div>
       <div>Jogador</div>
       <div>Idade</div>
-      <div>Valor</div>
-      <div>Ações</div>
+      <div>Valor de mercado</div>
+      <div></div>
     </div>
     ${seasonRows.map(row=>`
       <div class="ballon-row ${String(row.posicao)==="1"?"first":""}">
@@ -384,14 +382,13 @@ function renderBolaOuro(){
         <div>${row.valor_mercado||"-"}</div>
         <div class="ballon-actions">
           <button onclick="openForm('bolaouro','${row.id}')">Editar</button>
-          <button onclick="removeRecord('bolaouro','${row.id}')">Excluir</button>
         </div>
       </div>
     `).join("")}
   `;
 
   if(!seasonRows.length){
-    list.innerHTML += `<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div>-</div></div>`;
+    list.innerHTML += `<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div></div></div>`;
   }
 }
 

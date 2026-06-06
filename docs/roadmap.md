@@ -1,3 +1,3 @@
-# Football Legacy V1.1
+# Football Legacy V1.2
 
-Foto do protagonista no card amarelo, nomes de jogadores clicáveis e aba Bola de Ouro no modelo ranking + arte de destaque do vencedor.
+Aba Bola de Ouro agora usa a imagem do vencedor como fundo único do painel, com tabela sobreposta à esquerda, sem card separado.

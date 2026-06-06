@@ -139,29 +139,29 @@
         <div class="section-header">
           <div>
             <h3>Bola de Ouro</h3>
-            <p>Ranking do 1º ao 10º com arte de destaque do vencedor.</p>
+            <p>Ranking do 1º ao 10º usando a arte do vencedor como fundo.</p>
           </div>
           <button class="gold-btn" data-form="bolaouro">+ Ranking</button>
         </div>
 
-        <div class="ballon-layout">
-          <div class="ballon-ranking-card">
+        <div class="ballon-poster" id="ballon-poster">
+          <div class="ballon-poster-overlay"></div>
+
+          <div class="ballon-content">
             <div class="ballon-title">
               <div class="ballon-icon">🏆</div>
               <div>
                 <h2>BALLON D'OR</h2>
-                <p id="ballonSeasonLabel">Temporada</p>
+                <p id="ballonSeasonLabel">1º ao 10º colocado</p>
               </div>
             </div>
 
             <div class="ballon-table" id="ballon-ranking-list"></div>
           </div>
 
-          <div class="ballon-winner-art" id="ballon-winner-art">
-            <div class="ballon-art-empty">
-              <strong>Imagem do vencedor</strong>
-              <span>Cadastre a URL no 1º colocado</span>
-            </div>
+          <div class="ballon-empty-bg" id="ballon-empty-bg">
+            <strong>Imagem do vencedor</strong>
+            <span>Cadastre a imagem no 1º colocado</span>
           </div>
         </div>
       </section>
