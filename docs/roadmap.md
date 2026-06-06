@@ -1,3 +1,3 @@
-# Football Legacy V1.8
+# Football Legacy V1.9
 
-Corrige erro textContent com renderização segura; adiciona seletor de temporada funcional; cria fluxo Nova Temporada com busca de time via TheSportsDB, escudo automático e competições selecionáveis.
+Adiciona fluxo Finalizar Temporada: estatísticas por jogador/competição, Top 11, Bola de Ouro e campeões/prêmios dos grandes torneios. Ao finalizar, a temporada recebe status finalizada.
