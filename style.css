@@ -129,3 +129,17 @@ select, option{background:#0f172a;color:white}
   .menu{grid-template-columns:repeat(2,1fr)}
   .table-row{grid-template-columns:1fr!important}
 }
+
+
+.protagonist-edit-card{
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.protagonist-edit-card:hover{
+  transform:translateY(-3px);
+  filter:brightness(1.05);
+  box-shadow:0 28px 70px rgba(0,0,0,.34), 0 0 0 2px rgba(245,158,11,.35);
+}
+.protagonist-edit-card:active{
+  transform:translateY(0);
+}

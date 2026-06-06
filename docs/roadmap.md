@@ -1,3 +1,3 @@
-# Football Legacy V0.9
+# Football Legacy V1.0
 
-Fluxo de criação ajustado: botão superior dinâmico. Sem carreira selecionada: + Criar Carreira. Com carreira selecionada: + Criar Personagem.
+Card amarelo do protagonista agora é clicável e abre a edição do personagem selecionado.

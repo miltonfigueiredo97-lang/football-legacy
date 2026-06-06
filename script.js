@@ -338,6 +338,18 @@ function renderMuseu(){
 function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
 function setActiveProtagonist(id){active.protagonista_id=String(id);saveActive();renderAll()}
 
+
+function editActiveProtagonist(){
+  const protagonist = getActiveProtagonist();
+
+  if(!protagonist || !protagonist.id){
+    openForm("personagem");
+    return;
+  }
+
+  openForm("personagem", String(protagonist.id));
+}
+
 function navigate(pageId){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".menu-item").forEach(i=>i.classList.remove("active"));
@@ -350,6 +362,7 @@ document.querySelectorAll(".menu-item").forEach(b=>b.onclick=()=>navigate(b.data
 document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dataset.form));
 $("syncBtn").onclick=loadData;
 $("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
+$("protagonistEditCard").onclick=editActiveProtagonist;
 
 const modal=$("modal"), form=$("dynamic-form"), modalTitle=$("modal-title");
 $("close-modal").onclick=closeModal;
@@ -426,6 +439,6 @@ async function uploadToCloudinary(event,key){
   setStatus("Mídia enviada ao Cloudinary. URL preenchida.", "ok");
 }
 
-window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
+window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
 bindSelectors();
 loadData();
