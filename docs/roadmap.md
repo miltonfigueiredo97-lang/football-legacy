@@ -1,3 +1,3 @@
-# Football Legacy V0.5
+# Football Legacy V0.8
 
-Versão conectada ao Google Sheets via Apps Script.
+Upload automático para Cloudinary ativado com preset unsigned `football-legacy`.

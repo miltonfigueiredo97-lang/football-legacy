@@ -28,7 +28,6 @@
 
       <nav class="menu">
         <button class="menu-item active" data-page="dashboard">🏠 <span>Resumo</span></button>
-        <button class="menu-item" data-page="historia">📖 <span>História</span></button>
         <button class="menu-item" data-page="personagens">👤 <span>Personagens</span></button>
         <button class="menu-item" data-page="estatisticas">📊 <span>Estatísticas</span></button>
         <button class="menu-item" data-page="trofeus">🏆 <span>Troféus</span></button>
@@ -43,81 +42,70 @@
     <main class="main">
       <header class="topbar">
         <div>
-          <span class="eyebrow">Visão da carreira</span>
+          <span class="eyebrow">Visão do protagonista</span>
           <h2 id="page-title">Resumo</h2>
         </div>
+
+        <div class="top-selectors">
+          <label>Usuário<select id="userSelect"></select></label>
+          <label>Carreira<select id="careerSelect"></select></label>
+          <label>Protagonista<select id="protagonistSelect"></select></label>
+        </div>
+
         <div class="top-actions">
           <button class="ghost-btn" id="syncBtn">🔄 Atualizar</button>
-          <button class="gold-btn" data-form="personagem">+ Novo Registro</button>
+          <button class="gold-btn" data-form="estatistica">+ Estatística</button>
         </div>
       </header>
 
       <div id="statusBar" class="status-bar">Conectando ao Google Sheets...</div>
 
       <section class="page active" id="dashboard">
-        <div class="hero-card">
+        <div class="hero-card player-focused">
           <div class="hero-content">
             <span class="season-pill" id="currentSeason">Banco conectado</span>
-            <h3 id="careerTitle">Football Legacy</h3>
-            <p id="careerDescription">Dados carregados diretamente da planilha via Apps Script.</p>
+            <h3 id="mainCharacterTitle">Protagonista</h3>
+            <p id="mainCharacterDesc">Resumo da carreira do jogador selecionado.</p>
 
             <div class="hero-meta">
-              <div><small>Usuários</small><strong id="countUsers">0</strong></div>
-              <div><small>Carreiras</small><strong id="countCareers">0</strong></div>
-              <div><small>Personagens</small><strong id="countCharacters">0</strong></div>
-              <div><small>Clubes</small><strong id="countClubs">0</strong></div>
+              <div><small>Carreira</small><strong id="activeCareerName">-</strong></div>
+              <div><small>Posição</small><strong id="activePosition">-</strong></div>
+              <div><small>Nacionalidade</small><strong id="activeNationality">-</strong></div>
+              <div><small>Temporadas</small><strong id="activeSeasonsCount">0</strong></div>
             </div>
           </div>
 
           <div class="hero-player">
-            <div class="rating" id="mainOverall">FL</div>
+            <div class="rating" id="mainType">PRO</div>
             <div class="player-avatar" id="mainInitials">FL</div>
             <strong id="mainCharacter">Football Legacy</strong>
-            <span id="mainCharacterSub">Sistema conectado</span>
+            <span id="mainCharacterSub">Selecione um protagonista</span>
           </div>
         </div>
 
         <div class="stat-grid">
-          <article class="stat-card"><span>🏆</span><strong id="countTitles">0</strong><small>Títulos</small></article>
+          <article class="stat-card"><span>🎮</span><strong id="sumGames">0</strong><small>Jogos</small></article>
           <article class="stat-card"><span>⚽</span><strong id="sumGoals">0</strong><small>Gols</small></article>
           <article class="stat-card"><span>🅰</span><strong id="sumAssists">0</strong><small>Assistências</small></article>
-          <article class="stat-card"><span>🎮</span><strong id="sumGames">0</strong><small>Jogos</small></article>
-          <article class="stat-card"><span>⭐</span><strong id="countBallon">0</strong><small>Bola de Ouro</small></article>
-          <article class="stat-card"><span>🖼</span><strong id="countMedia">0</strong><small>Mídias</small></article>
+          <article class="stat-card"><span>📈</span><strong id="avgGoals">0.00</strong><small>Gols/Jogo</small></article>
+          <article class="stat-card"><span>📊</span><strong id="avgAssists">0.00</strong><small>Assist/Jogo</small></article>
+          <article class="stat-card"><span>⭐</span><strong id="countBallon">0</strong><small>Bolas de Ouro</small></article>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-main">
           <section class="panel">
             <div class="panel-header">
-              <h3>Últimos registros</h3>
-              <button class="link-btn" data-page-link="historia">Ver história</button>
+              <h3>Resumo por temporada</h3>
+              <button class="link-btn" data-form="estatistica">+ Estatística</button>
             </div>
-            <div class="timeline" id="latestTimeline"></div>
+            <div class="data-table" id="season-summary-table"></div>
           </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <h3>Protagonistas</h3>
-              <button class="link-btn" data-form="personagem">+ Novo</button>
-            </div>
-            <div class="character-row" id="dashboardCharacters"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="page" id="historia">
-        <div class="section-header">
-          <div><h3>História da Carreira</h3><p>Eventos gerados a partir de títulos, transferências e mídias.</p></div>
-          <button class="gold-btn" data-form="midia">+ Mídia</button>
-        </div>
-        <div class="panel large">
-          <div class="big-timeline" id="historyTimeline"></div>
         </div>
       </section>
 
       <section class="page" id="personagens">
         <div class="section-header">
-          <div><h3>Personagens</h3><p>Registros salvos na aba PERSONAGENS.</p></div>
+          <div><h3>Personagens</h3><p>Filtrados pela carreira selecionada.</p></div>
           <button class="gold-btn" data-form="personagem">+ Novo Personagem</button>
         </div>
         <div class="cards-list" id="personagens-list"></div>
@@ -125,7 +113,7 @@
 
       <section class="page" id="estatisticas">
         <div class="section-header">
-          <div><h3>Estatísticas</h3><p>Registros salvos na aba ESTATISTICAS.</p></div>
+          <div><h3>Estatísticas</h3><p>Filtradas pelo protagonista selecionado.</p></div>
           <button class="gold-btn" data-form="estatistica">+ Estatística</button>
         </div>
         <div class="data-table" id="stats-table"></div>
@@ -133,7 +121,7 @@
 
       <section class="page" id="trofeus">
         <div class="section-header">
-          <div><h3>Troféus</h3><p>Registros salvos na aba CAMPEOES.</p></div>
+          <div><h3>Troféus</h3><p>Campeões cadastrados.</p></div>
           <button class="gold-btn" data-form="campeao">+ Título</button>
         </div>
         <div class="trophy-grid" id="trophy-grid"></div>
@@ -149,7 +137,7 @@
 
       <section class="page" id="bolaouro">
         <div class="section-header">
-          <div><h3>Bola de Ouro</h3><p>Registros salvos na aba BOLA_DE_OURO.</p></div>
+          <div><h3>Bola de Ouro</h3><p>Top 5 por temporada.</p></div>
           <button class="gold-btn" data-form="bolaouro">+ Ranking</button>
         </div>
         <div class="data-table" id="ballon-table"></div>
@@ -157,7 +145,7 @@
 
       <section class="page" id="clubes">
         <div class="section-header">
-          <div><h3>Clubes</h3><p>Registros salvos na aba CLUBES.</p></div>
+          <div><h3>Clubes</h3><p>Escudos via URL/API serão integrados na próxima etapa.</p></div>
           <button class="gold-btn" data-form="clube">+ Novo Clube</button>
         </div>
         <div class="cards-list" id="clubes-list"></div>
@@ -165,7 +153,7 @@
 
       <section class="page" id="museu">
         <div class="section-header">
-          <div><h3>Museu</h3><p>Registros salvos na aba MIDIAS.</p></div>
+          <div><h3>Museu</h3><p>Filtrado pela carreira selecionada.</p></div>
           <button class="gold-btn" data-form="midia">+ Nova Mídia</button>
         </div>
         <div class="media-grid" id="media-grid"></div>
@@ -189,11 +177,6 @@
           <button data-form="top11">⚽ Criar Top 11</button>
           <button data-form="midia">🖼 Criar Mídia</button>
         </div>
-
-        <div class="panel api-panel">
-          <h3>API conectada</h3>
-          <p id="apiUrlText">https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec</p>
-        </div>
       </section>
     </main>
   </div>
@@ -208,6 +191,8 @@
 
   <script>
     window.FOOTBALL_LEGACY_API = "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
+    window.CLOUDINARY_CLOUD_NAME = "duq0dyp6b";
+    window.CLOUDINARY_UPLOAD_PRESET = "football-legacy";
   </script>
   <script src="script.js"></script>
 </body>
