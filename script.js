@@ -215,6 +215,26 @@ function setButtonLoading(btn,loading){
   btn.textContent=loading?"Salvando...":"Salvar";
 }
 
+
+function safeText(id,value){
+  const el = $(id);
+  if(el) el.textContent = value;
+}
+
+function getCurrentSeason(stats){
+  const seasons = stats.map(s=>s.temporada).filter(Boolean);
+  if(seasons.length){
+    return seasons.slice().sort().reverse()[0];
+  }
+
+  const careerSeasons = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
+  if(careerSeasons.length){
+    return careerSeasons.slice().sort().reverse()[0];
+  }
+
+  return "";
+}
+
 function renderAll(){
   ensureActive();
   renderSelectors();
@@ -246,34 +266,64 @@ function renderPrimaryButton(){
 }
 
 function renderDashboard(){
-  const user=getActiveUser(), career=getActiveCareer(), protagonist=getActiveProtagonist(), chars=getCareerCharacters(), seasons=getCareerSeasons(), stats=getProtagonistStats(), bola=getTable("BOLA_DE_OURO");
-  const games=stats.reduce((a,b)=>a+num(b.jogos),0), goals=stats.reduce((a,b)=>a+num(b.gols),0), assists=stats.reduce((a,b)=>a+num(b.assistencias),0);
+  const user=getActiveUser(), career=getActiveCareer(), protagonist=getActiveProtagonist(), stats=getProtagonistStats(), bola=getTable("BOLA_DE_OURO");
+
+  const currentSeason = getCurrentSeason(stats);
+  const currentStats = currentSeason ? stats.filter(s=>String(s.temporada)===String(currentSeason)) : stats;
+
+  const currentGames=currentStats.reduce((a,b)=>a+num(b.jogos),0);
+  const currentGoals=currentStats.reduce((a,b)=>a+num(b.gols),0);
+  const currentAssists=currentStats.reduce((a,b)=>a+num(b.assistencias),0);
+
   $("careerNameSide").textContent=career?career.nome:"Football Legacy";
   $("careerMetaSide").textContent=user?user.nome:"Google Sheets conectado";
-  $("currentSeason").textContent=seasons[0]?.temporada||"Banco conectado";
+  $("currentSeason").textContent=currentSeason||"Banco conectado";
+
   $("mainCharacterTitle").textContent=protagonist?protagonist.nome:"Protagonista";
   $("mainCharacterDesc").textContent=career?career.descricao||"Resumo da carreira do jogador selecionado.":"Crie uma carreira na Administração.";
-  $("activeCareerName").textContent=career?career.nome:"-";
-  $("activePosition").textContent=protagonist?protagonist.posicao||"-":"-";
-  $("activeNationality").textContent=protagonist?protagonist.nacionalidade||"-":"-";
-  $("activeSeasonsCount").textContent=new Set(stats.map(s=>s.temporada)).size;
+
+  safeText("activeCareerName", career?career.nome:"-");
+  safeText("activePosition", protagonist?protagonist.posicao||"-":"-");
+  safeText("activeNationality", protagonist?protagonist.nacionalidade||"-":"-");
+  safeText("activeSeasonsCount", new Set(stats.map(s=>s.temporada)).size);
+  safeText("activeCurrentSeason", currentSeason||"-");
+  safeText("currentGamesHero", currentGames);
+  safeText("currentGoalsHero", currentGoals);
+  safeText("currentAssistsHero", currentAssists);
+  safeText("currentAvgGoalsHero", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
+  safeText("currentAvgAssistsHero", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
+
   $("mainCharacter").textContent=protagonist?protagonist.nome:"Sem personagem";
-  const avatar = $("mainInitials");
-  if(protagonist && protagonist.foto){
-    avatar.classList.add("has-photo");
-    avatar.style.backgroundImage = `url('${protagonist.foto}')`;
-    avatar.textContent = "";
-  }else{
-    avatar.classList.remove("has-photo");
-    avatar.style.backgroundImage = "";
-    avatar.textContent=initials(protagonist?protagonist.nome:"FL");
-  }
   $("mainCharacterSub").textContent=protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem";
-  $("mainType").textContent=protagonist?protagonist.tipo:"FL";
-  $("sumGames").textContent=games; $("sumGoals").textContent=goals; $("sumAssists").textContent=assists;
-  $("avgGoals").textContent=games?(goals/games).toFixed(2):"0.00";
-  $("avgAssists").textContent=games?(assists/games).toFixed(2):"0.00";
+
+  const img = $("mainPlayerPhoto");
+  const fallback = $("mainInitials");
+
+  if(protagonist && protagonist.foto){
+    img.onload = () => {
+      img.classList.add("visible");
+      fallback.classList.add("hidden");
+    };
+    img.onerror = () => {
+      img.classList.remove("visible");
+      fallback.classList.remove("hidden");
+      fallback.textContent = initials(protagonist.nome);
+    };
+    img.src = protagonist.foto;
+  }else{
+    img.removeAttribute("src");
+    img.classList.remove("visible");
+    fallback.classList.remove("hidden");
+    fallback.textContent=initials(protagonist?protagonist.nome:"FL");
+  }
+
+  $("sumGames").textContent=currentGames;
+  $("sumGoals").textContent=currentGoals;
+  $("sumAssists").textContent=currentAssists;
+  $("avgGoals").textContent=currentGames?(currentGoals/currentGames).toFixed(2):"0.00";
+  $("avgAssists").textContent=currentGames?(currentAssists/currentGames).toFixed(2):"0.00";
   $("countBallon").textContent=bola.filter(x=>String(x.posicao)==="1"&&(!protagonist||x.jogador===protagonist.nome)).length;
+
   renderSeasonSummary(stats);
 }
 

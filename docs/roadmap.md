@@ -1,3 +1,3 @@
-# Football Legacy V1.3
+# Football Legacy V1.4
 
-Botão + Ranking agora abre formulário em tabela de 1 a 10, com jogador, país/bandeira, idade, valor e URL única da imagem do vencedor.
+Card amarelo removido: destaque do protagonista agora é moldura natural com foto. Resumo principal mostra apenas dados atuais da temporada: posição, temporada, jogos, gols, assistências, G/J e A/J.
