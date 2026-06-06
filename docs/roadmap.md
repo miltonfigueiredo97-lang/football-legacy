@@ -1,3 +1,3 @@
-# Football Legacy
+# Football Legacy V0.5
 
-V0.2 visual com dashboard, administração local e páginas principais.
+Versão conectada ao Google Sheets via Apps Script.
