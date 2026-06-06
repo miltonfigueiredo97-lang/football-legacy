@@ -931,3 +931,153 @@ select, option{background:#0f172a;color:white}
   background:#0f172a;
   color:white;
 }
+
+
+/* ===== V1.8 CURRENT SEASON + SEASON CREATOR ===== */
+.player-photo-info{
+  left:14px!important;
+  right:14px!important;
+  bottom:14px!important;
+  max-width:calc(100% - 28px);
+  padding:12px 14px!important;
+}
+.player-photo-info strong{
+  font-size:18px!important;
+  line-height:1.05!important;
+  word-break:break-word;
+}
+.player-photo-info span{
+  font-size:12px!important;
+}
+.current-player-meta{
+  display:grid!important;
+  grid-template-columns:repeat(7,minmax(116px,1fr))!important;
+  gap:12px!important;
+}
+.season-meta-select select{
+  width:100%;
+  margin-top:6px;
+  background:#0f172a;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:8px 10px;
+  color:white;
+  font-weight:900;
+  outline:none;
+}
+.season-flow{
+  display:grid;
+  gap:16px;
+  margin-top:18px;
+}
+.season-flow-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.team-search-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:end;
+}
+.team-results{
+  display:grid;
+  gap:8px;
+  max-height:260px;
+  overflow:auto;
+}
+.team-result{
+  display:grid;
+  grid-template-columns:54px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+.team-result img{
+  width:46px;
+  height:46px;
+  object-fit:contain;
+}
+.team-result button{
+  border-radius:10px;
+  padding:9px 11px;
+  background:rgba(245,158,11,.16);
+  color:#fde68a;
+  font-weight:900;
+}
+.selected-team{
+  display:none;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  border-radius:16px;
+  border:1px solid rgba(245,158,11,.28);
+  background:rgba(245,158,11,.10);
+}
+.selected-team.active{
+  display:flex;
+}
+.selected-team img{
+  width:54px;
+  height:54px;
+  object-fit:contain;
+}
+.competition-checks{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:8px;
+}
+.comp-check{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border-radius:12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  color:#e5e7eb;
+  font-weight:800;
+}
+.season-stats-grid{
+  display:grid;
+  gap:10px;
+}
+.season-stats-row{
+  display:grid;
+  grid-template-columns:1.2fr repeat(5,.65fr);
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border-radius:14px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+}
+.season-stats-row strong{
+  color:#fde68a;
+}
+.season-stats-row input{
+  width:100%;
+  background:#1e293b;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:9px;
+  color:white;
+  outline:none;
+}
+@media(max-width:1300px){
+  .current-player-meta{
+    grid-template-columns:repeat(3,minmax(116px,1fr))!important;
+  }
+}
+@media(max-width:780px){
+  .current-player-meta,
+  .season-flow-grid,
+  .team-search-row,
+  .season-stats-row{
+    grid-template-columns:1fr!important;
+  }
+}

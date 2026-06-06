@@ -231,8 +231,7 @@ function safeText(id,value){
 function getCurrentSeason(stats){
   const seasonsFromStats = stats.map(s=>s.temporada).filter(Boolean);
   const seasonsFromCareer = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
-  const allSeasons = [...new Set([...seasonsFromStats, ...seasonsFromCareer])]
-    .sort(compareSeasonsDesc);
+  const allSeasons = [...new Set([...seasonsFromStats, ...seasonsFromCareer])].sort(compareSeasonsDesc);
 
   if(active.temporada && allSeasons.includes(active.temporada)){
     return active.temporada;
@@ -250,9 +249,7 @@ function compareSeasonsDesc(a,b){
 function seasonKey(value){
   const text = String(value || "");
   const matches = text.match(/\d{4}/g);
-  if(matches && matches.length){
-    return Number(matches[matches.length - 1]);
-  }
+  if(matches && matches.length) return Number(matches[matches.length - 1]);
   const n = Number(text);
   return isNaN(n) ? 0 : n;
 }
@@ -261,9 +258,7 @@ function getAvailableSeasonsForActivePlayer(){
   const stats = getProtagonistStats();
   const seasonsFromStats = stats.map(s=>s.temporada).filter(Boolean);
   const seasonsFromCareer = getCareerSeasons().map(s=>s.temporada).filter(Boolean);
-
-  return [...new Set([...seasonsFromStats, ...seasonsFromCareer])]
-    .sort(compareSeasonsDesc);
+  return [...new Set([...seasonsFromStats, ...seasonsFromCareer])].sort(compareSeasonsDesc);
 }
 
 function renderSeasonSelector(){
@@ -289,6 +284,7 @@ function renderSeasonSelector(){
     renderStats();
   };
 }
+
 
 function renderAll(){
   ensureActive();
@@ -388,35 +384,35 @@ function renderDashboard(){
   const currentGoals=currentStats.reduce((a,b)=>a+num(b.gols),0);
   const currentAssists=currentStats.reduce((a,b)=>a+num(b.assistencias),0);
 
-  $("careerNameSide").textContent=career?career.nome:"Football Legacy";
-  $("careerMetaSide").textContent=user?user.nome:"Google Sheets conectado";
-  $("currentSeason").textContent=currentSeason||"Banco conectado";
+  safeText("careerNameSide", career?career.nome:"Football Legacy");
+  safeText("careerMetaSide", user?user.nome:"Google Sheets conectado");
+  safeText("currentSeason", currentSeason||"Banco conectado");
 
-  $("mainCharacterTitle").textContent=protagonist?protagonist.nome:"Protagonista";
-  $("mainCharacterDesc").textContent=career?career.descricao||"Resumo da carreira do jogador selecionado.":"Crie uma carreira na Administração.";
+  safeText("mainCharacterTitle", protagonist?protagonist.nome:"Protagonista");
+  safeText("mainCharacterDesc", career?career.descricao||"Resumo da carreira do jogador selecionado.":"Crie uma carreira na Administração.");
 
-  safeText("activeCareerName", career?career.nome:"-");
   safeText("activePosition", protagonist?protagonist.posicao||"-":"-");
   safeText("activeNationality", protagonist?protagonist.nacionalidade||"-":"-");
   safeText("activeSeasonsCount", new Set(stats.map(s=>s.temporada)).size);
-  renderSeasonSelector();
   safeText("currentGamesHero", currentGames);
   safeText("currentGoalsHero", currentGoals);
   safeText("currentAssistsHero", currentAssists);
   safeText("currentAvgGoalsHero", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
   safeText("currentAvgAssistsHero", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
 
-  $("mainCharacter").textContent=protagonist?protagonist.nome:"Sem personagem";
-  $("mainCharacterSub").textContent=protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem";
+  renderSeasonSelector();
+
+  safeText("mainCharacter", protagonist?protagonist.nome:"Sem personagem");
+  safeText("mainCharacterSub", protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem");
 
   setPlayerPhoto(protagonist);
 
-  $("sumGames").textContent=currentGames;
-  $("sumGoals").textContent=currentGoals;
-  $("sumAssists").textContent=currentAssists;
-  $("avgGoals").textContent=currentGames?(currentGoals/currentGames).toFixed(2):"0.00";
-  $("avgAssists").textContent=currentGames?(currentAssists/currentGames).toFixed(2):"0.00";
-  $("countBallon").textContent=bola.filter(x=>String(x.posicao)==="1"&&(!protagonist||x.jogador===protagonist.nome)).length;
+  safeText("sumGames", currentGames);
+  safeText("sumGoals", currentGoals);
+  safeText("sumAssists", currentAssists);
+  safeText("avgGoals", currentGames?(currentGoals/currentGames).toFixed(2):"0.00");
+  safeText("avgAssists", currentGames?(currentAssists/currentGames).toFixed(2):"0.00");
+  safeText("countBallon", bola.filter(x=>String(x.posicao)==="1"&&(!protagonist||x.jogador===protagonist.nome)).length);
 
   renderSeasonSummary(stats);
 }
@@ -465,6 +461,7 @@ function renderStats(){
   const allStats=getProtagonistStats();
   const currentSeason=getCurrentSeason(allStats);
   const stats=currentSeason?allStats.filter(s=>String(s.temporada)===String(currentSeason)):allStats;
+
   $("stats-table").innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
     stats.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return `<div class="table-row"><div>${s.temporada||"-"}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
 }
@@ -631,6 +628,7 @@ document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dat
 document.querySelectorAll("[data-ballon-batch]").forEach(b=>b.onclick=()=>openBallonBatchForm());
 $("syncBtn").onclick=loadData;
 $("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
+if($("seasonCreateBtn")) $("seasonCreateBtn").onclick=openSeasonFlow;
 if($("protagonistEditCard")) $("protagonistEditCard").onclick=editActiveProtagonist;
 
 const modal=$("modal"), form=$("dynamic-form"), modalTitle=$("modal-title");
@@ -795,6 +793,301 @@ async function saveBallonBatch(data, button){
   setButtonLoading(button,false);
 }
 
+
+let selectedSeasonTeam = null;
+let selectedCompetitionsForSeason = [];
+
+async function searchTeamsForSeason(){
+  const query = $("seasonTeamSearch")?.value?.trim();
+  const results = $("seasonTeamResults");
+  if(!query || !results) return;
+
+  results.innerHTML = `<div class="entity-card"><small>Buscando time...</small></div>`;
+
+  try{
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const teams = (json.teams || []).filter(t => String(t.strSport||"").toLowerCase().includes("soccer"));
+
+    if(!teams.length){
+      results.innerHTML = `<div class="entity-card"><small>Nenhum time encontrado. Digite outro nome.</small></div>`;
+      return;
+    }
+
+    results.innerHTML = teams.slice(0,8).map((t,i)=>`
+      <div class="team-result">
+        <img src="${t.strBadge || ""}" onerror="this.style.display='none'">
+        <div>
+          <strong>${t.strTeam}</strong>
+          <small>${t.strLeague || "-"} • ${t.strCountry || "-"}</small>
+        </div>
+        <button type="button" onclick='selectSeasonTeam(${JSON.stringify({
+          name:t.strTeam,
+          league:t.strLeague || "",
+          country:t.strCountry || "",
+          badge:t.strBadge || ""
+        }).replace(/'/g,"&apos;")})'>Selecionar</button>
+      </div>
+    `).join("");
+  }catch(err){
+    console.error(err);
+    results.innerHTML = `<div class="entity-card"><small>Erro ao buscar time na API.</small></div>`;
+  }
+}
+
+function selectSeasonTeam(team){
+  selectedSeasonTeam = team;
+
+  const box = $("selectedTeamBox");
+  if(box){
+    box.classList.add("active");
+    box.innerHTML = `
+      <img src="${team.badge || ""}" onerror="this.style.display='none'">
+      <div>
+        <strong>${team.name}</strong>
+        <small>${team.league || "-"} • ${team.country || "-"}</small>
+      </div>
+    `;
+  }
+
+  renderCompetitionSuggestions(team);
+}
+
+function competitionSuggestions(team){
+  const list = [];
+  if(team.league) list.push(team.league);
+
+  const country = String(team.country || "").toLowerCase();
+
+  if(country.includes("england")){
+    list.push("FA Cup","Carabao Cup","Community Shield");
+  }else if(country.includes("spain")){
+    list.push("Copa del Rey","Supercopa de España");
+  }else if(country.includes("italy")){
+    list.push("Coppa Italia","Supercoppa Italiana");
+  }else if(country.includes("germany")){
+    list.push("DFB-Pokal","DFL-Supercup");
+  }else if(country.includes("france")){
+    list.push("Coupe de France","Trophée des Champions");
+  }else if(country.includes("brazil")){
+    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+  }
+
+  list.push("Champions League","Europa League","Conference League","Mundial de Clubes");
+
+  return [...new Set(list.filter(Boolean))];
+}
+
+function renderCompetitionSuggestions(team){
+  const wrap = $("seasonCompetitionChecks");
+  if(!wrap) return;
+
+  const comps = competitionSuggestions(team);
+
+  wrap.innerHTML = comps.map((c,i)=>`
+    <label class="comp-check">
+      <input type="checkbox" value="${c}" ${i===0?"checked":""} onchange="renderSeasonStatsRows()">
+      ${c}
+    </label>
+  `).join("");
+
+  renderSeasonStatsRows();
+}
+
+function getSelectedSeasonCompetitions(){
+  return [...document.querySelectorAll("#seasonCompetitionChecks input:checked")].map(i=>i.value);
+}
+
+function renderSeasonStatsRows(){
+  const wrap = $("seasonStatsRows");
+  if(!wrap) return;
+
+  const comps = getSelectedSeasonCompetitions();
+  selectedCompetitionsForSeason = comps;
+
+  if(!comps.length){
+    wrap.innerHTML = `<div class="entity-card"><small>Selecione pelo menos uma competição.</small></div>`;
+    return;
+  }
+
+  wrap.innerHTML = comps.map(comp=>`
+    <div class="season-stats-row">
+      <strong>${comp}</strong>
+      <input name="jogos_${escapeName(comp)}" type="number" placeholder="Jogos">
+      <input name="gols_${escapeName(comp)}" type="number" placeholder="Gols">
+      <input name="assistencias_${escapeName(comp)}" type="number" placeholder="Assist.">
+      <input name="cartoes_${escapeName(comp)}" type="number" placeholder="Cartões">
+      <input name="media_geral_${escapeName(comp)}" placeholder="Média">
+    </div>
+  `).join("");
+}
+
+function escapeName(value){
+  return String(value).replace(/[^a-zA-Z0-9]/g,"_");
+}
+
+function openSeasonFlow(){
+  currentForm = {kind:"temporadaFluxo", id:null};
+  selectedSeasonTeam = null;
+  selectedCompetitionsForSeason = [];
+
+  modalTitle.textContent = "Nova temporada";
+  document.querySelector(".modal-box").classList.add("ballon-modal");
+
+  form.innerHTML = `
+    <div class="season-flow">
+      <div class="season-flow-grid">
+        <div class="form-field">
+          <label>Temporada</label>
+          <input name="temporada" placeholder="Ex: 2037/2038">
+        </div>
+        <div class="form-field">
+          <label>Ano</label>
+          <input name="ano" placeholder="Ex: 2038">
+        </div>
+      </div>
+
+      <div class="team-search-row">
+        <div class="form-field">
+          <label>Selecionar time</label>
+          <input id="seasonTeamSearch" placeholder="Ex: Newcastle, Milan, Real Madrid">
+        </div>
+        <button type="button" class="upload-btn" onclick="searchTeamsForSeason()">Buscar time</button>
+      </div>
+
+      <div class="selected-team" id="selectedTeamBox"></div>
+      <div class="team-results" id="seasonTeamResults"></div>
+
+      <div class="form-field">
+        <label>Competições do time</label>
+        <div class="competition-checks" id="seasonCompetitionChecks">
+          <small>Busque e selecione um time para listar competições.</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Relatório por competição</label>
+        <div class="season-stats-grid" id="seasonStatsRows">
+          <small>As competições selecionadas aparecerão aqui.</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="gold-btn" id="saveBtn">Salvar temporada</button>
+      </div>
+    </div>
+  `;
+
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const btn = $("saveBtn");
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      await saveSeasonFlow(data, btn);
+      alert("Temporada salva com sucesso.");
+      closeModal();
+    }catch(err){
+      setButtonLoading(btn,false);
+      console.error(err);
+      setStatus("Erro ao salvar temporada: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+async function saveSeasonFlow(data, button){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!data.temporada) throw new Error("Informe a temporada.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time.");
+
+  const comps = selectedCompetitionsForSeason.length ? selectedCompetitionsForSeason : getSelectedSeasonCompetitions();
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  setButtonLoading(button,true);
+  setStatus("Salvando nova temporada...");
+
+  // Cria ou reutiliza clube
+  let clube = getTable("CLUBES").find(c => String(c.nome||"").toLowerCase() === String(selectedSeasonTeam.name||"").toLowerCase());
+
+  if(!clube){
+    const clubeJson = await apiPost({
+      action:"create",
+      table:"CLUBES",
+      record:{
+        nome:selectedSeasonTeam.name,
+        pais:selectedSeasonTeam.country,
+        escudo:selectedSeasonTeam.badge,
+        estadio:""
+      }
+    });
+    if(!clubeJson.ok) throw new Error(clubeJson.error || "Erro ao criar clube.");
+    clube = clubeJson.data;
+  }
+
+  const tempJson = await apiPost({
+    action:"create",
+    table:"TEMPORADAS",
+    record:{
+      carreira_id:active.carreira_id,
+      temporada:data.temporada,
+      ano:data.ano || "",
+      clube_id:clube.id,
+      clube_nome:selectedSeasonTeam.name,
+      escudo:selectedSeasonTeam.badge,
+      liga:selectedSeasonTeam.league,
+      competicoes:comps.join(", ")
+    }
+  });
+
+  if(!tempJson.ok) throw new Error(tempJson.error || "Erro ao criar temporada.");
+
+  for(const compNameText of comps){
+    let comp = getTable("COMPETICOES").find(c => String(c.nome||"").toLowerCase() === String(compNameText).toLowerCase());
+
+    if(!comp){
+      const compJson = await apiPost({
+        action:"create",
+        table:"COMPETICOES",
+        record:{nome:compNameText}
+      });
+      if(!compJson.ok) throw new Error(compJson.error || "Erro ao criar competição.");
+      comp = compJson.data;
+    }
+
+    const key = escapeName(compNameText);
+
+    const statJson = await apiPost({
+      action:"create",
+      table:"ESTATISTICAS",
+      record:{
+        personagem_id:active.protagonista_id,
+        competicao_id:comp.id,
+        temporada:data.temporada,
+        jogos:data[`jogos_${key}`] || "",
+        gols:data[`gols_${key}`] || "",
+        assistencias:data[`assistencias_${key}`] || "",
+        cartoes:data[`cartoes_${key}`] || "",
+        media_geral:data[`media_geral_${key}`] || "",
+        clube_id:clube.id,
+        clube_nome:selectedSeasonTeam.name
+      }
+    });
+
+    if(!statJson.ok) throw new Error(statJson.error || "Erro ao criar estatística.");
+  }
+
+  active.temporada = data.temporada;
+  saveActive();
+
+  await loadData();
+  setButtonLoading(button,false);
+}
+
 function openForm(kind,id=null){
   currentForm={kind,id};
   const schema=schemas[kind], table=tableMap[kind];
@@ -863,6 +1156,6 @@ async function uploadToCloudinary(event,key){
   setStatus("Mídia enviada ao Cloudinary. URL preenchida.", "ok");
 }
 
-window.openBallonBatchForm=openBallonBatchForm; window.openPlayerByName=openPlayerByName; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
+window.openBallonBatchForm=openBallonBatchForm; window.openPlayerByName=openPlayerByName; window.openSeasonFlow=openSeasonFlow; window.searchTeamsForSeason=searchTeamsForSeason; window.selectSeasonTeam=selectSeasonTeam; window.renderSeasonStatsRows=renderSeasonStatsRows; window.openForm=openForm; window.removeRecord=removeRecord; window.setActiveProtagonist=setActiveProtagonist; window.editActiveProtagonist=editActiveProtagonist; window.closeModal=closeModal; window.triggerUpload=triggerUpload; window.uploadToCloudinary=uploadToCloudinary;
 bindSelectors();
 loadData();

@@ -1,3 +1,3 @@
-# Football Legacy V1.7
+# Football Legacy V1.8
 
-Temporada atual virou seletor dentro do resumo. O seletor sempre começa na temporada mais recente e filtra os dados principais por temporada.
+Corrige erro textContent com renderização segura; adiciona seletor de temporada funcional; cria fluxo Nova Temporada com busca de time via TheSportsDB, escudo automático e competições selecionáveis.

@@ -54,6 +54,7 @@
 
         <div class="top-actions">
           <button class="ghost-btn" id="syncBtn">🔄 Atualizar</button>
+          <button class="ghost-btn" id="seasonCreateBtn">+ Temporada</button>
           <button class="gold-btn" id="primaryCreateBtn">+ Criar Carreira</button>
         </div>
       </header>
@@ -67,11 +68,14 @@
             <h3 id="mainCharacterTitle">Protagonista</h3>
             <p id="mainCharacterDesc">Resumo da carreira do jogador selecionado.</p>
 
-            <div class="hero-meta">
-              <div class="season-meta-select"><small>Temporada atual</small><select id="seasonSelect"></select></div>
+            <div class="hero-meta current-player-meta">
               <div><small>Posição</small><strong id="activePosition">-</strong></div>
-              <div><small>Nacionalidade</small><strong id="activeNationality">-</strong></div>
-              <div><small>Temporadas</small><strong id="activeSeasonsCount">0</strong></div>
+              <div class="season-meta-select"><small>Temporada atual</small><select id="seasonSelect"></select></div>
+              <div><small>Jogos atual</small><strong id="currentGamesHero">0</strong></div>
+              <div><small>Gols atual</small><strong id="currentGoalsHero">0</strong></div>
+              <div><small>Assist. atual</small><strong id="currentAssistsHero">0</strong></div>
+              <div><small>Gols/Jogo atual</small><strong id="currentAvgGoalsHero">0.00</strong></div>
+              <div><small>Assist./Jogo atual</small><strong id="currentAvgAssistsHero">0.00</strong></div>
             </div>
           </div>
 
