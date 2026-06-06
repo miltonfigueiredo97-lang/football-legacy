@@ -266,6 +266,64 @@ function renderPrimaryButton(){
   }
 }
 
+
+function ensurePlayerPhotoElements(){
+  let frame = $("protagonistEditCard");
+  if(!frame) return {};
+
+  let img = $("mainPlayerPhoto");
+  let fallback = $("mainInitials");
+
+  if(!img){
+    img = document.createElement("img");
+    img.id = "mainPlayerPhoto";
+    img.alt = "Foto do protagonista";
+    frame.prepend(img);
+  }
+
+  if(!fallback){
+    fallback = document.createElement("div");
+    fallback.id = "mainInitials";
+    fallback.className = "player-photo-fallback";
+    fallback.textContent = "FL";
+    frame.appendChild(fallback);
+  }
+
+  return {img, fallback};
+}
+
+function setPlayerPhoto(protagonist){
+  const {img, fallback} = ensurePlayerPhotoElements();
+
+  if(!img || !fallback) return;
+
+  const photoUrl = protagonist && protagonist.foto ? String(protagonist.foto).trim() : "";
+
+  img.onload = null;
+  img.onerror = null;
+
+  if(photoUrl){
+    img.onload = () => {
+      img.classList.add("visible");
+      fallback.classList.add("hidden");
+    };
+
+    img.onerror = () => {
+      img.classList.remove("visible");
+      img.removeAttribute("src");
+      fallback.classList.remove("hidden");
+      fallback.textContent = initials(protagonist ? protagonist.nome : "FL");
+    };
+
+    img.src = photoUrl;
+  }else{
+    img.classList.remove("visible");
+    img.removeAttribute("src");
+    fallback.classList.remove("hidden");
+    fallback.textContent = initials(protagonist ? protagonist.nome : "FL");
+  }
+}
+
 function renderDashboard(){
   const user=getActiveUser(), career=getActiveCareer(), protagonist=getActiveProtagonist(), stats=getProtagonistStats(), bola=getTable("BOLA_DE_OURO");
 
@@ -297,26 +355,7 @@ function renderDashboard(){
   $("mainCharacter").textContent=protagonist?protagonist.nome:"Sem personagem";
   $("mainCharacterSub").textContent=protagonist?`${protagonist.posicao||"-"} • ${protagonist.nacionalidade||"-"}`:"Cadastre um personagem";
 
-  const img = $("mainPlayerPhoto");
-  const fallback = $("mainInitials");
-
-  if(protagonist && protagonist.foto){
-    img.onload = () => {
-      img.classList.add("visible");
-      fallback.classList.add("hidden");
-    };
-    img.onerror = () => {
-      img.classList.remove("visible");
-      fallback.classList.remove("hidden");
-      fallback.textContent = initials(protagonist.nome);
-    };
-    img.src = protagonist.foto;
-  }else{
-    img.removeAttribute("src");
-    img.classList.remove("visible");
-    fallback.classList.remove("hidden");
-    fallback.textContent=initials(protagonist?protagonist.nome:"FL");
-  }
+  setPlayerPhoto(protagonist);
 
   $("sumGames").textContent=currentGames;
   $("sumGoals").textContent=currentGoals;
@@ -536,7 +575,7 @@ document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dat
 document.querySelectorAll("[data-ballon-batch]").forEach(b=>b.onclick=()=>openBallonBatchForm());
 $("syncBtn").onclick=loadData;
 $("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
-$("protagonistEditCard").onclick=editActiveProtagonist;
+if($("protagonistEditCard")) $("protagonistEditCard").onclick=editActiveProtagonist;
 
 const modal=$("modal"), form=$("dynamic-form"), modalTitle=$("modal-title");
 $("close-modal").onclick=closeModal;

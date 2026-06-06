@@ -75,93 +75,14 @@
             </div>
           </div>
 
-          <div class="hero-player protagonist-edit-card" id="protagonistEditCard" title="Clique para editar o protagonista selecionado">
-            <div class="rating" id="mainType">PRO</div>
-            <div class="player-avatar" id="mainInitials">FL</div>
-            <strong id="mainCharacter">Football Legacy</strong>
-            <span id="mainCharacterSub">Selecione um protagonista</span>
-          </div>
-        </div>
-
-        <div class="stat-grid">
-          <article class="stat-card"><span>🎮</span><strong id="sumGames">0</strong><small>Jogos atuais</small></article>
-          <article class="stat-card"><span>⚽</span><strong id="sumGoals">0</strong><small>Gols atuais</small></article>
-          <article class="stat-card"><span>🅰</span><strong id="sumAssists">0</strong><small>Assistências atuais</small></article>
-          <article class="stat-card"><span>📈</span><strong id="avgGoals">0.00</strong><small>Gols/Jogo atual</small></article>
-          <article class="stat-card"><span>📊</span><strong id="avgAssists">0.00</strong><small>Assist/Jogo atual</small></article>
-          <article class="stat-card"><span>⭐</span><strong id="countBallon">0</strong><small>Bolas de Ouro</small></article>
-        </div>
-
-        <div class="grid-main">
-          <section class="panel">
-            <div class="panel-header">
-              <h3>Resumo por temporada</h3>
-              <button class="link-btn" data-form="estatistica">+ Estatística</button>
+          <div class="player-photo-frame protagonist-edit-card" id="protagonistEditCard" title="Clique para editar o protagonista selecionado">
+            <div class="player-photo-bg"></div>
+            <img id="mainPlayerPhoto" alt="Foto do protagonista" />
+            <div class="player-photo-fallback" id="mainInitials">FL</div>
+            <div class="player-photo-info">
+              <strong id="mainCharacter">Football Legacy</strong>
+              <span id="mainCharacterSub">Selecione um protagonista</span>
             </div>
-            <div class="data-table" id="season-summary-table"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="page" id="personagens">
-        <div class="section-header">
-          <div><h3>Personagens</h3><p>Filtrados pela carreira selecionada.</p></div>
-          <button class="gold-btn" data-form="personagem">+ Novo Personagem</button>
-        </div>
-        <div class="cards-list" id="personagens-list"></div>
-      </section>
-
-      <section class="page" id="estatisticas">
-        <div class="section-header">
-          <div><h3>Estatísticas</h3><p>Filtradas pelo protagonista selecionado.</p></div>
-          <button class="gold-btn" data-form="estatistica">+ Estatística</button>
-        </div>
-        <div class="data-table" id="stats-table"></div>
-      </section>
-
-      <section class="page" id="trofeus">
-        <div class="section-header">
-          <div><h3>Troféus</h3><p>Campeões cadastrados.</p></div>
-          <button class="gold-btn" data-form="campeao">+ Título</button>
-        </div>
-        <div class="trophy-grid" id="trophy-grid"></div>
-      </section>
-
-      <section class="page" id="top11">
-        <div class="section-header">
-          <div><h3>Top 11</h3><p>Registros salvos na aba TOP11.</p></div>
-          <button class="gold-btn" data-form="top11">+ Jogador</button>
-        </div>
-        <div class="pitch" id="top11Pitch"></div>
-      </section>
-
-      <section class="page" id="bolaouro">
-        <div class="section-header">
-          <div>
-            <h3>Bola de Ouro</h3>
-            <p>Ranking do 1º ao 10º usando a arte do vencedor como fundo.</p>
-          </div>
-          <button class="gold-btn" data-ballon-batch>+ Ranking</button>
-        </div>
-
-        <div class="ballon-poster" id="ballon-poster">
-          <div class="ballon-poster-overlay"></div>
-
-          <div class="ballon-content">
-            <div class="ballon-title">
-              <div class="ballon-icon">🏆</div>
-              <div>
-                <h2>BALLON D'OR</h2>
-                <p id="ballonSeasonLabel">1º ao 10º colocado</p>
-              </div>
-            </div>
-
-            <div class="ballon-table" id="ballon-ranking-list"></div>
-          </div>
-
-          <div class="ballon-empty-bg" id="ballon-empty-bg">
-            <strong>Imagem do vencedor</strong>
-            <span>Cadastre a imagem no 1º colocado</span>
           </div>
         </div>
       </section>
