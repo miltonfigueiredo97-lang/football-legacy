@@ -1,3 +1,3 @@
-# Football Legacy V2.1
+# Football Legacy V2.2
 
-Correção dura de estabilidade: todas as renderizações principais agora verificam se o elemento existe antes de usar innerHTML/textContent. Card do jogador ajustado para nome abaixo da imagem, sem sobreposição. Top 11 e Bola de Ouro preservados.
+Restaura os botões das abas Top 11 e Bola de Ouro: + Jogador e + Ranking. Mantém a estabilidade da V2.1.

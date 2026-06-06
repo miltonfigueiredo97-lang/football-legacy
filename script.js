@@ -1544,3 +1544,19 @@ window.addEventListener('error', function(event){
   console.error("Football Legacy runtime error:", event.error || event.message);
   setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
 });
+
+
+document.addEventListener('click', function(e){
+  const formBtn = e.target.closest('[data-form]');
+  if(formBtn){
+    e.preventDefault();
+    openForm(formBtn.dataset.form);
+    return;
+  }
+
+  const ballonBtn = e.target.closest('[data-ballon-batch]');
+  if(ballonBtn){
+    e.preventDefault();
+    openBallonBatchForm();
+  }
+});
