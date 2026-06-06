@@ -1,3 +1,3 @@
-# Football Legacy V0.4
+# Football Legacy
 
-Redesign real do dashboard: textura, composição premium, cards mais compactos e edição direta.
+V0.2 visual com dashboard, administração local e páginas principais.
