@@ -7,7 +7,8 @@ let active = {
   usuario_id: localStorage.getItem("fl_active_usuario_id") || "",
   carreira_id: localStorage.getItem("fl_active_carreira_id") || "",
   protagonista_id: localStorage.getItem("fl_active_protagonista_id") || "",
-  temporada: localStorage.getItem("fl_active_temporada") || ""
+  temporada: localStorage.getItem("fl_active_temporada") || "",
+  bolaouro_temporada: localStorage.getItem("fl_active_bolaouro_temporada") || ""
 };
 
 const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO",top11:"TOP11",midia:"MIDIAS"};
@@ -285,9 +286,56 @@ function uniqueBallonRows(rows){
   return [...map.values()].sort((a,b)=>num(a.posicao)-num(b.posicao));
 }
 
+
+function getBallonSeasons(){
+  return [...new Set(getTable("BOLA_DE_OURO").map(x=>x.temporada).filter(Boolean))]
+    .sort(compareSeasonsDesc);
+}
+
+function getActiveBallonSeason(){
+  const seasons = getBallonSeasons();
+
+  if(active.bolaouro_temporada && seasons.includes(active.bolaouro_temporada)){
+    return active.bolaouro_temporada;
+  }
+
+  const current = getCurrentSeason();
+  if(current && seasons.includes(current)){
+    active.bolaouro_temporada = current;
+    saveActive();
+    return current;
+  }
+
+  active.bolaouro_temporada = seasons[0] || "";
+  saveActive();
+  return active.bolaouro_temporada;
+}
+
+function renderBallonSeasonSelector(){
+  const select = $("ballonSeasonSelect");
+  if(!select) return;
+
+  const seasons = getBallonSeasons();
+  const activeSeason = getActiveBallonSeason();
+
+  select.innerHTML = seasons.length
+    ? seasons.map(s=>`<option value="${s}" ${String(s)===String(activeSeason)?"selected":""}>${s}</option>`).join("")
+    : `<option value="">Sem rankings</option>`;
+
+  select.value = activeSeason || "";
+
+  select.onchange = e => {
+    active.bolaouro_temporada = e.target.value;
+    saveActive();
+    renderBolaOuro();
+  };
+}
+
 function renderBolaOuro(){
+  renderBallonSeasonSelector();
+
   const all=getTable("BOLA_DE_OURO");
-  const season=getCurrentSeason()||[...new Set(all.map(x=>x.temporada).filter(Boolean))].sort(compareSeasonsDesc)[0]||"";
+  const season=getActiveBallonSeason();
 
   const rawRows=all
     .filter(r=>!season||String(r.temporada)===String(season))
@@ -324,7 +372,7 @@ function renderBolaOuro(){
     <div>${r.valor_mercado||"-"}</div>
     <div class="ballon-actions"><button onclick="openForm('bolaouro','${r.id}')">Editar</button></div>
   </div>`).join("")+
-  (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div></div></div>`:"");
+  (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
 
 function renderClubes(){
@@ -424,18 +472,27 @@ function openBallonBatchForm(){
   modalBox.classList.add("wide");
   form.className="form-grid ballon-batch";
 
-  const season=getCurrentSeason();
-  const seasons=getAvailableSeasonsForActivePlayer();
-  const seasonOptions=seasons.length
-    ? seasons.map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")
-    : `<option value="${season||""}">${season||"Sem temporada"}</option>`;
+  const selectedSeason = getActiveBallonSeason() || getCurrentSeason();
+  const seasons = [...new Set([...getAvailableSeasonsForActivePlayer(), ...getBallonSeasons()])].sort(compareSeasonsDesc);
+  const seasonOptions = seasons.length
+    ? seasons.map(s=>`<option value="${s}" ${s===selectedSeason?"selected":""}>${s}</option>`).join("")
+    : `<option value="${selectedSeason||""}">${selectedSeason||"Sem temporada"}</option>`;
+
+  const existingRows = uniqueBallonRows(
+    getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(selectedSeason))
+  );
+
+  function existing(pos, field){
+    const row = existingRows.find(r=>String(r.posicao)===String(pos));
+    return row ? (row[field] || "") : "";
+  }
 
   const rows=Array.from({length:10},(_,i)=>i+1).map(i=>`<div class="batch-row">
     <strong>${i}</strong>
-    <input name="jogador_${i}" placeholder="Jogador">
-    <input name="nacionalidade_${i}" placeholder="País, código ou emoji">
-    <input name="idade_${i}" type="number" placeholder="Idade">
-    <input name="valor_${i}" placeholder="Ex: €90M">
+    <input name="jogador_${i}" value="${existing(i,'jogador')}" placeholder="Jogador">
+    <input name="nacionalidade_${i}" value="${existing(i,'nacionalidade')}" placeholder="País, código ou emoji">
+    <input name="idade_${i}" value="${existing(i,'idade')}" type="number" placeholder="Idade">
+    <input name="valor_${i}" value="${existing(i,'valor_mercado')}" placeholder="Ex: €90M">
   </div>`).join("");
 
   form.innerHTML=`<div class="form-field">
@@ -444,7 +501,7 @@ function openBallonBatchForm(){
     </div>
     <div class="form-field">
       <label>Imagem do vencedor</label>
-      <div class="file-row"><input name="imagem" placeholder="URL gerada automaticamente"><button type="button" class="upload-btn" onclick="triggerUpload('imagem')">Importar</button></div>
+      <div class="file-row"><input name="imagem" value="${existing(1,'imagem_destaque_url')}" placeholder="URL gerada automaticamente"><button type="button" class="upload-btn" onclick="triggerUpload('imagem')">Importar</button></div>
       <input type="file" id="file_imagem" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'imagem')">
     </div>
     <div class="batch-grid">
@@ -470,31 +527,33 @@ function openBallonBatchForm(){
 
       if(!season) throw new Error("Selecione uma temporada.");
 
-      // Remove tudo da temporada antes de criar novamente, evitando duplicação no Sheets.
-      const oldRows=getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season));
-      for(const old of oldRows){
-        await apiPost({action:"delete",table:"BOLA_DE_OURO",id:old.id});
-      }
-
       for(let i=1;i<=10;i++){
         if(!data[`jogador_${i}`]) continue;
 
-        const res=await apiPost({
-          action:"create",
-          table:"BOLA_DE_OURO",
-          record:{
-            temporada:season,
-            posicao:i,
-            jogador:data[`jogador_${i}`],
-            nacionalidade:data[`nacionalidade_${i}`]||"",
-            idade:data[`idade_${i}`]||"",
-            valor_mercado:data[`valor_${i}`]||"",
-            imagem_destaque_url:i===1?(data.imagem||""):""
-          }
-        });
+        const record = {
+          temporada:season,
+          posicao:i,
+          jogador:data[`jogador_${i}`],
+          nacionalidade:data[`nacionalidade_${i}`]||"",
+          idade:data[`idade_${i}`]||"",
+          valor_mercado:data[`valor_${i}`]||"",
+          imagem_destaque_url:i===1?(data.imagem||""):""
+        };
 
+        const existing = uniqueBallonRows(
+          getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season))
+        ).find(r=>String(r.posicao)===String(i));
+
+        const payload = existing
+          ? {action:"update", table:"BOLA_DE_OURO", id:existing.id, record}
+          : {action:"create", table:"BOLA_DE_OURO", record};
+
+        const res=await apiPost(payload);
         if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + i);
       }
+
+      active.bolaouro_temporada = season;
+      saveActive();
 
       closeModal();
       await loadData();
