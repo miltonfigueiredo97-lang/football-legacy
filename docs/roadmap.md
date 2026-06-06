@@ -1,3 +1,3 @@
-# Football Legacy V2.3 Clean Fixed
+# Football Legacy V2.4
 
-Base limpa: Administração removida, Top 11 e Bola de Ouro com botões próprios funcionando, tabela de temporadas jogadas no resumo.
+Substitui a tabela estilo Excel por cards flutuantes de temporada: temporada, time, escudo, jogos, gols, assistências, médias, cartões, nota média e emblemas de títulos.

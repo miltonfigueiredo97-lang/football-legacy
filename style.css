@@ -11,3 +11,163 @@
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}.modal.active{display:flex}.modal-box{width:min(760px,100%);max-height:90vh;overflow:auto;background:#0f172a;border:1px solid var(--line);border-radius:26px;padding:24px;position:relative}.modal-box.wide{width:min(1060px,100%)}.close-modal{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);color:white;font-size:24px}.form-grid{display:grid;gap:12px;margin-top:20px}.form-field{display:grid;gap:6px}.form-field label{font-size:13px;color:var(--muted);font-weight:800}.form-field input,.form-field select,.form-field textarea{width:100%;background:#1e293b;border:1px solid rgba(255,255,255,.12);border-radius:13px;padding:12px;color:white;outline:none}.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}.file-row{display:flex;gap:10px}.file-row input{flex:1}.upload-btn{border-radius:13px;padding:12px 14px;font-weight:900;background:rgba(245,158,11,.16);color:#fde68a;border:1px solid rgba(245,158,11,.35)}
 .batch-grid{display:grid;gap:8px;margin-top:16px}.batch-row,.batch-head{display:grid;gap:8px;align-items:center}.batch-head{color:#fde68a;font-size:12px;font-weight:900;text-transform:uppercase}.batch-row{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:8px}.ballon-batch .batch-row,.ballon-batch .batch-head{grid-template-columns:46px 1.3fr .9fr .55fr .8fr}.top11-batch .batch-row,.top11-batch .batch-head{grid-template-columns:46px .8fr 1.5fr .65fr}.batch-row input,.batch-row select{width:100%;background:#1e293b;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px;color:white}.season-flow{display:grid;gap:14px;margin-top:18px}.flow-section{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:18px;padding:16px;display:grid;gap:12px}.flow-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.team-result{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.05)}.team-result img{width:46px;height:46px;object-fit:contain}.competition-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.comp-check{display:flex;gap:8px;align-items:center;padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}
 @media(max-width:1200px){.topbar{grid-template-columns:1fr}.hero-card{grid-template-columns:1fr}.hero-meta{grid-template-columns:repeat(3,1fr)}.ballon-content{width:75%}}@media(max-width:800px){.sidebar{position:static;width:100%}.main{margin-left:0;width:100%;padding:18px}.app-shell{display:block}.top-selectors,.hero-meta,.flow-grid,.batch-row,.batch-head{grid-template-columns:1fr!important}.table-row{grid-template-columns:1fr}.ballon-content{width:100%;padding:20px}.ballon-head,.ballon-row{grid-template-columns:38px 1fr .5fr .7fr}.ballon-head div:nth-child(5),.ballon-row div:nth-child(5){display:none}}
+
+
+/* ===== V2.4 SEASON CARDS - SEM CARA DE EXCEL ===== */
+.excel-table-wrap,
+.excel-table{
+  display:none!important;
+}
+
+.season-table-panel{
+  background:linear-gradient(145deg,rgba(16,28,49,.94),rgba(7,16,32,.94));
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:26px;
+  padding:24px;
+}
+
+.season-cards{
+  display:grid;
+  gap:14px;
+}
+
+.season-card{
+  display:grid;
+  grid-template-columns:minmax(210px,1.15fr) repeat(6,minmax(90px,.75fr)) minmax(130px,.8fr) minmax(160px,1fr);
+  gap:12px;
+  align-items:center;
+  padding:16px;
+  border-radius:22px;
+  background:
+    radial-gradient(circle at left,rgba(245,158,11,.12),transparent 34%),
+    linear-gradient(145deg,rgba(15,23,42,.92),rgba(16,28,49,.86));
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 50px rgba(0,0,0,.18);
+}
+
+.season-card-main{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  min-width:0;
+}
+
+.season-club-crest{
+  width:56px;
+  height:56px;
+  border-radius:16px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+
+.season-club-crest img{
+  width:44px;
+  height:44px;
+  object-fit:contain;
+}
+
+.season-club-crest span{
+  font-size:24px;
+}
+
+.season-card-main h4{
+  font-size:18px;
+  line-height:1.05;
+}
+
+.season-card-main strong{
+  display:block;
+  color:#fbbf24;
+  font-size:13px;
+  margin-bottom:4px;
+}
+
+.season-card-main small{
+  color:#9fb0c7;
+  font-size:12px;
+  display:block;
+  margin-top:4px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.season-stat{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+
+.season-stat small{
+  color:#9fc5ef;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.season-stat strong{
+  color:white;
+  font-size:20px;
+  line-height:1.1;
+}
+
+.season-titles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+}
+
+.title-badge{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(145deg,#fbbf24,#92400e);
+  color:#111827;
+  font-size:17px;
+  font-weight:900;
+  box-shadow:0 8px 20px rgba(245,158,11,.25);
+}
+
+.title-badge.empty{
+  background:rgba(255,255,255,.06);
+  color:#94a3b8;
+  box-shadow:none;
+}
+
+.season-empty{
+  border:1px dashed rgba(255,255,255,.18);
+  border-radius:22px;
+  padding:28px;
+  text-align:center;
+  color:#94a3b8;
+  background:rgba(255,255,255,.03);
+}
+
+@media(max-width:1450px){
+  .season-card{
+    grid-template-columns:minmax(220px,1.4fr) repeat(4,minmax(90px,1fr));
+  }
+}
+
+@media(max-width:900px){
+  .season-card{
+    grid-template-columns:1fr 1fr;
+  }
+  .season-card-main{
+    grid-column:1 / -1;
+  }
+}
+
+@media(max-width:580px){
+  .season-card{
+    grid-template-columns:1fr;
+  }
+}

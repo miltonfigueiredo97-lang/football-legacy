@@ -131,17 +131,113 @@ function setPlayerPhoto(p){
 }
 
 function renderPlayedSeasons(){
-  const table=$("playedSeasonsTable"); if(!table)return;
-  const p=getActiveProtagonist(); const stats=getProtagonistStats();
-  const bySeason={};
-  stats.forEach(s=>{
-    const key=s.temporada||"-"; if(!bySeason[key])bySeason[key]={temporada:key,jogos:0,gols:0,assistencias:0,titulos:[]};
-    bySeason[key].jogos+=num(s.jogos); bySeason[key].gols+=num(s.gols); bySeason[key].assistencias+=num(s.assistencias);
+  const container = $("playedSeasonsCards") || $("playedSeasonsTable");
+  if(!container) return;
+
+  const stats = getProtagonistStats();
+  const seasonsTable = getCareerSeasons();
+  const clubes = getTable("CLUBES");
+  const bySeason = {};
+
+  function ensureSeason(key){
+    if(!bySeason[key]){
+      const seasonRecord = seasonsTable.find(t => String(t.temporada) === String(key)) || {};
+      const club = clubes.find(c => String(c.id) === String(seasonRecord.clube_id)) ||
+                   clubes.find(c => String(c.nome||"").toLowerCase() === String(seasonRecord.clube_nome||"").toLowerCase()) ||
+                   {};
+      bySeason[key] = {
+        temporada:key,
+        time: seasonRecord.clube_nome || seasonRecord.time || club.nome || "-",
+        escudo: seasonRecord.escudo || club.escudo || "",
+        jogos:0,
+        gols:0,
+        assistencias:0,
+        cartoes:0,
+        notas:[],
+        titulos:[]
+      };
+    }
+    return bySeason[key];
+  }
+
+  seasonsTable.forEach(t => {
+    if(t.temporada) ensureSeason(t.temporada);
   });
-  getTable("CAMPEOES").forEach(t=>{if(bySeason[t.temporada])bySeason[t.temporada].titulos.push(compName(t.competicao_id))});
+
+  stats.forEach(s=>{
+    const key=s.temporada||"-";
+    const row=ensureSeason(key);
+    row.jogos+=num(s.jogos);
+    row.gols+=num(s.gols);
+    row.assistencias+=num(s.assistencias);
+    row.cartoes+=num(s.cartoes);
+    if(s.media_geral !== undefined && s.media_geral !== ""){
+      row.notas.push(num(s.media_geral));
+    }
+  });
+
+  getTable("CAMPEOES").forEach(t=>{
+    if(!t.temporada) return;
+    const row=ensureSeason(t.temporada);
+    if(t.clube || t.competicao_id){
+      row.titulos.push({
+        nome: compName(t.competicao_id),
+        clube: t.clube || "",
+        icon: trophyIcon(compName(t.competicao_id))
+      });
+    }
+  });
+
   const rows=Object.values(bySeason).sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
-  table.innerHTML=`<thead><tr><th>Temporada</th><th>Time</th><th>Jogos</th><th>Gols</th><th>Assistências</th><th>Média Gols/Jogo</th><th>Média Assist./Jogo</th><th>Participações por jogo</th><th>Títulos</th></tr></thead><tbody>`+
-    (rows.map(r=>`<tr><td>${r.temporada}</td><td class="left">-</td><td>${r.jogos}</td><td>${r.gols}</td><td>${r.assistencias}</td><td>${r.jogos?(r.gols/r.jogos).toFixed(2):"0.00"}</td><td>${r.jogos?(r.assistencias/r.jogos).toFixed(2):"0.00"}</td><td>${r.jogos?((r.gols+r.assistencias)/r.jogos).toFixed(2):"0.00"}</td><td>${r.titulos.join(" • ")||"-"}</td></tr>`).join("")||`<tr><td colspan="9">Nenhuma temporada jogada cadastrada.</td></tr>`)+`</tbody>`;
+
+  if(!rows.length){
+    container.innerHTML = `<div class="season-empty">Nenhuma temporada jogada cadastrada ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(r=>{
+    const avgGoals = r.jogos ? (r.gols/r.jogos).toFixed(2) : "0.00";
+    const avgAssists = r.jogos ? (r.assistencias/r.jogos).toFixed(2) : "0.00";
+    const avgRating = r.notas.length ? (r.notas.reduce((a,b)=>a+b,0)/r.notas.length).toFixed(2) : "-";
+    const titles = r.titulos.length
+      ? r.titulos.map(t=>`<span class="title-badge" title="${t.nome}${t.clube?` • ${t.clube}`:""}">${t.icon}</span>`).join("")
+      : `<span class="title-badge empty" title="Sem títulos">–</span>`;
+
+    return `
+      <article class="season-card">
+        <div class="season-card-main">
+          <div class="season-club-crest">
+            ${r.escudo ? `<img src="${r.escudo}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
+          </div>
+          <div>
+            <strong>${r.temporada}</strong>
+            <h4>${r.time || "-"}</h4>
+            <small>Resumo da temporada</small>
+          </div>
+        </div>
+
+        <div class="season-stat"><small>Jogos</small><strong>${r.jogos}</strong></div>
+        <div class="season-stat"><small>Gols</small><strong>${r.gols}</strong></div>
+        <div class="season-stat"><small>Assist.</small><strong>${r.assistencias}</strong></div>
+        <div class="season-stat"><small>G/J</small><strong>${avgGoals}</strong></div>
+        <div class="season-stat"><small>A/J</small><strong>${avgAssists}</strong></div>
+        <div class="season-stat"><small>Cartões</small><strong>${r.cartoes}</strong></div>
+        <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
+        <div class="season-titles">${titles}</div>
+      </article>
+    `;
+  }).join("");
+}
+
+function trophyIcon(name){
+  const n = String(name||"").toLowerCase();
+  if(n.includes("champions")) return "🏆";
+  if(n.includes("mundo") || n.includes("world")) return "🌍";
+  if(n.includes("liga") || n.includes("league")) return "🥇";
+  if(n.includes("copa") || n.includes("cup")) return "🏅";
+  if(n.includes("libertadores")) return "🏆";
+  if(n.includes("super")) return "⭐";
+  return "🏆";
 }
 
 function renderPersonagens(){
