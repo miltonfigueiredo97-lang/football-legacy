@@ -1,3 +1,3 @@
-# Football Legacy V0.8
+# Football Legacy V0.9
 
-Upload automático para Cloudinary ativado com preset unsigned `football-legacy`.
+Fluxo de criação ajustado: botão superior dinâmico. Sem carreira selecionada: + Criar Carreira. Com carreira selecionada: + Criar Personagem.

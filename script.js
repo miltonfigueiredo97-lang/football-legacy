@@ -30,6 +30,13 @@ const schemas = {
   midia:[["carreira_id","ID da carreira","number"],["temporada","Temporada","text"],["tipo","Tipo","select",["imagem","video"]],["titulo","Título","text"],["descricao","Descrição","textarea"],["url","URL","fileurl"]]
 };
 
+schemas.carreiraRapida = [
+  ["nome","Nome da carreira","text"],
+  ["jogo","Jogo / Universo","text"],
+  ["descricao","Descrição","textarea"],
+  ["status","Status","select",["ativa","finalizada","pausada"]]
+];
+
 const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu",admin:"Administração"};
 
 function $(id){return document.getElementById(id)}
@@ -109,8 +116,79 @@ async function createRecord(kind,record,button){
   setStatus("Salvando no Google Sheets...");
   const json=await apiPost({action:"create",table,record});
   if(!json.ok)throw new Error(json.error||"Erro ao salvar.");
+
+  if(kind==="personagem" && json.data && json.data.id){
+    active.protagonista_id = String(json.data.id);
+    saveActive();
+  }
+
+  await loadData();
+
+  if(kind==="carreira" && json.data && json.data.id){
+    active.carreira_id = String(json.data.id);
+    active.protagonista_id = "";
+    saveActive();
+    await loadData();
+  }
+
+  setButtonLoading(button,false);
+  return json.data;
+}
+
+
+async function createQuickCareer(record, button){
+  setButtonLoading(button,true);
+  setStatus("Criando carreira...");
+
+  let userId = active.usuario_id;
+  if(!userId){
+    const firstUser = getTable("USUARIOS")[0];
+    userId = firstUser ? firstUser.id : "";
+  }
+
+  if(!userId){
+    throw new Error("Crie um usuário antes de criar a carreira.");
+  }
+
+  let universe = getUserUniverses(userId)[0];
+
+  if(!universe){
+    const universeJson = await apiPost({
+      action:"create",
+      table:"UNIVERSOS",
+      record:{
+        usuario_id:userId,
+        nome:record.jogo || "EA FC",
+        jogo:record.jogo || "EA FC",
+        inicio:""
+      }
+    });
+
+    if(!universeJson.ok) throw new Error(universeJson.error || "Erro ao criar universo.");
+    universe = universeJson.data;
+  }
+
+  const careerJson = await apiPost({
+    action:"create",
+    table:"CARREIRAS",
+    record:{
+      universo_id:universe.id,
+      nome:record.nome || "Nova Carreira",
+      descricao:record.descricao || "",
+      status:record.status || "ativa"
+    }
+  });
+
+  if(!careerJson.ok) throw new Error(careerJson.error || "Erro ao criar carreira.");
+
+  active.usuario_id = String(userId);
+  active.carreira_id = String(careerJson.data.id);
+  active.protagonista_id = "";
+  saveActive();
+
   await loadData();
   setButtonLoading(button,false);
+  return careerJson.data;
 }
 
 async function updateRecord(kind,id,record,button){
@@ -138,7 +216,33 @@ function setButtonLoading(btn,loading){
 }
 
 function renderAll(){
-  ensureActive(); renderSelectors(); renderDashboard(); renderPersonagens(); renderClubes(); renderStats(); renderTrofeus(); renderTop11(); renderBolaOuro(); renderMuseu();
+  ensureActive();
+  renderSelectors();
+  renderPrimaryButton();
+  renderDashboard();
+  renderPersonagens();
+  renderClubes();
+  renderStats();
+  renderTrofeus();
+  renderTop11();
+  renderBolaOuro();
+  renderMuseu();
+}
+
+
+function renderPrimaryButton(){
+  const btn = $("primaryCreateBtn");
+  if(!btn) return;
+
+  const career = getActiveCareer();
+
+  if(career){
+    btn.textContent = "+ Criar Personagem";
+    btn.onclick = () => openForm("personagem");
+  }else{
+    btn.textContent = "+ Criar Carreira";
+    btn.onclick = () => openForm("carreiraRapida");
+  }
 }
 
 function renderDashboard(){
@@ -245,6 +349,7 @@ function navigate(pageId){
 document.querySelectorAll(".menu-item").forEach(b=>b.onclick=()=>navigate(b.dataset.page));
 document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dataset.form));
 $("syncBtn").onclick=loadData;
+$("primaryCreateBtn").onclick=()=>openForm(getActiveCareer()?"personagem":"carreiraRapida");
 
 const modal=$("modal"), form=$("dynamic-form"), modalTitle=$("modal-title");
 $("close-modal").onclick=closeModal;
@@ -256,8 +361,8 @@ function closeModal(){modal.classList.remove("active");form.innerHTML=""}
 function openForm(kind,id=null){
   currentForm={kind,id};
   const schema=schemas[kind], table=tableMap[kind];
-  if(!schema||!table)return alert("Formulário não configurado: "+kind);
-  const current=id?(getTable(table).find(x=>String(x.id)===String(id))||{}):{};
+  if(!schema)return alert("Formulário não configurado: "+kind);
+  const current=(id && table)?(getTable(table).find(x=>String(x.id)===String(id))||{}):{};
   modalTitle.textContent=id?`Editar ${kind}`:`Novo ${kind}`;
 
   form.innerHTML=schema.map(([key,label,type,options])=>{
@@ -280,8 +385,15 @@ function openForm(kind,id=null){
     const btn=$("saveBtn");
     try{
       const record=Object.fromEntries(new FormData(form).entries());
-      if(currentForm.id)await updateRecord(currentForm.kind,currentForm.id,record,btn);
-      else await createRecord(currentForm.kind,record,btn);
+
+      if(currentForm.kind==="carreiraRapida"){
+        await createQuickCareer(record,btn);
+      }else if(currentForm.id){
+        await updateRecord(currentForm.kind,currentForm.id,record,btn);
+      }else{
+        await createRecord(currentForm.kind,record,btn);
+      }
+
       closeModal();
     }catch(err){
       setButtonLoading(btn,false);
