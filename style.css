@@ -171,3 +171,49 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* ===== V2.5 BALLON IMAGE FIT + CLEAN RANKING ===== */
+.ballon-poster{
+  background-color:#061245;
+  background-repeat:no-repeat;
+}
+
+.ballon-poster.has-image{
+  background-size:auto 100%!important;
+  background-position:right center!important;
+  background-repeat:no-repeat!important;
+}
+
+.ballon-poster-overlay{
+  background:
+    linear-gradient(90deg,rgba(3,10,38,.98) 0%,rgba(8,28,88,.94) 28%,rgba(8,28,88,.58) 48%,rgba(4,10,26,.10) 78%),
+    radial-gradient(circle at 16% 7%,rgba(245,158,11,.18),transparent 18%),
+    repeating-linear-gradient(165deg,rgba(255,255,255,.055) 0 1px,transparent 1px 46px)!important;
+}
+
+.ballon-content{
+  width:min(680px,52%)!important;
+}
+
+.ballon-table{
+  box-shadow:0 24px 55px rgba(0,0,0,.26);
+}
+
+.ballon-row{
+  border-top:2px solid rgba(0,0,0,.40)!important;
+}
+
+.ballon-row.duplicate-hidden{
+  display:none!important;
+}
+
+@media(max-width:900px){
+  .ballon-poster.has-image{
+    background-size:cover!important;
+    background-position:center right!important;
+  }
+  .ballon-content{
+    width:100%!important;
+  }
+}

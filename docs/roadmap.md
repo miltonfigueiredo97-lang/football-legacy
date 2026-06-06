@@ -1,3 +1,3 @@
-# Football Legacy V2.4
+# Football Legacy V2.5
 
-Substitui a tabela estilo Excel por cards flutuantes de temporada: temporada, time, escudo, jogos, gols, assistências, médias, cartões, nota média e emblemas de títulos.
+Corrige duplicação visual da Bola de Ouro por posição, evita duplo submit no ranking, limpa ranking antigo da temporada antes de salvar e ajusta imagem de fundo para encaixe automático à direita sem corte agressivo.

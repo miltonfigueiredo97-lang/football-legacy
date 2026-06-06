@@ -265,15 +265,65 @@ function renderTop11(){
   el.innerHTML=rows.map(p=>`<div class="field-player">${p.overall||"-"}<br><span>${p.posicao||""}</span><span>${p.jogador||"-"}</span></div>`).join("")||`<div class="field-player">+<br><span>Cadastre o Top 11</span></div>`;
 }
 
+
+function uniqueBallonRows(rows){
+  const map = new Map();
+
+  rows
+    .slice()
+    .sort((a,b)=>num(a.posicao)-num(b.posicao) || num(b.id)-num(a.id))
+    .forEach(row=>{
+      const pos = String(row.posicao || "").trim();
+      if(!pos) return;
+
+      // Mantém apenas uma linha por posição. Se tiver duplicada na planilha, some do dashboard.
+      if(!map.has(pos)){
+        map.set(pos,row);
+      }
+    });
+
+  return [...map.values()].sort((a,b)=>num(a.posicao)-num(b.posicao));
+}
+
 function renderBolaOuro(){
-  const all=getTable("BOLA_DE_OURO"); const season=getCurrentSeason()||[...new Set(all.map(x=>x.temporada).filter(Boolean))].sort(compareSeasonsDesc)[0]||"";
-  const rows=all.filter(r=>!season||String(r.temporada)===String(season)).sort((a,b)=>num(a.posicao)-num(b.posicao)).slice(0,10);
+  const all=getTable("BOLA_DE_OURO");
+  const season=getCurrentSeason()||[...new Set(all.map(x=>x.temporada).filter(Boolean))].sort(compareSeasonsDesc)[0]||"";
+
+  const rawRows=all
+    .filter(r=>!season||String(r.temporada)===String(season))
+    .sort((a,b)=>num(a.posicao)-num(b.posicao));
+
+  const rows=uniqueBallonRows(rawRows).slice(0,10);
   const winner=rows.find(r=>String(r.posicao)==="1")||rows[0];
+
   setText("ballonSeasonLabel", season?`1º ao 10º colocado • ${season}`:"1º ao 10º colocado");
-  const poster=$("ballon-poster"); if(poster){const url=winner&&(winner.imagem_destaque_url||winner.url||""); if(url){poster.classList.add("has-image");poster.style.backgroundImage=`url("${url}")`}else{poster.classList.remove("has-image");poster.style.backgroundImage=""}}
-  const list=$("ballon-ranking-list"); if(!list)return;
+
+  const poster=$("ballon-poster");
+  if(poster){
+    const url=winner&&(winner.imagem_destaque_url||winner.url||"");
+    if(url){
+      poster.classList.add("has-image");
+      poster.style.backgroundImage=`url("${url}")`;
+    }else{
+      poster.classList.remove("has-image");
+      poster.style.backgroundImage="";
+    }
+  }
+
+  const list=$("ballon-ranking-list");
+  if(!list)return;
+
   list.innerHTML=`<div class="ballon-head"><div>#</div><div>Jogador</div><div>Idade</div><div>Valor</div><div></div></div>`+
-  rows.map(r=>`<div class="ballon-row ${String(r.posicao)==="1"?"first":""}"><div>${r.posicao||"-"}</div><div class="ballon-player-cell"><span class="flag-dot">${flagFrom(r.nacionalidade)}</span><button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${r.jogador||"-"}</button></div><div>${r.idade||"-"}</div><div>${r.valor_mercado||"-"}</div><div class="ballon-actions"><button onclick="openForm('bolaouro','${r.id}')">Editar</button></div></div>`).join("")+
+  rows.map(r=>`<div class="ballon-row ${String(r.posicao)==="1"?"first":""}">
+    <div>${r.posicao||"-"}</div>
+    <div class="ballon-player-cell">
+      <span class="flag-dot">${flagFrom(r.nacionalidade)}</span>
+      <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${r.jogador||"-"}</button>
+    </div>
+    <div>${r.idade||"-"}</div>
+    <div>${r.valor_mercado||"-"}</div>
+    <div class="ballon-actions"><button onclick="openForm('bolaouro','${r.id}')">Editar</button></div>
+  </div>`).join("")+
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
 
@@ -297,23 +347,43 @@ function renderPrimaryButton(){
 }
 
 function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
-function flagFrom(v){const raw=String(v||"").trim(); if(!raw)return"🌐"; if(raw.length<=4&&/[\uD83C][\uDDE6-\uDDFF]/.test(raw))return raw; const k=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,""); const map={brasil:"🇧🇷",brazil:"🇧🇷",franca:"🇫🇷",france:"🇫🇷",espanha:"🇪🇸",spain:"🇪🇸",portugal:"🇵🇹",inglaterra:"🏴",england:"🏴",italia:"🇮🇹",italy:"🇮🇹",alemanha:"🇩🇪",germany:"🇩🇪",argentina:"🇦🇷",holanda:"🇳🇱",egito:"🇪🇬",marrocos:"🇲🇦"}; return map[k]||"🌐"}
-function escapeAttr(v){return String(v||"").replace(/'/g,"\\'").replace(/"/g,"&quot;")}
-function escapeName(v){return String(v).replace(/[^a-zA-Z0-9]/g,"_")}
-function setActiveProtagonist(id){active.protagonista_id=String(id);active.temporada="";saveActive();renderAll()}
-function openPlayerByName(name){const p=getTable("PERSONAGENS").find(x=>String(x.nome||"").toLowerCase()===String(name||"").toLowerCase()); if(p)openForm("personagem",p.id); else alert("Jogador não cadastrado como personagem: "+name)}
-function navigate(pageId){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".menu-item").forEach(i=>i.classList.remove("active"));$(pageId)?.classList.add("active");document.querySelector(`.menu-item[data-page="${pageId}"]`)?.classList.add("active");setText("page-title",pageTitles[pageId]||"Football Legacy")}
-async function removeRecord(kind,id){if(!confirm("Excluir registro?"))return; const res=await apiPost({action:"delete",table:tableMap[kind],id}); if(!res.ok)throw new Error(res.error||"Erro ao excluir"); await loadData()}
+function flagFrom(v){
+  const raw=String(v||"").trim();
+  if(!raw)return"🌐";
+  if(raw.length<=4&&/[\uD83C][\uDDE6-\uDDFF]/.test(raw))return raw;
 
-function closeModal(){modal.classList.remove("active");modalBox.classList.remove("wide");form.innerHTML=""}
-const modal=$("modal"), modalBox=$("modalBox"), form=$("dynamic-form"), modalTitle=$("modal-title");
-$("close-modal").onclick=closeModal; modal.onclick=e=>{if(e.target===modal)closeModal()};
+  const k=raw.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g,"");
 
-function applyDefaults(kind,record){
-  if(["personagem","temporada","midia"].includes(kind)&&!record.carreira_id)record.carreira_id=active.carreira_id;
-  if(kind==="estatistica"&&!record.personagem_id)record.personagem_id=active.protagonista_id;
-  if(["estatistica","top11","bolaouro","campeao","midia"].includes(kind)&&!record.temporada)record.temporada=getCurrentSeason();
-  return record;
+  const map={
+    br:"🇧🇷",bra:"🇧🇷",brasil:"🇧🇷",brazil:"🇧🇷",brasileiro:"🇧🇷",
+    fr:"🇫🇷",fra:"🇫🇷",franca:"🇫🇷",france:"🇫🇷",frances:"🇫🇷",
+    es:"🇪🇸",esp:"🇪🇸",espanha:"🇪🇸",spain:"🇪🇸",espanhol:"🇪🇸",
+    pt:"🇵🇹",por:"🇵🇹",portugal:"🇵🇹",portugues:"🇵🇹",
+    en:"🏴",eng:"🏴",inglaterra:"🏴",england:"🏴",ingles:"🏴",
+    it:"🇮🇹",ita:"🇮🇹",italia:"🇮🇹",italy:"🇮🇹",italiano:"🇮🇹",
+    de:"🇩🇪",ger:"🇩🇪",alemanha:"🇩🇪",germany:"🇩🇪",alemao:"🇩🇪",
+    ar:"🇦🇷",arg:"🇦🇷",argentina:"🇦🇷",argentino:"🇦🇷",
+    nl:"🇳🇱",holanda:"🇳🇱",netherlands:"🇳🇱",
+    eg:"🇪🇬",egito:"🇪🇬",egypt:"🇪🇬",
+    ma:"🇲🇦",marrocos:"🇲🇦",morocco:"🇲🇦",
+    be:"🇧🇪",belgica:"🇧🇪",belgium:"🇧🇪",
+    uy:"🇺🇾",uruguai:"🇺🇾",uruguay:"🇺🇾",
+    no:"🇳🇴",noruega:"🇳🇴",norway:"🇳🇴",
+    se:"🇸🇪",suecia:"🇸🇪",sweden:"🇸🇪",
+    hr:"🇭🇷",croacia:"🇭🇷",croatia:"🇭🇷",
+    rs:"🇷🇸",servia:"🇷🇸",serbia:"🇷🇸",
+    ch:"🇨🇭",suica:"🇨🇭",switzerland:"🇨🇭",
+    dk:"🇩🇰",dinamarca:"🇩🇰",denmark:"🇩🇰",
+    pl:"🇵🇱",polonia:"🇵🇱",poland:"🇵🇱",
+    sn:"🇸🇳",senegal:"🇸🇳",
+    ci:"🇨🇮",costadomarfim:"🇨🇮",ivorycoast:"🇨🇮",
+    ca:"🇨🇦",canada:"🇨🇦",
+    us:"🇺🇸",usa:"🇺🇸",eua:"🇺🇸",estadosunidos:"🇺🇸"
+  };
+  return map[k]||"🌐";
 }
 
 function openForm(kind,id=null){
@@ -350,11 +420,92 @@ function openTop11BatchForm(){
 }
 
 function openBallonBatchForm(){
-  modalTitle.textContent="Novo ranking Bola de Ouro";modalBox.classList.add("wide");form.className="form-grid ballon-batch";
+  modalTitle.textContent="Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  form.className="form-grid ballon-batch";
+
   const season=getCurrentSeason();
-  const rows=Array.from({length:10},(_,i)=>i+1).map(i=>`<div class="batch-row"><strong>${i}</strong><input name="jogador_${i}" placeholder="Jogador"><input name="nacionalidade_${i}" placeholder="País ou emoji"><input name="idade_${i}" type="number" placeholder="Idade"><input name="valor_${i}" placeholder="Ex: €90M"></div>`).join("");
-  form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="form-field"><label>Imagem do vencedor</label><div class="file-row"><input name="imagem" placeholder="URL gerada automaticamente"><button type="button" class="upload-btn" onclick="triggerUpload('imagem')">Importar</button></div><input type="file" id="file_imagem" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'imagem')"></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Jogador</div><div>País</div><div>Idade</div><div>Valor</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar Ranking</button></div>`;
-  form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());const season=data.temporada;for(const old of getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season)))await apiPost({action:"delete",table:"BOLA_DE_OURO",id:old.id});for(let i=1;i<=10;i++){if(!data[`jogador_${i}`])continue;await apiPost({action:"create",table:"BOLA_DE_OURO",record:{temporada:season,posicao:i,jogador:data[`jogador_${i}`],nacionalidade:data[`nacionalidade_${i}`]||"",idade:data[`idade_${i}`]||"",valor_mercado:data[`valor_${i}`]||"",imagem_destaque_url:i===1?(data.imagem||""):""}})}closeModal();await loadData()};
+  const seasons=getAvailableSeasonsForActivePlayer();
+  const seasonOptions=seasons.length
+    ? seasons.map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")
+    : `<option value="${season||""}">${season||"Sem temporada"}</option>`;
+
+  const rows=Array.from({length:10},(_,i)=>i+1).map(i=>`<div class="batch-row">
+    <strong>${i}</strong>
+    <input name="jogador_${i}" placeholder="Jogador">
+    <input name="nacionalidade_${i}" placeholder="País, código ou emoji">
+    <input name="idade_${i}" type="number" placeholder="Idade">
+    <input name="valor_${i}" placeholder="Ex: €90M">
+  </div>`).join("");
+
+  form.innerHTML=`<div class="form-field">
+      <label>Temporada</label>
+      <select name="temporada">${seasonOptions}</select>
+    </div>
+    <div class="form-field">
+      <label>Imagem do vencedor</label>
+      <div class="file-row"><input name="imagem" placeholder="URL gerada automaticamente"><button type="button" class="upload-btn" onclick="triggerUpload('imagem')">Importar</button></div>
+      <input type="file" id="file_imagem" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'imagem')">
+    </div>
+    <div class="batch-grid">
+      <div class="batch-head"><div>#</div><div>Jogador</div><div>País</div><div>Idade</div><div>Valor</div></div>
+      ${rows}
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Salvar Ranking</button>
+    </div>`;
+
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    const btn=$("saveBtn");
+    if(btn.disabled) return;
+
+    btn.disabled=true;
+    btn.textContent="Salvando...";
+
+    try{
+      const data=Object.fromEntries(new FormData(form).entries());
+      const season=data.temporada;
+
+      if(!season) throw new Error("Selecione uma temporada.");
+
+      // Remove tudo da temporada antes de criar novamente, evitando duplicação no Sheets.
+      const oldRows=getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(season));
+      for(const old of oldRows){
+        await apiPost({action:"delete",table:"BOLA_DE_OURO",id:old.id});
+      }
+
+      for(let i=1;i<=10;i++){
+        if(!data[`jogador_${i}`]) continue;
+
+        const res=await apiPost({
+          action:"create",
+          table:"BOLA_DE_OURO",
+          record:{
+            temporada:season,
+            posicao:i,
+            jogador:data[`jogador_${i}`],
+            nacionalidade:data[`nacionalidade_${i}`]||"",
+            idade:data[`idade_${i}`]||"",
+            valor_mercado:data[`valor_${i}`]||"",
+            imagem_destaque_url:i===1?(data.imagem||""):""
+          }
+        });
+
+        if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + i);
+      }
+
+      closeModal();
+      await loadData();
+    }catch(err){
+      btn.disabled=false;
+      btn.textContent="Salvar Ranking";
+      setStatus("Erro ao salvar ranking: "+err.message,"error");
+      console.error(err);
+    }
+  };
+
   modal.classList.add("active");
 }
 
