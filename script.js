@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.79 stable navigation current page');
+console.log('Football Legacy script carregado v3.7.80 selecao titulos ballon melhores');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -10484,3 +10484,542 @@ setTimeout(()=>{
 
 window.FL_setActivePageV3779 = FL_setActivePageV3779;
 window.FL_afterPageRenderV3779 = FL_afterPageRenderV3779;
+
+
+// ===== V3.7.80 SELEÇÃO + HALL DE TÍTULOS + BOLA DE OURO MELHORES =====
+// Ajustes:
+// - Seleção com escudo/flag mais forte.
+// - Totais de seleção sem dobrar registros.
+// - Títulos de seleção alimentam Hall de Títulos.
+// - Hall usa imagens de troféus da internet em vez de ícone genérico.
+// - Bola de Ouro ganha visualizações: jogador, 2º, 3º, time, país e qualquer posição.
+
+let FL_BALLON_BEST_MODE_V3780 = "player";
+const FL_BADGE_CACHE_V3780 = {};
+
+function FL_normV3780(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_escapeV3780(value){
+  return escapeHtml ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3780(value){
+  return escapeAttr ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+function FL_normalizeSelectionNameV3780(value){
+  const raw = String(value || "").trim();
+  const k = FL_normV3780(raw);
+  const aliases = {
+    brasileiro:"Brasil", brasileira:"Brasil", brasil:"Brasil", brazil:"Brasil",
+    argentino:"Argentina", argentina:"Argentina",
+    francesa:"França", frances:"França", franca:"França", france:"França",
+    espanhol:"Espanha", espanhola:"Espanha", espanha:"Espanha", spain:"Espanha",
+    portugues:"Portugal", portuguesa:"Portugal", portugal:"Portugal",
+    ingles:"Inglaterra", inglesa:"Inglaterra", inglaterra:"Inglaterra", england:"Inglaterra",
+    alemao:"Alemanha", alema:"Alemanha", alemanha:"Alemanha", germany:"Alemanha",
+    italiano:"Itália", italiana:"Itália", italia:"Itália", italy:"Itália",
+    holandes:"Holanda", holandesa:"Holanda", holanda:"Holanda", netherlands:"Holanda",
+    uruguaio:"Uruguai", uruguaia:"Uruguai", uruguai:"Uruguai", uruguay:"Uruguai",
+    belga:"Bélgica", belgica:"Bélgica", belgium:"Bélgica",
+    croata:"Croácia", croacia:"Croácia", croatia:"Croácia",
+    mexicano:"México", mexicana:"México", mexico:"México",
+    americano:"Estados Unidos", estadunidense:"Estados Unidos", estadosunidos:"Estados Unidos", usa:"Estados Unidos",
+    japones:"Japão", japonesa:"Japão", japao:"Japão", japan:"Japão"
+  };
+  return aliases[k] || raw;
+}
+
+function FL_countryCodeV3780(name){
+  const k = FL_normV3780(FL_normalizeSelectionNameV3780(name));
+  const map = {
+    brasil:"br", argentina:"ar", franca:"fr", espanha:"es", portugal:"pt",
+    inglaterra:"gb-eng", alemanha:"de", italia:"it", holanda:"nl", uruguai:"uy",
+    belgica:"be", croacia:"hr", mexico:"mx", estadosunidos:"us", japao:"jp",
+    colombia:"co", chile:"cl", paraguai:"py", equador:"ec", peru:"pe",
+    marrocos:"ma", senegal:"sn", nigeria:"ng", egito:"eg", camaroes:"cm",
+    coreiadosul:"kr", australia:"au", canadá:"ca", canada:"ca"
+  };
+  return map[k] || "";
+}
+
+function FL_flagEmojiV3780(name){
+  const code = FL_countryCodeV3780(name);
+  if(!code || code.includes("-")) return "🌐";
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+function FL_badgeFallbackV3780(name){
+  const norm = FL_normalizeSelectionNameV3780(name);
+  const k = FL_normV3780(norm);
+  const direct = {
+    brasil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
+    argentina:"https://r2.thesportsdb.com/images/media/team/badge/2xxo8u1678283348.png",
+    franca:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
+    espanha:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
+    portugal:"https://r2.thesportsdb.com/images/media/team/badge/9qd9bp1678283232.png",
+    inglaterra:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
+    alemanha:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
+    italia:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
+    holanda:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
+    uruguai:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png"
+  };
+  if(direct[k]) return direct[k];
+
+  const code = FL_countryCodeV3780(norm);
+  if(code && !code.includes("-")){
+    return `https://flagcdn.com/w160/${code}.png`;
+  }
+
+  return "";
+}
+
+// Override antigo de escudo de seleção.
+window.normalizeSelectionNameV3760 = FL_normalizeSelectionNameV3780;
+window.getSelectionBadgeV3760 = FL_badgeFallbackV3780;
+
+async function FL_fetchNationalBadgeV3780(name){
+  const norm = FL_normalizeSelectionNameV3780(name);
+  const k = FL_normV3780(norm);
+  if(!k) return "";
+
+  if(FL_BADGE_CACHE_V3780[k] !== undefined) return FL_BADGE_CACHE_V3780[k];
+
+  const fallback = FL_badgeFallbackV3780(norm);
+
+  try{
+    const queries = [
+      `${norm} national football team`,
+      `${norm} national soccer team`,
+      norm
+    ];
+
+    for(const q of queries){
+      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(q)}`;
+      const res = await fetch(url, {cache:"force-cache"});
+      const data = await res.json();
+      const teams = data?.teams || [];
+      const found = teams.find(t => {
+        const tName = FL_normV3780(t.strTeam || "");
+        const tType = FL_normV3780(t.strTeamType || "");
+        const sport = FL_normV3780(t.strSport || "");
+        return sport.includes("soccer") && (tType.includes("national") || tName.includes(k) || k.includes(tName));
+      }) || teams.find(t => FL_normV3780(t.strSport || "").includes("soccer")) || teams[0];
+
+      if(found?.strBadge){
+        FL_BADGE_CACHE_V3780[k] = found.strBadge;
+        return found.strBadge;
+      }
+    }
+  }catch(err){
+    console.warn("Falha API escudo seleção:", norm, err);
+  }
+
+  FL_BADGE_CACHE_V3780[k] = fallback;
+  return fallback;
+}
+
+function FL_injectNationalBadgesV3780(){
+  const nodes = [...document.querySelectorAll("[data-national-team-v3780]")];
+
+  nodes.forEach(async node=>{
+    const name = node.dataset.nationalTeamV3780 || "";
+    const badge = await FL_fetchNationalBadgeV3780(name);
+    if(!node.isConnected) return;
+    if(badge){
+      node.innerHTML = `<img src="${FL_escapeAttrV3780(badge)}" onerror="this.parentElement.innerHTML='${FL_flagEmojiV3780(name)}'">`;
+    }else{
+      node.innerHTML = FL_flagEmojiV3780(name);
+    }
+  });
+}
+
+// ---------- Seleção: dedupe para não somar dobrado ----------
+function FL_selectionRowsV3780(){
+  const carreiraId = active?.carreira_id || "";
+  const personagemId = active?.protagonista_id || "";
+
+  const rows = (getTable("SELECOES_CARREIRA") || []).filter(r =>
+    (!carreiraId || String(r.carreira_id || "") === String(carreiraId)) &&
+    (!personagemId || String(r.personagem_id || "") === String(personagemId))
+  );
+
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const key = r.id
+      ? `id:${r.id}`
+      : `season:${r.carreira_temporada_id || r.temporada || ""}|sel:${FL_normV3780(r.selecao || "")}`;
+
+    // Se tiver duplicado, mantém o último id/registro mais novo.
+    map.set(key, r);
+  });
+
+  return [...map.values()];
+}
+
+window.getSelectionRowsV3760 = FL_selectionRowsV3780;
+
+function FL_selectionTotalsV3780(){
+  const rows = FL_selectionRowsV3780();
+  return rows.reduce((acc,r)=>{
+    acc.selecao = FL_normalizeSelectionNameV3780(r.selecao || acc.selecao);
+    acc.jogos += num(r.jogos || 0);
+    acc.gols += num(r.gols || 0);
+    acc.assistencias += num(r.assistencias || 0);
+
+    const titulos = String(r.titulos || "")
+      .split(/[;,|]/)
+      .map(x=>x.trim())
+      .filter(Boolean);
+
+    titulos.forEach(t=>{
+      acc.titulos.push({
+        temporada:r.temporada || "",
+        competicao:t,
+        selecao:r.selecao || acc.selecao,
+        carreira_temporada_id:r.carreira_temporada_id || ""
+      });
+    });
+
+    return acc;
+  },{
+    selecao: FL_normalizeSelectionNameV3780(
+      (typeof getActivePlayerSelectionV3760 === "function" ? getActivePlayerSelectionV3760() : "") || ""
+    ),
+    jogos:0,
+    gols:0,
+    assistencias:0,
+    titulos:[]
+  });
+}
+
+window.getSelectionTotalsV3760 = FL_selectionTotalsV3780;
+
+// ---------- Modal seleção mais forte ----------
+const FL_SELECTION_COMPS_V3780 = [
+  "Copa do Mundo",
+  "Copa América",
+  "Eurocopa",
+  "UEFA Nations League",
+  "Finalíssima",
+  "Copa das Confederações",
+  "Gold Cup",
+  "Copa Africana de Nações",
+  "Copa Asiática",
+  "Eliminatórias da Copa",
+  "Jogos Olímpicos"
+];
+
+const __openSelectionSeasonModalV3760_v3780 = typeof openSelectionSeasonModalV3760 === "function" ? openSelectionSeasonModalV3760 : null;
+if(__openSelectionSeasonModalV3760_v3780 && !window.__selectionModalV3780Wrapped){
+  window.__selectionModalV3780Wrapped = true;
+
+  openSelectionSeasonModalV3760 = function(seasonId){
+    __openSelectionSeasonModalV3760_v3780(seasonId);
+
+    setTimeout(()=>{
+      try{
+        if(!form || !/seleção|selecao/i.test(modalTitle?.textContent || "")) return;
+
+        const titleInput = form.querySelector("[name='titulos']");
+        if(!titleInput || form.querySelector(".selection-title-grid-v3780")) return;
+
+        const oldTitles = String(titleInput.value || "")
+          .split(/[;,|]/)
+          .map(x=>x.trim())
+          .filter(Boolean);
+
+        const checked = new Set(oldTitles.map(FL_normV3780));
+
+        const box = document.createElement("div");
+        box.className = "selection-title-grid-v3780";
+        box.innerHTML = `
+          <label class="selection-title-label-v3780">Competições/títulos da seleção</label>
+          <div class="selection-title-options-v3780">
+            ${FL_SELECTION_COMPS_V3780.map(comp=>`
+              <label>
+                <input type="checkbox" value="${FL_escapeAttrV3780(comp)}" ${checked.has(FL_normV3780(comp)) ? "checked" : ""}>
+                <span>${FL_escapeV3780(comp)}</span>
+              </label>
+            `).join("")}
+          </div>
+          <small>Marque títulos conquistados pela seleção nessa temporada. Isso alimenta o Hall de Títulos.</small>
+        `;
+
+        titleInput.closest(".form-field")?.insertAdjacentElement("afterend", box);
+
+        box.addEventListener("change", ()=>{
+          const selected = [...box.querySelectorAll("input:checked")].map(i=>i.value);
+          const manual = String(titleInput.value || "")
+            .split(/[;,|]/)
+            .map(x=>x.trim())
+            .filter(x=>x && !FL_SELECTION_COMPS_V3780.map(FL_normV3780).includes(FL_normV3780(x)));
+          titleInput.value = [...new Set([...selected, ...manual])].join("; ");
+        });
+
+        const badgeNode = form.querySelector(".selected-team img")?.parentElement || form.querySelector(".selected-team");
+        const selInput = form.querySelector("[name='selecao']");
+        if(selInput && badgeNode){
+          const refresh = async()=>{
+            const badge = await FL_fetchNationalBadgeV3780(selInput.value);
+            if(badge){
+              const img = badgeNode.querySelector("img") || document.createElement("img");
+              img.src = badge;
+              img.onerror = () => { img.style.display = "none"; };
+              if(!img.parentElement) badgeNode.prepend(img);
+            }
+          };
+          selInput.addEventListener("change", refresh);
+          selInput.addEventListener("blur", refresh);
+          refresh();
+        }
+      }catch(err){
+        console.warn("Falha seleção modal v3.7.80:", err);
+      }
+    }, 180);
+  };
+
+  window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
+}
+
+// ---------- Troféus com imagem ----------
+function FL_trophyImageV3780(name){
+  const n = FL_normV3780(name);
+
+  const file = (filename) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=240`;
+
+  if(n.includes("copa") && n.includes("mundo")) return file("FIFA_World_Cup_Trophy.jpg");
+  if(n.includes("champions")) return file("UEFA_Champions_League_trophy.jpg");
+  if(n.includes("europa") && n.includes("league")) return file("UEFA_Europa_League_Trophy.jpg");
+  if(n.includes("libertadores")) return file("Copa_Libertadores_trophy.jpg");
+  if(n.includes("eurocopa") || n.includes("euro")) return file("UEFA_Euro_Trophy.jpg");
+  if(n.includes("copa") && n.includes("america")) return file("Copa_Am%C3%A9rica_trophy.jpg");
+  if(n.includes("nations")) return file("UEFA_Nations_League_Trophy.jpg");
+  if(n.includes("ballon") || n.includes("bola")) return file("Ballon_d%27Or_trophy.jpg");
+  if(n.includes("premier")) return file("Premier_League_Trophy.jpg");
+  if(n.includes("laliga") || n.includes("la liga")) return file("LaLiga_trophy.jpg");
+  if(n.includes("serie a") || n.includes("italian")) return file("Scudetto.svg");
+  if(n.includes("bundesliga")) return file("Bundesliga_logo_(2017).svg");
+  if(n.includes("super")) return file("Supercoppa_Italiana_trophy.jpg");
+  if(n.includes("copa") || n.includes("cup")) return file("Association_football_trophy.jpg");
+
+  return file("Association_football_trophy.jpg");
+}
+
+function FL_titleRowsV3780(){
+  const clubTitles = (getTable("CAMPEOES_CARREIRA") || []).map(t=>({
+    id:`club-${t.id || `${t.temporada}-${t.competicao}`}`,
+    tipo:"clube",
+    temporada:t.temporada || "",
+    competicao:t.competicao || compName(t.competicao_id) || "",
+    vencedor:t.clube || "",
+    extra:[t.artilheiro && `Artilheiro: ${t.artilheiro}`, t.lider_assistencias && `Assist.: ${t.lider_assistencias}`, t.melhor_jogador && `Melhor: ${t.melhor_jogador}`].filter(Boolean).join(" • ")
+  }));
+
+  const selectionTitles = [];
+  FL_selectionRowsV3780().forEach(r=>{
+    String(r.titulos || "")
+      .split(/[;,|]/)
+      .map(x=>x.trim())
+      .filter(Boolean)
+      .forEach((title,idx)=>{
+        selectionTitles.push({
+          id:`sel-${r.id || r.carreira_temporada_id || r.temporada}-${idx}`,
+          tipo:"seleção",
+          temporada:r.temporada || "",
+          competicao:title,
+          vencedor:FL_normalizeSelectionNameV3780(r.selecao || ""),
+          extra:`${num(r.jogos)} jogos • ${num(r.gols)} gols • ${num(r.assistencias)} assist.`
+        });
+      });
+  });
+
+  return [...clubTitles, ...selectionTitles]
+    .filter(t=>t.competicao || t.vencedor)
+    .sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
+}
+
+function renderTrofeus(){
+  const el = $("trophy-grid");
+  if(!el) return;
+
+  const rows = FL_titleRowsV3780();
+
+  el.innerHTML = rows.map(t=>`
+    <article class="trophy-card trophy-card-v3780">
+      <div class="trophy-img-v3780">
+        <img src="${FL_escapeAttrV3780(FL_trophyImageV3780(t.competicao))}" onerror="this.parentElement.innerHTML='🏆'">
+      </div>
+      <div class="trophy-type-v3780">${FL_escapeV3780(t.tipo)}</div>
+      <h3>${FL_escapeV3780(t.competicao || "Título")}</h3>
+      <strong>${FL_escapeV3780(t.vencedor || "-")}</strong>
+      <span>${FL_escapeV3780(t.temporada || "-")}</span>
+      ${t.extra ? `<small>${FL_escapeV3780(t.extra)}</small>` : ""}
+    </article>
+  `).join("") || emptyCard("Nenhum título cadastrado.");
+}
+
+// ---------- Bola de Ouro melhores ----------
+function FL_ballonRowsAllV3780(){
+  const rows = getTable("BOLA_DE_OURO") || [];
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const key = r.id
+      ? `id:${r.id}`
+      : `${r.temporada || r.ano || ""}|${r.posicao || ""}|${FL_normV3780(r.jogador || "")}|${FL_normV3780(r.clube || "")}`;
+
+    map.set(key, r);
+  });
+
+  return [...map.values()].filter(r=>r.jogador || r.clube || r.pais || r.nacionalidade);
+}
+
+function FL_groupBallonV3780(mode){
+  const rows = FL_ballonRowsAllV3780();
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const pos = Number(r.posicao || 0);
+
+    let include = false;
+    let key = "";
+    let label = "";
+    let sub = "";
+
+    if(mode === "player"){
+      include = pos === 1;
+      key = FL_normV3780(r.jogador);
+      label = r.jogador || "-";
+      sub = "Bolas de Ouro";
+    }else if(mode === "second"){
+      include = pos === 2;
+      key = FL_normV3780(r.jogador);
+      label = r.jogador || "-";
+      sub = "2º lugares";
+    }else if(mode === "third"){
+      include = pos === 3;
+      key = FL_normV3780(r.jogador);
+      label = r.jogador || "-";
+      sub = "3º lugares";
+    }else if(mode === "club"){
+      include = pos === 1;
+      key = FL_normV3780(r.clube || "Sem clube");
+      label = r.clube || "Sem clube";
+      sub = "Bolas de Ouro por clube";
+    }else if(mode === "country"){
+      include = pos === 1;
+      key = FL_normV3780(r.pais || r.nacionalidade || "Sem país");
+      label = r.pais || r.nacionalidade || "Sem país";
+      sub = "Bolas de Ouro por país";
+    }else if(mode === "appearances"){
+      include = !!pos;
+      key = FL_normV3780(r.jogador);
+      label = r.jogador || "-";
+      sub = "Aparições no Top 10";
+    }
+
+    if(!include || !key) return;
+
+    if(!map.has(key)){
+      map.set(key,{label,sub,count:0,details:[],wins:0,seconds:0,thirds:0});
+    }
+
+    const item = map.get(key);
+    item.count++;
+    if(pos === 1) item.wins++;
+    if(pos === 2) item.seconds++;
+    if(pos === 3) item.thirds++;
+    item.details.push(`${r.temporada || r.ano || "-"} #${pos}`);
+  });
+
+  return [...map.values()].sort((a,b)=>
+    b.count - a.count ||
+    b.wins - a.wins ||
+    a.label.localeCompare(b.label)
+  ).slice(0,10);
+}
+
+function FL_renderBallonBestViewsV3780(){
+  const host = $("ballon-best-v3780") || document.createElement("section");
+  host.id = "ballon-best-v3780";
+  host.className = "ballon-best-v3780";
+
+  const list = $("ballon-ranking-list");
+  if(list && !host.parentElement){
+    list.insertAdjacentElement("afterend", host);
+  }
+
+  const modes = [
+    ["player","Por jogador"],
+    ["second","Mais 2º lugar"],
+    ["third","Mais 3º lugar"],
+    ["club","Por time"],
+    ["country","Por país"],
+    ["appearances","Qualquer posição"]
+  ];
+
+  const rows = FL_groupBallonV3780(FL_BALLON_BEST_MODE_V3780);
+
+  host.innerHTML = `
+    <div class="ballon-best-head-v3780">
+      <div>
+        <h3>Melhores no Bola de Ouro</h3>
+        <small>Visualizações históricas da carreira</small>
+      </div>
+      <div class="ballon-best-tabs-v3780">
+        ${modes.map(([id,label])=>`
+          <button class="${id===FL_BALLON_BEST_MODE_V3780 ? "active" : ""}" onclick="FL_BALLON_BEST_MODE_V3780='${id}'; FL_renderBallonBestViewsV3780();">${label}</button>
+        `).join("")}
+      </div>
+    </div>
+    <div class="ballon-best-list-v3780">
+      ${rows.map((r,idx)=>`
+        <article class="ballon-best-card-v3780">
+          <span class="rank-v3780">${idx+1}</span>
+          <div>
+            <strong>${FL_escapeV3780(r.label)}</strong>
+            <small>${FL_escapeV3780(r.sub)} • ${FL_escapeV3780(r.details.slice(0,4).join(" • "))}${r.details.length>4 ? "..." : ""}</small>
+          </div>
+          <b>${r.count}</b>
+        </article>
+      `).join("") || `<div class="season-empty">Sem dados para esta visualização.</div>`}
+    </div>
+  `;
+}
+
+const __renderBolaOuroOriginalV3780 = typeof renderBolaOuro === "function" ? renderBolaOuro : null;
+if(__renderBolaOuroOriginalV3780 && !window.__renderBolaOuroV3780Wrapped){
+  window.__renderBolaOuroV3780Wrapped = true;
+  renderBolaOuro = function(){
+    __renderBolaOuroOriginalV3780();
+    FL_renderBallonBestViewsV3780();
+  };
+}
+
+// Pós-render: badges assíncronos.
+const __renderAllOriginalV3780 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3780 && !window.__renderAllV3780Wrapped){
+  window.__renderAllV3780Wrapped = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3780.apply(this, arguments);
+    setTimeout(FL_injectNationalBadgesV3780, 250);
+    setTimeout(FL_injectNationalBadgesV3780, 1300);
+    return result;
+  };
+}
+
+document.addEventListener("click", ()=>{
+  setTimeout(FL_injectNationalBadgesV3780, 500);
+}, true);
+
+window.FL_renderBallonBestViewsV3780 = FL_renderBallonBestViewsV3780;
+window.FL_fetchNationalBadgeV3780 = FL_fetchNationalBadgeV3780;
+window.FL_injectNationalBadgesV3780 = FL_injectNationalBadgesV3780;
