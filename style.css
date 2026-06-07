@@ -628,3 +628,16 @@ button.saving::before,
     grid-column:1/-1;
   }
 }
+
+
+/* ===== V3.6.3 LAZY RENDER ===== */
+.page:not(.active){
+  display:none!important;
+}
+
+.lazy-note{
+  color:#9fb0c7;
+  font-size:13px;
+  padding:12px;
+}
+

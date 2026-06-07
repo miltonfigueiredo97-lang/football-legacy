@@ -1,3 +1,3 @@
-# Football Legacy V3.6.2
+# Football Legacy V3.6.3
 
-Restaura o fluxo antigo de temporada com busca de time pela API TheSportsDB, seleção de competições sugeridas pelo time/país e preenchimento de estatísticas por competição. Mantém salvamento nas abas novas CARREIRA_TEMPORADAS e ESTATISTICAS_CARREIRA.
+Otimização de carregamento: renderiza primeiro apenas o Resumo. Abas pesadas, especialmente Bola de Ouro, só renderizam quando o usuário clicar nelas. Mantém fluxo de temporada da v3.6.2.

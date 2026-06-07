@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6.2 restore api season flow');
+console.log('Football Legacy script carregado v3.6.3 lazy render resumo first');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -185,18 +185,85 @@ async function apiPost(payload){
   return await res.json();
 }
 
-function renderAll(){
-  const steps=[renderSelectors,renderDashboard,renderPlayedSeasons,renderPersonagens,renderStats,renderTrofeus,renderTop11,renderBolaOuro,renderClubes,renderMuseu,renderPrimaryButton];
 
-  for(const step of steps){
-    try{
-      if(typeof step === "function") step();
-    }catch(e){
-      console.error("Erro em " + (step.name || "render"), e);
-      setStatus("Erro em " + (step.name || "render") + ": " + e.message, "error");
-    }
+// ===== V3.6.3 LAZY RENDER: RESUMO PRIMEIRO =====
+let renderedPages = {};
+let currentPageId = "resumo";
+
+function getCurrentPageId(){
+  const activePage = document.querySelector(".page.active");
+  return activePage ? activePage.id : (currentPageId || "resumo");
+}
+
+function renderGlobalSelectorsOnly(){
+  try{
+    renderSelectors();
+  }catch(err){
+    console.error("Erro em renderSelectors", err);
+  }
+
+  try{
+    renderSidebar();
+  }catch(err){
+    console.error("Erro em renderSidebar", err);
   }
 }
+
+function renderResumoFast(){
+  const tasks = [
+    ["renderHero", ()=>renderHero()],
+    ["renderSummaryCards", ()=>renderSummaryCards()],
+    ["renderPlayedSeasons", ()=>renderPlayedSeasons()]
+  ];
+
+  tasks.forEach(([name,fn])=>{
+    try{ fn(); }
+    catch(err){ console.error("Erro em " + name, err); }
+  });
+}
+
+function renderPageById(pageId, force=false){
+  const page = pageId || getCurrentPageId() || "resumo";
+
+  if(!force && renderedPages[page]) return;
+
+  if(page === "resumo"){
+    renderResumoFast();
+  }else if(page === "personagens"){
+    try{ renderPersonagens(); }catch(err){ console.error("Erro em renderPersonagens", err); }
+  }else if(page === "estatisticas"){
+    try{ renderEstatisticas(); }catch(err){ console.error("Erro em renderEstatisticas", err); }
+  }else if(page === "trofeus"){
+    try{ renderTrofeus(); }catch(err){ console.error("Erro em renderTrofeus", err); }
+  }else if(page === "top11"){
+    try{ renderTop11(); }catch(err){ console.error("Erro em renderTop11", err); }
+  }else if(page === "bolaouro"){
+    // Bola de Ouro é a página mais pesada; só renderiza quando abrir.
+    try{ renderBolaOuro(); }catch(err){ console.error("Erro em renderBolaOuro", err); }
+  }else if(page === "clubes"){
+    try{ renderClubes(); }catch(err){ console.error("Erro em renderClubes", err); }
+  }else if(page === "museu"){
+    try{ renderMuseu(); }catch(err){ console.error("Erro em renderMuseu", err); }
+  }
+
+  renderedPages[page] = true;
+}
+
+function renderAll(){
+  renderedPages = {};
+  renderGlobalSelectorsOnly();
+
+  // Renderiza imediatamente só o Resumo.
+  renderPageById("resumo", true);
+
+  // Se o usuário estiver em outra página por algum motivo, renderiza ela depois.
+  const active = getCurrentPageId();
+  if(active && active !== "resumo"){
+    setTimeout(()=>renderPageById(active, true), 80);
+  }
+}
+
+
 
 function renderSelectors(){
   const users=getTable("USUARIOS");
@@ -663,8 +730,11 @@ function closeModal(){
   if(form) form.innerHTML = "";
 }
 
+
 function navigate(pageId){
   if(!pageId) return;
+
+  currentPageId = pageId;
 
   document.querySelectorAll(".page").forEach(page=>{
     page.classList.remove("active");
@@ -683,7 +753,11 @@ function navigate(pageId){
   if(typeof pageTitles !== "undefined"){
     setText("page-title", pageTitles[pageId] || "Football Legacy");
   }
+
+  // Renderiza a aba somente quando abrir.
+  setTimeout(()=>renderPageById(pageId, true), 0);
 }
+
 
 if($("close-modal")){
   $("close-modal").onclick = closeModal;
