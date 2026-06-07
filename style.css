@@ -1453,3 +1453,65 @@ button.saving::before,
     height:340px;
   }
 }
+
+
+/* ===== V3.7.10 PLAYER CARD FULL HEIGHT ===== */
+/* A lateral do jogador não pode deixar buraco grande embaixo */
+.player-card-shell-fixed{
+  width:100%!important;
+  height:100%!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+}
+
+/* Card do jogador ocupa praticamente toda a altura útil do painel */
+.player-card-onepiece{
+  width:min(330px,100%)!important;
+  height:100%!important;
+  min-height:470px!important;
+  max-height:560px!important;
+  align-self:stretch!important;
+}
+
+/* A imagem cobre tudo, sem virar dois blocos */
+.player-card-onepiece img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center top!important;
+}
+
+/* Ajuste do nome para ficar mais embaixo e não parecer solto no meio */
+.player-card-overlay-name{
+  left:18px!important;
+  right:18px!important;
+  bottom:18px!important;
+}
+
+/* Garante que o container lateral aceite o card maior */
+.hero-side,
+.hero-player,
+.player-card-wrap{
+  align-self:stretch!important;
+  min-height:470px!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+}
+
+/* Se o hero usa grid/flex, deixa a lateral com altura igual ao bloco principal */
+.hero-card,
+.hero,
+.main-hero,
+.summary-hero{
+  align-items:stretch!important;
+}
+
+@media(max-width:1100px){
+  .player-card-onepiece{
+    width:260px!important;
+    min-height:380px!important;
+    max-height:none!important;
+  }
+}

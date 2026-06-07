@@ -1,3 +1,3 @@
-# Football Legacy V3.7.9
+# Football Legacy V3.7.10
 
-Correção definitiva do card do jogador: localiza o card pelo elemento mainCharacter e substitui o bloco antigo por um único card com imagem inteira e nome sobreposto.
+Ajusta o card do jogador para ocupar a altura toda da lateral do Resumo, removendo o vazio embaixo. Não altera imagem, apenas CSS/layout.

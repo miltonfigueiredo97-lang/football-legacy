@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.9 player card dom fix');
+console.log('Football Legacy script carregado v3.7.10 player card full height');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
