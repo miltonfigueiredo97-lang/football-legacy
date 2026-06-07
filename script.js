@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.3 records competition trophies fix');
+console.log('Football Legacy script carregado v3.7.4 player card trophy images');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -3838,6 +3838,127 @@ function renderTrofeus(){
       }).join("")}
     </div>
   `;
+}
+
+
+// ===== V3.7.4 PLAYER CARD + TROPHY REAL IMAGES =====
+function trophyImageForCompetition(name){
+  const key = normalizeTextKey(name);
+
+  const files = [
+    ["championsleague", "UEFA Champions League trophy.jpg"],
+    ["europaleague", "UEFA Europa League Trophy 2021.jpg"],
+    ["conferenceleague", "UEFA Europa Conference League trophy.jpg"],
+    ["libertadores", "Copa Libertadores trophy.jpg"],
+    ["sulamericana", "Copa Sudamericana trophy.jpg"],
+    ["copadomundo", "FIFA World Cup Trophy.jpg"],
+    ["worldcup", "FIFA World Cup Trophy.jpg"],
+    ["mundialdeclubes", "FIFA Club World Cup Trophy.jpg"],
+    ["intercontinentaldeclubes", "Intercontinental Cup trophy.jpg"],
+    ["premierleague", "Premier League Trophy.jpg"],
+    ["laliga", "La Liga trophy.jpg"],
+    ["serieaitaliana", "Serie A trophy.jpg"],
+    ["seriea", "Serie A trophy.jpg"],
+    ["bundesliga", "Meisterschale Bundesliga.jpg"],
+    ["ligue1", "Trophée Ligue 1.jpg"],
+    ["brasileirao", "Campeonato Brasileiro Série A trophy.jpg"],
+    ["brazilianseriea", "Campeonato Brasileiro Série A trophy.jpg"],
+    ["copadobrasil", "Copa do Brasil trophy.jpg"],
+    ["copadelrey", "Copa del Rey trophy.jpg"],
+    ["facup", "FA Cup Trophy.jpg"],
+    ["eurocopa", "UEFA European Championship trophy.jpg"],
+    ["copaamerica", "Copa América trophy.jpg"],
+    ["mundial", "FIFA Club World Cup Trophy.jpg"]
+  ];
+
+  const found = files.find(([k]) => key.includes(k) || k.includes(key));
+  if(!found) return "";
+
+  return "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(found[1]) + "?width=500";
+}
+
+// Reforça render do card do protagonista para usar uma única área com imagem + overlay.
+function setPlayerPhoto(protagonist){
+  const img = $("playerPhoto") || $("protagonistImage") || document.querySelector(".player-photo img") || document.querySelector(".protagonist-photo img");
+
+  if(img){
+    if(protagonist && protagonist.foto){
+      img.src = protagonist.foto;
+      img.style.display = "block";
+    }else{
+      img.removeAttribute("src");
+      img.style.display = "none";
+    }
+  }
+
+  const card = document.querySelector(".player-card") || document.querySelector(".protagonist-card") || document.querySelector(".hero-player-card") || document.querySelector(".hero-card-side");
+
+  if(card){
+    card.classList.add("player-card-full-photo");
+
+    if(protagonist && protagonist.foto){
+      card.style.setProperty("--player-card-bg", `url("${protagonist.foto}")`);
+      card.classList.add("has-player-photo");
+    }else{
+      card.style.removeProperty("--player-card-bg");
+      card.classList.remove("has-player-photo");
+    }
+  }
+}
+
+// Garante que o render do resumo chame setPlayerPhoto e deixe o card pronto.
+function renderDashboardJourney(){
+  const user = getActiveUser();
+  const career = getActiveCareer();
+  const protagonist = getActiveProtagonist();
+  const stats = getProtagonistStats();
+  const season = getCurrentSeason(stats);
+  const journey = buildClubJourney();
+  const totals = getCareerTotals();
+
+  setText("careerNameSide", career ? career.nome : "Football Legacy");
+  setText("careerMetaSide", user ? user.nome : "Google Sheets");
+
+  setText("currentSeason", season || "Banco conectado");
+  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
+  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
+  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
+  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
+
+  setPlayerPhoto(protagonist);
+
+  const meta = document.querySelector(".hero-meta");
+
+  if(meta){
+    meta.classList.add("club-journey-hero");
+    meta.innerHTML = `
+      <div class="career-total-strip">
+        <div><strong>${totals.jogos}</strong><span>Jogos</span></div>
+        <div><strong>${totals.gols}</strong><span>Gols</span></div>
+        <div><strong>${totals.assistencias}</strong><span>Assistências</span></div>
+      </div>
+
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+      </div>
+      <div class="club-journey-strip clean-club-strip">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap clean-club-crest">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-full-stats">
+              <span><b>${c.jogos}</b> Jogos</span>
+              <span><b>${c.gols}</b> Gols</span>
+              <span><b>${c.assistencias}</b> Assistências</span>
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+      </div>
+    `;
+  }
 }
 
 function startFootballLegacy(){

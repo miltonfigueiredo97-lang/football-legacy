@@ -1359,3 +1359,77 @@ button.saving::before,
   background:rgba(34,197,94,.18);
   color:#86efac;
 }
+
+
+/* ===== V3.7.4 PLAYER CARD FULL PHOTO ===== */
+/* Faz a foto completar o card inteiro e joga o nome por cima com degradê */
+.player-card-full-photo,
+.hero-player-card,
+.protagonist-card,
+.player-card,
+.hero-card-side{
+  overflow:hidden!important;
+}
+
+.player-card-full-photo.has-player-photo{
+  background-image:
+    linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.08) 42%, rgba(15,23,42,.88) 78%, rgba(15,23,42,.98) 100%),
+    var(--player-card-bg)!important;
+  background-size:cover!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  min-height:360px!important;
+  border-radius:26px!important;
+  position:relative!important;
+}
+
+/* Esconde o recorte antigo da foto quando o card já usa imagem completa */
+.player-card-full-photo.has-player-photo .player-photo,
+.player-card-full-photo.has-player-photo .protagonist-photo,
+.player-card-full-photo.has-player-photo > img,
+.player-card-full-photo.has-player-photo .photo-box{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+/* O bloco de nome vira overlay dentro da própria imagem */
+.player-card-full-photo.has-player-photo .player-info,
+.player-card-full-photo.has-player-photo .protagonist-info,
+.player-card-full-photo.has-player-photo .card-name,
+.player-card-full-photo.has-player-photo .character-card-info{
+  position:absolute!important;
+  left:16px!important;
+  right:16px!important;
+  bottom:16px!important;
+  z-index:3!important;
+  border:0!important;
+  background:linear-gradient(180deg,rgba(15,23,42,.58),rgba(15,23,42,.86))!important;
+  backdrop-filter:blur(8px)!important;
+  border-radius:18px!important;
+  padding:14px!important;
+  min-height:auto!important;
+  text-align:center!important;
+}
+
+/* Se o HTML usa IDs em vez de classes, força o card textual a sobrepor */
+#mainCharacter,
+#protagonistCardName{
+  position:relative;
+  z-index:4;
+}
+
+.real-trophy-img{
+  width:116px!important;
+  height:116px!important;
+}
+
+.real-trophy-img img{
+  max-width:116px!important;
+  max-height:116px!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 18px 20px rgba(0,0,0,.45));
+}
+
+.real-trophy-card{
+  min-height:250px!important;
+}

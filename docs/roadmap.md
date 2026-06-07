@@ -1,3 +1,3 @@
-# Football Legacy V3.7.3
+# Football Legacy V3.7.4
 
-Corrige Records para comparar por escopo: totais de carreira por competição/clube e gols em uma única temporada por competição/temporada. Adiciona totais gerais no Resumo. Corrige Troféus para reconhecer CAMPEOES_CARREIRA de forma mais tolerante.
+Corrige card do protagonista: imagem completa até embaixo com nome sobreposto em overlay. Troca imagens de troféu para Special:FilePath do Wikimedia, tentando imagens reais dos troféus/logos.
