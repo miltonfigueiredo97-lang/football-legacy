@@ -1,3 +1,3 @@
-# Football Legacy V3.7.13
+# Football Legacy V3.7.14
 
-Corrige RangeError Maximum call stack size exceeded causado pela v3.7.12. Remove wrapper recursivo de competitionSuggestions e mantém Mundial de Clubes + Intercontinental de Clubes + Supercopa da UEFA.
+Força Supercopa da UEFA para clubes europeus detectando país, liga ou clube conhecido. Corrige caso AC Milan/Italian Serie A não mostre Supercopa da UEFA.

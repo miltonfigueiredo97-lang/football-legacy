@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.13 fix competition recursion');
+console.log('Football Legacy script carregado v3.7.14 uefa supercup force');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -4372,3 +4372,107 @@ if(typeof renderRecords !== "undefined") window.renderRecords = renderRecords;
 if(typeof renderTrofeus !== "undefined") window.renderTrofeus = renderTrofeus;
 if(typeof getCareerTrophyRows !== "undefined") window.getCareerTrophyRows = getCareerTrophyRows;
 if(typeof getRecordsBaseStaticRows !== "undefined") window.getRecordsBaseStaticRows = getRecordsBaseStaticRows;
+
+// ===== V3.7.14 FORCE SUPERCOPA UEFA FOR EUROPEAN CLUBS =====
+function isEuropeanTeamForCompetitions(team){
+  const country = String(team?.country || "").toLowerCase();
+  const league = String(team?.league || "").toLowerCase();
+  const name = String(team?.name || "").toLowerCase();
+
+  const europeCountries = [
+    "england","spain","italy","germany","france","portugal","netherlands",
+    "belgium","scotland","turkey","austria","switzerland","ukraine",
+    "russia","greece","denmark","sweden","norway","croatia","serbia",
+    "czech","poland"
+  ];
+
+  const europeanLeagues = [
+    "premier league","la liga","spanish la liga","serie a","italian serie a",
+    "bundesliga","ligue 1","eredivisie","primeira liga","liga portugal",
+    "scottish premiership","super lig","süper lig","austrian bundesliga",
+    "swiss super league","belgian pro league","jupiler pro league"
+  ];
+
+  const knownEuropeanClubs = [
+    "milan","inter","juventus","roma","napoli","barcelona","real madrid",
+    "atletico","manchester","liverpool","chelsea","arsenal","tottenham",
+    "bayern","dortmund","psg","paris saint-germain","benfica","porto",
+    "sporting","ajax","psv","feyenoord","newcastle"
+  ];
+
+  return europeCountries.some(c=>country.includes(c)) ||
+    europeanLeagues.some(l=>league.includes(l)) ||
+    knownEuropeanClubs.some(c=>name.includes(c));
+}
+
+// Esta função fica no fim do arquivo de propósito para vencer versões anteriores.
+function competitionSuggestions(team){
+  const list = [];
+
+  if(team && team.league) list.push(team.league);
+
+  const country = String(team?.country || "").toLowerCase();
+
+  if(country.includes("england")){
+    list.push("FA Cup","Carabao Cup","Community Shield");
+  }else if(country.includes("spain")){
+    list.push("Copa del Rey","Supercopa de España");
+  }else if(country.includes("italy")){
+    list.push("Coppa Italia","Supercoppa Italiana");
+  }else if(country.includes("germany")){
+    list.push("DFB-Pokal","DFL-Supercup");
+  }else if(country.includes("france")){
+    list.push("Coupe de France","Trophée des Champions");
+  }else if(country.includes("brazil")){
+    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+  }else if(country.includes("portugal")){
+    list.push("Taça de Portugal","Taça da Liga","Supertaça");
+  }else if(country.includes("netherlands")){
+    list.push("KNVB Cup","Johan Cruyff Shield");
+  }
+
+  const european = isEuropeanTeamForCompetitions(team);
+
+  if(european){
+    list.push(
+      "Champions League",
+      "Europa League",
+      "Conference League",
+      "Supercopa da UEFA",
+      "Mundial de Clubes",
+      "Intercontinental de Clubes"
+    );
+  }else{
+    list.push(
+      "Champions League",
+      "Europa League",
+      "Conference League",
+      "Mundial de Clubes",
+      "Intercontinental de Clubes"
+    );
+  }
+
+  return [...new Set(list.filter(Boolean))];
+}
+
+// Garante que se a tela já renderizou sem Supercopa, selecionar time reinsere.
+const __oldSelectSeasonTeamV3714 = typeof selectSeasonTeam === "function" ? selectSeasonTeam : null;
+function selectSeasonTeam(team){
+  selectedSeasonTeam = team;
+
+  const box = $("selectedTeamBox");
+
+  if(box){
+    box.classList.add("active");
+    box.innerHTML = `
+      <img src="${team.badge || ""}" onerror="this.style.display='none'">
+      <div>
+        <strong>${escapeHtml(team.name || "-")}</strong>
+        <small>${escapeHtml(team.league || "-")}</small>
+      </div>
+    `;
+  }
+
+  renderCompetitionSuggestions(team);
+}
+
