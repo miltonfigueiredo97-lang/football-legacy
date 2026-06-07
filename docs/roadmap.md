@@ -1,3 +1,3 @@
-# Football Legacy V3.7.74
+# Football Legacy V3.7.75
 
-Corrige o preenchimento do modal Bola de Ouro para carregar todas as posições existentes, não apenas a primeira. O preenchimento agora usa colunas de inputs: Jogador[], País[], Clube[], Idade[] e Valor[]. Sem alteração visual.
+Corrige o seletor do modal Bola de Ouro. Ao trocar temporada/ano, limpa as 10 linhas e recarrega os jogadores, país, clube, idade, valor e imagem da temporada selecionada. Sem alteração visual.
