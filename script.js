@@ -28,6 +28,37 @@ const schemas = {
 const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu"};
 
 function $(id){return document.getElementById(id)}
+
+function jsonpRequest(url, timeoutMs = 20000){
+  return new Promise((resolve, reject)=>{
+    const callbackName = "__fl_jsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    const separator = url.includes("?") ? "&" : "?";
+    const script = document.createElement("script");
+    const timeout = setTimeout(()=>{
+      cleanup();
+      reject(new Error("Tempo esgotado carregando Apps Script via JSONP"));
+    }, timeoutMs);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      if(script.parentNode) script.parentNode.removeChild(script);
+      try{ delete window[callbackName]; }catch(e){ window[callbackName] = undefined; }
+    }
+
+    window[callbackName] = data=>{
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = ()=>{
+      cleanup();
+      reject(new Error("Falha ao carregar Apps Script via JSONP"));
+    };
+
+    script.src = url + separator + "callback=" + encodeURIComponent(callbackName) + "&jsonpCache=" + Date.now();
+    document.head.appendChild(script);
+  });
+}
 function bind(id,event,handler){
   const el = $(id);
   if(el) el.addEventListener(event, handler);
@@ -79,28 +110,33 @@ async function loadData(){
   try{
     setStatus("Carregando dados do Google Sheets...");
 
-    const finalUrl = (API_URL || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec") + "?action=all&cache=" + Date.now();
+    const baseUrl = API_URL || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
+    const url = baseUrl + "?action=all";
 
-    console.log("Football Legacy API:", finalUrl);
-
-    const res = await fetch(finalUrl, {
-      method: "GET",
-      cache: "no-store",
-      redirect: "follow"
-    });
-
-    if(!res.ok){
-      throw new Error("HTTP " + res.status + " ao chamar Apps Script");
-    }
-
-    const text = await res.text();
+    console.log("Football Legacy API JSONP:", url);
 
     let json;
+
     try{
-      json = JSON.parse(text);
-    }catch(parseErr){
-      console.error("Resposta não JSON:", text);
-      throw new Error("Apps Script não retornou JSON. Veja Console.");
+      json = await jsonpRequest(url);
+    }catch(jsonpErr){
+      console.warn("JSONP falhou, tentando fetch:", jsonpErr);
+
+      const fetchUrl = url + "&cache=" + Date.now();
+      const res = await fetch(fetchUrl, { method:"GET", cache:"no-store", redirect:"follow" });
+
+      if(!res.ok){
+        throw new Error("HTTP " + res.status + " ao chamar Apps Script");
+      }
+
+      const text = await res.text();
+
+      try{
+        json = JSON.parse(text);
+      }catch(parseErr){
+        console.error("Resposta não JSON:", text);
+        throw new Error("Apps Script não retornou JSON válido");
+      }
     }
 
     if(!json.ok){
@@ -108,7 +144,6 @@ async function loadData(){
     }
 
     db = json.data || {};
-
     console.log("Football Legacy DB carregado:", db);
 
     ensureActive();

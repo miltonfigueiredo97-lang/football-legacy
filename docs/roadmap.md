@@ -1,3 +1,3 @@
-# Football Legacy V3.1
+# Football Legacy V3.2
 
-Corrige erro fatal `removeRecord is not defined`, que impedia o script de chegar no `loadData()`. Exportações globais agora são protegidas.
+Carregamento do Sheets via JSONP para contornar fetch/CORS/redirect do Apps Script. Mantém fallback fetch.
