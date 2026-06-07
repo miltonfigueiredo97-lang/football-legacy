@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.2 records base read');
+console.log('Football Legacy script carregado v3.7.3 records competition trophies fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -3469,6 +3469,375 @@ function renderRecords(){
   renderRecordRowsList("recordsAssists", allRows, "mais_assistencias", "Assistências");
   renderRecordRowsList("recordsGames", allRows, "mais_jogos", "Jogos");
   renderRecordRowsList("recordsSeasonGoals", allRows, "gols_em_uma_temporada", "Gols");
+}
+
+
+// ===== V3.7.3 RECORDS POR COMPETIÇÃO + TROFÉUS + TOTAIS NO RESUMO =====
+function normalizeScopeName(value){
+  return normalizeTextKey(value)
+    .replace("uefachampionsleague","championsleague")
+    .replace("ucl","championsleague")
+    .replace("brazilianseriea","brasileirao")
+    .replace("campeonatobrasileiroseriea","brasileirao")
+    .replace("serieaitaliana","seriea")
+    .replace("italianseriea","seriea")
+    .replace("laligaea","laliga");
+}
+
+function sameScope(a,b){
+  const aa = normalizeScopeName(a);
+  const bb = normalizeScopeName(b);
+  if(!aa || !bb) return false;
+  return aa === bb || aa.includes(bb) || bb.includes(aa);
+}
+
+function getStatCompetitionName(stat){
+  return stat.competicao || compName(stat.competicao_id) || "";
+}
+
+function getStatClubName(stat){
+  return stat.clube_nome || getRecordsClubForStat(stat) || "";
+}
+
+function getCareerRowsForScope(scope){
+  const personagem = getActiveProtagonist();
+  if(!personagem) return [];
+
+  const rawStats = getRecordsBaseRows();
+
+  return rawStats.filter(s=>{
+    if(!scope || scope.type === "all") return true;
+
+    if(scope.type === "competition"){
+      return sameScope(getStatCompetitionName(s), scope.value);
+    }
+
+    if(scope.type === "club"){
+      return sameScope(getStatClubName(s), scope.value);
+    }
+
+    return true;
+  });
+}
+
+function buildCareerRecordRowsForScope(scope){
+  const personagem = getActiveProtagonist();
+  if(!personagem) return [];
+
+  const stats = getCareerRowsForScope(scope);
+  const rows = [];
+
+  if(!stats.length) return rows;
+
+  // Para maior artilheiro, assistências e jogos:
+  // SOMA somente dentro do filtro atual.
+  const total = stats.reduce((acc,s)=>{
+    acc.jogos += num(s.jogos);
+    acc.gols += num(s.gols);
+    acc.assistencias += num(s.assistencias);
+    acc.cartoes += num(s.cartoes);
+    if(getRecordsSeasonForStat(s)) acc.temporadas.add(getRecordsSeasonForStat(s));
+    if(getStatClubName(s)) acc.clubes.add(getStatClubName(s));
+    if(getStatCompetitionName(s)) acc.competicoes.add(getStatCompetitionName(s));
+    return acc;
+  },{jogos:0,gols:0,assistencias:0,cartoes:0,temporadas:new Set(),clubes:new Set(),competicoes:new Set()});
+
+  const scopeCompetition = scope?.type === "competition" ? scope.value : [...total.competicoes].join(" / ");
+  const scopeClub = scope?.type === "club" ? scope.value : [...total.clubes].join(" / ");
+
+  rows.push({
+    jogador: personagem.nome,
+    pais: personagem.nacionalidade || "",
+    clube: scopeClub,
+    competicao: scopeCompetition,
+    temporada: "carreira",
+    categoria: "maior_artilheiro",
+    valor: total.gols,
+    unidade: "gols",
+    isProtagonist: true,
+    isBase: false
+  });
+
+  rows.push({
+    jogador: personagem.nome,
+    pais: personagem.nacionalidade || "",
+    clube: scopeClub,
+    competicao: scopeCompetition,
+    temporada: "carreira",
+    categoria: "mais_assistencias",
+    valor: total.assistencias,
+    unidade: "assistencias",
+    isProtagonist: true,
+    isBase: false
+  });
+
+  rows.push({
+    jogador: personagem.nome,
+    pais: personagem.nacionalidade || "",
+    clube: scopeClub,
+    competicao: scopeCompetition,
+    temporada: "carreira",
+    categoria: "mais_jogos",
+    valor: total.jogos,
+    unidade: "jogos",
+    isProtagonist: true,
+    isBase: false
+  });
+
+  // Para maior goleador em uma temporada:
+  // agrupa por temporada + competição + clube, não por carreira inteira.
+  const seasonMap = new Map();
+
+  stats.forEach(s=>{
+    const season = getRecordsSeasonForStat(s) || "-";
+    const club = getStatClubName(s) || "-";
+    const comp = getStatCompetitionName(s) || scopeCompetition || "-";
+    const key = `${season}|${club}|${comp}`;
+
+    if(!seasonMap.has(key)){
+      seasonMap.set(key,{
+        jogador: personagem.nome,
+        pais: personagem.nacionalidade || "",
+        clube: club,
+        competicao: comp,
+        temporada: season,
+        categoria: "gols_em_uma_temporada",
+        valor: 0,
+        unidade: "gols",
+        isProtagonist: true,
+        isBase: false
+      });
+    }
+
+    const item = seasonMap.get(key);
+    item.valor += num(s.gols);
+  });
+
+  rows.push(...[...seasonMap.values()].filter(r=>r.valor));
+
+  return rows.filter(r=>num(r.valor));
+}
+
+function filterRecordRowsByScope(rows, scope){
+  if(!scope || scope.type==="all") return rows;
+
+  if(scope.type==="club"){
+    return rows.filter(r=>
+      sameScope(r.clube, scope.value) ||
+      sameScope(r.escopo_nome, scope.value)
+    );
+  }
+
+  if(scope.type==="competition"){
+    return rows.filter(r=>
+      sameScope(r.competicao, scope.value) ||
+      sameScope(r.escopo_nome, scope.value)
+    );
+  }
+
+  return rows;
+}
+
+function renderRecords(){
+  renderRecordsFilters();
+
+  const scope = getSelectedRecordScope();
+
+  const baseRows = filterRecordRowsByScope(getRecordsBaseStaticRows(), scope);
+  const careerRows = buildCareerRecordRowsForScope(scope);
+  const allRows = [...baseRows, ...careerRows];
+
+  const scopeLabel = scope.type === "all"
+    ? "Records da carreira + base real"
+    : scope.type === "club"
+      ? `Records do clube: ${scope.value}`
+      : `Records da competição: ${scope.value}`;
+
+  setText("recordsScopeTitle", scopeLabel);
+
+  const desc = scope.type === "competition"
+    ? "Comparação filtrada por competição: os totais do jogador são somados apenas nessa competição."
+    : scope.type === "club"
+      ? "Comparação filtrada por clube: os totais do jogador são somados apenas nesse clube."
+      : "Comparando base real com os dados da carreira selecionada.";
+
+  setText("recordsScopeDescription", `${desc} Base real carregada: ${getRecordsBaseStaticRows().length} registros.`);
+
+  renderRecordRowsList("recordsGoals", allRows, "maior_artilheiro", "Gols");
+  renderRecordRowsList("recordsAssists", allRows, "mais_assistencias", "Assistências");
+  renderRecordRowsList("recordsGames", allRows, "mais_jogos", "Jogos");
+  renderRecordRowsList("recordsSeasonGoals", allRows, "gols_em_uma_temporada", "Gols");
+}
+
+function getCareerTotals(){
+  const stats = getRecordsBaseRows();
+  return stats.reduce((acc,s)=>{
+    acc.jogos += num(s.jogos);
+    acc.gols += num(s.gols);
+    acc.assistencias += num(s.assistencias);
+    acc.cartoes += num(s.cartoes);
+    return acc;
+  },{jogos:0,gols:0,assistencias:0,cartoes:0});
+}
+
+function renderDashboardJourney(){
+  const user = getActiveUser();
+  const career = getActiveCareer();
+  const protagonist = getActiveProtagonist();
+  const stats = getProtagonistStats();
+  const season = getCurrentSeason(stats);
+  const journey = buildClubJourney();
+  const totals = getCareerTotals();
+
+  setText("careerNameSide", career ? career.nome : "Football Legacy");
+  setText("careerMetaSide", user ? user.nome : "Google Sheets");
+
+  setText("currentSeason", season || "Banco conectado");
+  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
+  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
+  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
+  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
+
+  setPlayerPhoto(protagonist);
+
+  const meta = document.querySelector(".hero-meta");
+
+  if(meta){
+    meta.classList.add("club-journey-hero");
+    meta.innerHTML = `
+      <div class="career-total-strip">
+        <div><strong>${totals.jogos}</strong><span>Jogos</span></div>
+        <div><strong>${totals.gols}</strong><span>Gols</span></div>
+        <div><strong>${totals.assistencias}</strong><span>Assistências</span></div>
+      </div>
+
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+      </div>
+      <div class="club-journey-strip clean-club-strip">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap clean-club-crest">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-full-stats">
+              <span><b>${c.jogos}</b> Jogos</span>
+              <span><b>${c.gols}</b> Gols</span>
+              <span><b>${c.assistencias}</b> Assistências</span>
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+      </div>
+    `;
+  }
+}
+
+// Troféus: leitura mais tolerante da CAMPEOES_CARREIRA.
+function isWonTrophy(row){
+  const status = String(row.status || "").toLowerCase();
+  if(status.includes("titulo")) return true;
+  if(status.includes("ganho")) return true;
+  if(status === "true" || status === "sim" || status === "x") return true;
+
+  // Se existe campeão igual ao clube da passagem e essa passagem é do jogador, considerar título.
+  const season = getSeasonByCareerSeasonId(row.carreira_temporada_id);
+  const champion = row.campeao || row.clube || row.time_campeao || "";
+  if(champion && season && sameScope(champion, season.clube_nome)) return true;
+
+  return false;
+}
+
+function getCareerTrophyRows(){
+  const carreira = getActiveCareer();
+
+  const rows = getTable("CAMPEOES_CARREIRA")
+    .filter(t=>!carreira || String(t.carreira_id)===String(carreira.id))
+    .filter(t=>isWonTrophy(t));
+
+  const legacy = getTable("CAMPEOES")
+    .filter(t=>!carreira || !t.carreira_id || String(t.carreira_id)===String(carreira.id))
+    .filter(t=>isWonTrophy(t) || String(t.titulo || "").toLowerCase().includes("sim"));
+
+  return [...rows, ...legacy];
+}
+
+function renderTrofeus(){
+  const wrap = $("trofeus-list") || $("trofeusGrid") || document.querySelector("#trofeus .cards-grid") || document.querySelector("#trofeus .content-card") || document.querySelector("#trofeus");
+
+  if(!wrap) return;
+
+  const trophies = getCareerTrophyRows()
+    .sort((a,b)=>{
+      const sa = a.temporada || getSeasonByCareerSeasonId(a.carreira_temporada_id).temporada || "";
+      const sb = b.temporada || getSeasonByCareerSeasonId(b.carreira_temporada_id).temporada || "";
+      return compareSeasonsDesc(sa,sb);
+    });
+
+  if(!trophies.length){
+    wrap.innerHTML = `
+      <div class="trophy-empty">
+        <div>🏆</div>
+        <h3>Nenhum troféu reconhecido ainda</h3>
+        <p>Edite a temporada, marque “Ganhei” e salve para o título aparecer aqui.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const total = trophies.length;
+  const byComp = new Map();
+
+  trophies.forEach(t=>{
+    const comp = t.competicao || compName(t.competicao_id) || "Título";
+    byComp.set(comp, (byComp.get(comp) || 0) + 1);
+  });
+
+  wrap.innerHTML = `
+    <div class="trophy-summary">
+      <div>
+        <span>Total de títulos</span>
+        <strong>${total}</strong>
+      </div>
+      <div>
+        <span>Competições vencidas</span>
+        <strong>${byComp.size}</strong>
+      </div>
+      <div>
+        <span>Maior coleção</span>
+        <strong>${[...byComp.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || "-"}</strong>
+      </div>
+    </div>
+
+    <div class="trophy-grid-real">
+      ${trophies.map(t=>{
+        const seasonObj = getSeasonByCareerSeasonId(t.carreira_temporada_id);
+        const season = t.temporada || seasonObj.temporada || "-";
+        const comp = t.competicao || compName(t.competicao_id) || "Título";
+        const champion = t.campeao || t.clube || seasonObj.clube_nome || "-";
+        const img = trophyImageForCompetition(comp);
+        const fallback = trophyFallbackIcon(comp);
+
+        return `
+          <article class="real-trophy-card">
+            <div class="real-trophy-img">
+              ${img ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(comp)}" onerror="this.outerHTML='<span>${fallback}</span>'">` : `<span>${fallback}</span>`}
+            </div>
+            <div>
+              <strong>${escapeHtml(comp)}</strong>
+              <small>${escapeHtml(season)} • ${escapeHtml(champion)}</small>
+            </div>
+            <div class="real-trophy-meta">
+              ${t.artilheiro ? `<span>Artilheiro: ${escapeHtml(t.artilheiro)}</span>` : ""}
+              ${t.lider_assistencias ? `<span>Assistências: ${escapeHtml(t.lider_assistencias)}</span>` : ""}
+              ${t.melhor_jogador ? `<span>Melhor: ${escapeHtml(t.melhor_jogador)}</span>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function startFootballLegacy(){
