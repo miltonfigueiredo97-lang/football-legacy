@@ -1,3 +1,3 @@
-# Football Legacy V3.7.49
+# Football Legacy V3.7.50
 
-Restaura imagem do personagem após alterações de idade. O dashboard passa a ler imagem por imagem_url, foto_url, foto, image_url, avatar etc. Também preserva a imagem no salvar PERSONAGENS e injeta o campo Foto URL caso ele suma do modal.
+Versão limpa antes das alterações que desformataram o resumo. Mantém base v3.7.44, adiciona idade apenas nos cards de Temporadas jogadas, remove textos de período, corrige emblemas, restaura imagem do personagem, adiciona projeção até 38 anos e fallback de time ao editar temporada antiga.

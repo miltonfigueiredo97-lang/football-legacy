@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.49 personagem image restore');
+console.log('Football Legacy script carregado v3.7.50 clean age projection image');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -7820,434 +7820,83 @@ window.renderRecordRowsList = renderRecordRowsList;
 
 
 
-// ===== V3.7.45 IDADE POR TEMPORADA — PERSONAGENS COLUNA H =====
-// Coluna H de PERSONAGENS = data_nascimento / idade.
-// No card de Temporadas jogadas, mostra "X anos" logo após o escudo.
+// ===== V3.7.50 LIMPO: IDADE SÓ NAS TEMPORADAS + PROJEÇÃO + IMAGEM =====
+// Base limpa: remove as tentativas anteriores de idade que quebraram layout.
+// Não mexe em salvamento de temporada, exceto fallback de time existente.
 
-function getPersonagemBirthValueV3745(personagem){
-  if(!personagem) return "";
+function flNormTextV3750(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
 
+function getPersonagemImageUrlV3750(p){
+  if(!p) return "";
   return (
-    personagem.data_nascimento ||
-    personagem.nascimento ||
-    personagem.aniversario ||
-    personagem.data_aniversario ||
-    personagem.idade ||
-    personagem.Idade ||
-    personagem["idade"] ||
-    personagem["data_nascimento"] ||
+    p.imagem_url ||
+    p.foto_url ||
+    p.foto ||
+    p.image_url ||
+    p.avatar_url ||
+    p.avatar ||
+    p.url_imagem ||
+    p["Foto URL"] ||
+    p["foto_url"] ||
     ""
   );
 }
 
-function parseBrazilianOrIsoDateV3745(value){
+function getPersonagemBirthValueV3750(p){
+  if(!p) return "";
+  // Sua planilha correta:
+  // H = idade
+  // I = data_nascimento
+  // Para cálculo, data_nascimento tem prioridade quando existir.
+  return (
+    p.data_nascimento ||
+    p.idade ||
+    p.nascimento ||
+    p.aniversario ||
+    p.data_aniversario ||
+    p["data_nascimento"] ||
+    p["idade"] ||
+    ""
+  );
+}
+
+function parseBirthOrAgeV3750(value){
   const raw = String(value || "").trim();
   if(!raw) return null;
 
-  // Se for apenas idade numérica, não é data.
-  if(/^\d{1,3}$/.test(raw)) return { ageFixed:Number(raw) };
+  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
 
-  // yyyy-mm-dd / yyyy-mm
-  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
-  if(m){
-    return {
-      year:Number(m[1]),
-      month:Number(m[2]),
-      day:Number(m[3] || 1)
-    };
-  }
+  // ISO ou Date serializado: 2008-11-20 / 2008-11-20T...
+  let m = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3])};
 
   // dd/mm/yyyy
   m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m){
-    return {
-      year:Number(m[3]),
-      month:Number(m[2]),
-      day:Number(m[1])
-    };
-  }
+  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
 
-  // mm/yyyy ou yyyy
-  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
-  if(m){
-    return {
-      year:Number(m[2]),
-      month:Number(m[1]),
-      day:1
-    };
-  }
-
-  m = raw.match(/^(\d{4})$/);
-  if(m){
-    return {
-      year:Number(m[1]),
-      month:1,
-      day:1
-    };
+  // Google Date string: Thu Nov 20 2008...
+  const date = new Date(raw);
+  if(!Number.isNaN(date.getTime()) && date.getFullYear() > 1900){
+    return {year:date.getFullYear(), month:date.getMonth()+1, day:date.getDate()};
   }
 
   return null;
 }
 
-function getSeasonStartDatePartsV3745(season){
-  if(!season) return null;
-
-  const start = String(season.data_inicio || "").trim();
+function getSeasonStartV3750(season){
+  const start = String(season?.data_inicio || "").trim();
 
   // yyyy-mm-dd / yyyy-mm
   let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
-  if(m){
-    return {
-      year:Number(m[1]),
-      month:Number(m[2]),
-      day:Number(m[3] || 1)
-    };
-  }
-
-  // temporada 2033/2034 -> considera 01/08/2033
-  const temp = String(season.temporada || "").trim();
-  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
-  if(m){
-    return {
-      year:Number(m[1]),
-      month:8,
-      day:1
-    };
-  }
-
-  // ano simples
-  m = temp.match(/(\d{4})/);
-  if(m){
-    return {
-      year:Number(m[1]),
-      month:1,
-      day:1
-    };
-  }
-
-  return null;
-}
-
-function calculateAgeAtSeasonStartV3745(personagem, season){
-  const birthRaw = getPersonagemBirthValueV3745(personagem);
-  const birth = parseBrazilianOrIsoDateV3745(birthRaw);
-  const start = getSeasonStartDatePartsV3745(season);
-
-  if(!birth) return "";
-  if(birth.ageFixed !== undefined && birth.ageFixed !== null) return birth.ageFixed;
-  if(!start) return "";
-
-  let age = start.year - birth.year;
-
-  const beforeBirthday =
-    start.month < birth.month ||
-    (start.month === birth.month && start.day < birth.day);
-
-  if(beforeBirthday) age--;
-
-  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
-  return age;
-}
-
-function ageBadgeHtmlV3745(season){
-  const personagem = getActiveProtagonist ? getActiveProtagonist() : null;
-  const age = calculateAgeAtSeasonStartV3745(personagem, season);
-  if(age === "" || age === null || age === undefined) return "";
-  return `<span class="season-age-badge-v3745">${age} anos</span>`;
-}
-
-// Injeta idade nos cards já renderizados de temporadas jogadas, sem reescrever todo render.
-function injectSeasonAgeBadgesV3745(){
-  try{
-    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-    if(!seasons.length) return;
-
-    const cards = [...document.querySelectorAll(".season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card")];
-
-    // Fallback visual: cards grandes do resumo normalmente têm botão Editar ou escudo.
-    const likelyCards = cards.length ? cards : [...document.querySelectorAll("article, .entity-card, .summary-card")]
-      .filter(el=>/editar|jogos|gols|assist/i.test(el.textContent || ""));
-
-    likelyCards.forEach(card=>{
-      if(card.querySelector(".season-age-badge-v3745")) return;
-
-      const text = card.textContent || "";
-      const season = seasons.find(s=>{
-        return text.includes(String(s.temporada || "")) &&
-               text.includes(String(s.clube_nome || ""));
-      });
-
-      if(!season) return;
-
-      const badgeHtml = ageBadgeHtmlV3745(season);
-      if(!badgeHtml) return;
-
-      const img = card.querySelector("img");
-      if(img){
-        img.insertAdjacentHTML("afterend", badgeHtml);
-      }else{
-        const title = card.querySelector("h3, h4, strong");
-        if(title) title.insertAdjacentHTML("beforebegin", badgeHtml);
-      }
-    });
-  }catch(err){
-    console.warn("Não consegui injetar idade nas temporadas:", err);
-  }
-}
-
-// Hook seguro após renderAll, sem recursão.
-const __renderAllOriginalV3745 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3745 && !window.__renderAllAgeWrappedV3745){
-  window.__renderAllAgeWrappedV3745 = true;
-  renderAll = function(){
-    const result = __renderAllOriginalV3745.apply(this, arguments);
-    setTimeout(injectSeasonAgeBadgesV3745, 80);
-    return result;
-  };
-}
-
-// Hook seguro após render de resumo, se existir.
-const __renderDashboardOriginalV3745 = typeof renderDashboard === "function" ? renderDashboard : null;
-if(__renderDashboardOriginalV3745 && !window.__renderDashboardAgeWrappedV3745){
-  window.__renderDashboardAgeWrappedV3745 = true;
-  renderDashboard = function(){
-    const result = __renderDashboardOriginalV3745.apply(this, arguments);
-    setTimeout(injectSeasonAgeBadgesV3745, 80);
-    return result;
-  };
-}
-
-// Campo de data/idade no editar personagem.
-// Sem reescrever a tela inteira: injeta campo se o modal de personagem abrir.
-function injectPersonagemBirthFieldV3745(existing=null){
-  try{
-    if(!form || !modal?.classList?.contains("active")) return;
-    const title = (modalTitle?.textContent || "").toLowerCase();
-    if(!title.includes("personagem")) return;
-    if(form.querySelector("[name='data_nascimento']")) return;
-
-    const personagem =
-      existing ||
-      (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
-
-    const value = getPersonagemBirthValueV3745(personagem);
-
-    const html = `
-      <div class="form-field personagem-age-field-v3745">
-        <label>Data de nascimento / idade</label>
-        <input name="data_nascimento" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/1997 ou 18">
-        <small>Usa a coluna H de PERSONAGENS. Para idade por temporada, prefira data completa.</small>
-      </div>
-    `;
-
-    const firstFull = form.querySelector(".form-field.full");
-    if(firstFull) firstFull.insertAdjacentHTML("afterend", html);
-    else form.insertAdjacentHTML("beforeend", html);
-  }catch(err){
-    console.warn("Não consegui injetar campo de idade/personagem:", err);
-  }
-}
-
-// Enriquecer payload do personagem com data_nascimento se o campo existir.
-// apiPost wrapper específico para PERSONAGENS.
-const __apiPostOriginalV3745 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3745 && !window.__apiPostPersonagemAgeWrappedV3745){
-  window.__apiPostPersonagemAgeWrappedV3745 = true;
-  apiPost = async function(payload){
-    try{
-      if(payload && payload.table === "PERSONAGENS" && payload.record){
-        const input = document.querySelector("form [name='data_nascimento']");
-        if(input){
-          payload.record.data_nascimento = input.value || "";
-          // compatibilidade caso a planilha use coluna H com outro nome
-          payload.record.idade = input.value || "";
-        }
-      }
-    }catch(err){}
-    return await __apiPostOriginalV3745(payload);
-  };
-}
-
-// Observa abertura de modal para injetar campo.
-const __openFormOriginalV3745 = typeof openForm === "function" ? openForm : null;
-if(__openFormOriginalV3745 && !window.__openFormAgeWrappedV3745){
-  window.__openFormAgeWrappedV3745 = true;
-  openForm = function(table, id){
-    const result = __openFormOriginalV3745.apply(this, arguments);
-    setTimeout(()=>{
-      if(String(table || "").toLowerCase().includes("personagem")){
-        const existing = getTable("PERSONAGENS").find(p=>String(p.id)===String(id));
-        injectPersonagemBirthFieldV3745(existing);
-      }
-    }, 80);
-    return result;
-  };
-}
-
-document.addEventListener("click", function(e){
-  const btn = e.target.closest("button, a");
-  if(!btn) return;
-  if(/personagem/i.test(btn.textContent || "")){
-    setTimeout(()=>injectPersonagemBirthFieldV3745(), 120);
-  }
-}, true);
-
-window.injectSeasonAgeBadgesV3745 = injectSeasonAgeBadgesV3745;
-window.calculateAgeAtSeasonStartV3745 = calculateAgeAtSeasonStartV3745;
-
-
-
-// ===== V3.7.46 CAMPO IDADE PERSONAGEM + LIMPEZA CARD TEMPORADA =====
-// Corrige:
-// - Modal aparece como "Editar registro", então detecta personagem pelos campos.
-// - Injeta Data de nascimento / idade no editar personagem.
-// - Remove texto "2033-08-01 até 2034-07-01" do card.
-// - Mostra idade logo após o escudo.
-
-function isPersonagemFormV3746(){
-  if(!form) return false;
-
-  const text = (modalTitle?.textContent || "").toLowerCase();
-  if(text.includes("personagem")) return true;
-
-  const names = [...form.querySelectorAll("input, select, textarea")]
-    .map(i=>String(i.name || "").toLowerCase());
-
-  const hasNome = names.includes("nome");
-  const hasPosicao = names.includes("posicao");
-  const hasNacionalidade = names.includes("nacionalidade");
-  const hasCarreira = names.includes("carreira_id");
-
-  // PERSONAGENS tem carreira_id + nome + posição + nacionalidade.
-  return hasNome && hasPosicao && hasNacionalidade && hasCarreira;
-}
-
-function getPersonagemIdFromOpenFormV3746(){
-  try{
-    const idInput = form?.querySelector("[name='id']");
-    if(idInput?.value) return idInput.value;
-
-    const active = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-    return active?.id || "";
-  }catch(err){
-    return "";
-  }
-}
-
-function getEditingPersonagemV3746(){
-  const id = getPersonagemIdFromOpenFormV3746();
-
-  if(id){
-    const found = getTable("PERSONAGENS").find(p=>String(p.id)===String(id));
-    if(found) return found;
-  }
-
-  return typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-}
-
-function getPersonagemBirthValueV3746(personagem){
-  if(!personagem) return "";
-
-  return (
-    personagem.idade ||
-    personagem.data_nascimento ||
-    personagem.nascimento ||
-    personagem.aniversario ||
-    personagem.data_aniversario ||
-    personagem["idade"] ||
-    personagem["data_nascimento"] ||
-    ""
-  );
-}
-
-function injectPersonagemBirthFieldV3746(){
-  try{
-    if(!form || !modal?.classList?.contains("active")) return;
-    if(!isPersonagemFormV3746()) return;
-    if(form.querySelector("[name='idade']") || form.querySelector("[name='data_nascimento']")) return;
-
-    const personagem = getEditingPersonagemV3746();
-    const value = getPersonagemBirthValueV3746(personagem);
-
-    const html = `
-      <div class="form-field personagem-age-field-v3746">
-        <label>Data de nascimento / idade</label>
-        <input name="idade" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/1997 ou 18">
-        <small>Coluna H de PERSONAGENS. Para calcular idade por temporada, use data completa.</small>
-      </div>
-    `;
-
-    const nacionalidade = form.querySelector("[name='nacionalidade']");
-    const field = nacionalidade?.closest(".form-field");
-
-    if(field) field.insertAdjacentHTML("afterend", html);
-    else form.insertAdjacentHTML("beforeend", html);
-  }catch(err){
-    console.warn("Falha ao inserir campo idade/data nascimento:", err);
-  }
-}
-
-// Captura toda abertura de modal e tenta injetar o campo quando for PERSONAGENS.
-const __openFormOriginalV3746 = typeof openForm === "function" ? openForm : null;
-if(__openFormOriginalV3746 && !window.__openFormAgeWrappedV3746){
-  window.__openFormAgeWrappedV3746 = true;
-  openForm = function(){
-    const result = __openFormOriginalV3746.apply(this, arguments);
-    setTimeout(injectPersonagemBirthFieldV3746, 120);
-    setTimeout(injectPersonagemBirthFieldV3746, 350);
-    return result;
-  };
-}
-
-document.addEventListener("click", function(){
-  setTimeout(injectPersonagemBirthFieldV3746, 150);
-}, true);
-
-// Garante que o valor vá no payload.
-const __apiPostOriginalV3746 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3746 && !window.__apiPostAgeWrappedV3746){
-  window.__apiPostAgeWrappedV3746 = true;
-  apiPost = async function(payload){
-    try{
-      if(payload && payload.table === "PERSONAGENS" && payload.record){
-        const input = form?.querySelector("[name='idade'], [name='data_nascimento']");
-        if(input){
-          payload.record.idade = input.value || "";
-          payload.record.data_nascimento = input.value || "";
-        }
-      }
-    }catch(err){}
-    return await __apiPostOriginalV3746(payload);
-  };
-}
-
-function parseDateOrAgeV3746(value){
-  const raw = String(value || "").trim();
-  if(!raw) return null;
-
-  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
-
-  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
   if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
 
-  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
-
-  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
-  if(m) return {year:Number(m[2]), month:Number(m[1]), day:1};
-
-  m = raw.match(/^(\d{4})$/);
-  if(m) return {year:Number(m[1]), month:1, day:1};
-
-  return null;
-}
-
-function getSeasonStartPartsV3746(season){
-  const start = String(season?.data_inicio || "").trim();
-
-  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
-  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
-
+  // temporada 2033/2034 -> início padrão agosto/2033
   const temp = String(season?.temporada || "").trim();
   m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
   if(m) return {year:Number(m[1]), month:8, day:1};
@@ -8258,11 +7907,10 @@ function getSeasonStartPartsV3746(season){
   return null;
 }
 
-function calcAgeAtSeasonV3746(season){
-  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-  const birthRaw = getPersonagemBirthValueV3746(personagem);
-  const birth = parseDateOrAgeV3746(birthRaw);
-  const start = getSeasonStartPartsV3746(season);
+function calcAgeAtSeasonStartV3750(season){
+  const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  const birth = parseBirthOrAgeV3750(getPersonagemBirthValueV3750(p));
+  const start = getSeasonStartV3750(season);
 
   if(!birth) return "";
   if(birth.ageFixed !== undefined) return birth.ageFixed;
@@ -8275,314 +7923,129 @@ function calcAgeAtSeasonV3746(season){
   return age;
 }
 
-function cleanSeasonDateTextV3746(card, season){
-  try{
-    const inicio = String(season.data_inicio || "").trim();
-    const fim = String(season.data_fim || "").trim();
-
-    const patterns = [];
-
-    if(inicio && fim){
-      patterns.push(`${inicio} até ${fim}`);
-      patterns.push(`${inicio} ate ${fim}`);
-    }
-
-    if(inicio) patterns.push(inicio);
-    if(fim) patterns.push(fim);
-
-    // Remove de nós de texto simples, preservando números/labels.
-    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-
-    nodes.forEach(node=>{
-      let txt = node.nodeValue || "";
-      let changed = false;
-
-      patterns.forEach(p=>{
-        if(p && txt.includes(p)){
-          txt = txt.replace(p, "").replace(/\s*•\s*$/, "").replace(/^\s*•\s*/, "");
-          changed = true;
-        }
-      });
-
-      // Remove padrão genérico yyyy-mm-dd até yyyy-mm-dd
-      const newTxt = txt.replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "").trim();
-      if(newTxt !== txt){
-        txt = newTxt;
-        changed = true;
-      }
-
-      if(changed) node.nodeValue = txt;
-    });
-  }catch(err){}
-}
-
-function injectAgeOnSeasonCardsV3746(){
-  try{
-    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-    if(!seasons.length) return;
-
-    const candidates = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card")]
-      .filter(card=>{
-        const txt = card.textContent || "";
-        return /jogos|gols|assist|editar/i.test(txt) && seasons.some(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
-      });
-
-    candidates.forEach(card=>{
-      const txt = card.textContent || "";
-      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
-      if(!season) return;
-
-      cleanSeasonDateTextV3746(card, season);
-
-      if(card.querySelector(".season-age-badge-v3746")) return;
-
-      const age = calcAgeAtSeasonV3746(season);
-      if(age === "" || age === null || age === undefined) return;
-
-      const badge = document.createElement("span");
-      badge.className = "season-age-badge-v3746";
-      badge.textContent = `${age} anos`;
-
-      const img = card.querySelector("img");
-      if(img){
-        img.insertAdjacentElement("afterend", badge);
-      }else{
-        const title = card.querySelector("h3, h4, strong");
-        if(title) title.insertAdjacentElement("beforebegin", badge);
-      }
-    });
-  }catch(err){
-    console.warn("Falha ao aplicar idade nos cards:", err);
-  }
-}
-
-const __renderAllOriginalV3746 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3746 && !window.__renderAllAgeWrappedV3746){
-  window.__renderAllAgeWrappedV3746 = true;
-  renderAll = function(){
-    const result = __renderAllOriginalV3746.apply(this, arguments);
-    setTimeout(injectAgeOnSeasonCardsV3746, 120);
-    setTimeout(injectAgeOnSeasonCardsV3746, 500);
-    return result;
-  };
-}
-
-setInterval(()=>{
-  if(document.visibilityState === "visible") injectAgeOnSeasonCardsV3746();
-}, 2000);
-
-window.injectPersonagemBirthFieldV3746 = injectPersonagemBirthFieldV3746;
-window.injectAgeOnSeasonCardsV3746 = injectAgeOnSeasonCardsV3746;
-
-
-
-// ===== V3.7.47 IDADE NO CARD + PROJEÇÃO ATÉ 38 + ESCUDOS =====
-// Não mexe no salvamento.
-// Corrige visual do escudo, reforça idade no card e adiciona projeção no resumo.
-
-function parseDateOrAgeV3747(value){
-  const raw = String(value || "").trim();
-  if(!raw) return null;
-
-  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
-
-  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
-  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
-
-  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
-
-  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
-  if(m) return {year:Number(m[2]), month:Number(m[1]), day:1};
-
-  m = raw.match(/^(\d{4})$/);
-  if(m) return {year:Number(m[1]), month:1, day:1};
-
-  return null;
-}
-
-function getPersonagemBirthValueV3747(personagem){
-  if(!personagem) return "";
-  return (
-    personagem.idade ||
-    personagem.data_nascimento ||
-    personagem.nascimento ||
-    personagem.aniversario ||
-    personagem.data_aniversario ||
-    personagem["idade"] ||
-    personagem["data_nascimento"] ||
-    ""
-  );
-}
-
-function getSeasonStartPartsV3747(season){
-  const start = String(season?.data_inicio || "").trim();
-
-  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
-  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
-
-  const temp = String(season?.temporada || "").trim();
-  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
-  if(m) return {year:Number(m[1]), month:8, day:1};
-
-  m = temp.match(/(\d{4})/);
-  if(m) return {year:Number(m[1]), month:1, day:1};
-
-  return null;
-}
-
-function calculateAgeAtSeasonV3747(season){
-  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-  const birthRaw = getPersonagemBirthValueV3747(personagem);
-  const birth = parseDateOrAgeV3747(birthRaw);
-  const start = getSeasonStartPartsV3747(season);
-
-  if(!birth) return "";
-  if(birth.ageFixed !== undefined) return birth.ageFixed;
-  if(!start) return "";
-
-  let age = start.year - birth.year;
-  if(start.month < birth.month || (start.month === birth.month && start.day < birth.day)) age--;
-
-  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
-  return age;
-}
-
-function cleanSeasonDateTextsV3747(card){
-  try{
-    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-
-    nodes.forEach(node=>{
-      let txt = node.nodeValue || "";
-      const cleaned = txt
-        .replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "")
-        .replace(/\s*•\s*$/g, "")
-        .replace(/^\s*•\s*/g, "")
-        .trim();
-
-      if(cleaned !== txt.trim()){
-        node.nodeValue = cleaned ? " " + cleaned : "";
-      }
-    });
-  }catch(err){}
-}
-
-function findSeasonCardsV3747(){
+function findSeasonListCardsV3750(){
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
   if(!seasons.length) return [];
 
+  // Somente cards de "Temporadas jogadas": são os que têm botão Editar e temporada/clube.
   const cards = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
-    .filter(el=>{
-      const txt = el.textContent || "";
-      if(!/jogos|gols|assist|editar/i.test(txt)) return false;
-      if(!el.querySelector("img")) return false;
+    .filter(card=>{
+      const txt = card.textContent || "";
+      if(!/editar/i.test(txt)) return false;
+      if(!/jogos|gols|assist/i.test(txt)) return false;
+      if(!card.querySelector("img")) return false;
 
-      return seasons.some(s=>{
-        return txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || ""));
-      });
+      return seasons.some(s =>
+        txt.includes(String(s.temporada || "")) &&
+        txt.includes(String(s.clube_nome || ""))
+      );
     });
 
-  // remove cards pais quando existe filho também selecionado
-  return cards.filter(card=>!cards.some(other=>other !== card && card.contains(other)));
+  // Remove pais se algum filho também foi encontrado.
+  return cards.filter(card => !cards.some(other => other !== card && card.contains(other)));
 }
 
-function injectAgeOnSeasonCardsV3747(){
-  try{
-    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-    if(!seasons.length) return;
+function removeOldBrokenAgeElementsV3750(){
+  document.querySelectorAll(
+    ".season-age-badge-v3745,.season-age-badge-v3746,.season-age-badge-v3747,.career-projection-v3747"
+  ).forEach(el=>el.remove());
+}
 
-    const cards = findSeasonCardsV3747();
+function cleanDateTextFromSeasonCardV3750(card){
+  try{
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node=>{
+      const original = node.nodeValue || "";
+      let txt = original;
+
+      txt = txt.replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "");
+      txt = txt.replace(/período não definido/gi, "");
+      txt = txt.replace(/periodo não definido/gi, "");
+      txt = txt.replace(/periodo nao definido/gi, "");
+      txt = txt.replace(/\s*•\s*$/g, "").replace(/^\s*•\s*/g, "");
+
+      if(txt !== original) node.nodeValue = txt.trim() ? txt : "";
+    });
+  }catch(err){}
+}
+
+function applySeasonCardsAgeAndEmblemV3750(){
+  try{
+    removeOldBrokenAgeElementsV3750();
+
+    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+    const cards = findSeasonListCardsV3750();
 
     cards.forEach(card=>{
-      const txt = card.textContent || "";
-      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
+      card.classList.add("season-row-clean-v3750");
+
+      const text = card.textContent || "";
+      const season = seasons.find(s =>
+        text.includes(String(s.temporada || "")) &&
+        text.includes(String(s.clube_nome || ""))
+      );
+
       if(!season) return;
 
-      cleanSeasonDateTextsV3747(card);
+      cleanDateTextFromSeasonCardV3750(card);
 
       const img = card.querySelector("img");
-      if(!img) return;
+      if(img){
+        img.classList.add("season-emblem-clean-v3750");
+        if(img.parentElement) img.parentElement.classList.add("season-emblem-box-clean-v3750");
+      }
 
-      // Corrige escudo cortado.
-      img.classList.add("season-emblem-fixed-v3747");
-      const imgBox = img.parentElement;
-      if(imgBox) imgBox.classList.add("season-emblem-box-fixed-v3747");
+      let badge = card.querySelector(".season-age-badge-v3750");
+      const age = calcAgeAtSeasonStartV3750(season);
 
-      let badge = card.querySelector(".season-age-badge-v3747");
-      const age = calculateAgeAtSeasonV3747(season);
-
-      if(age === "" || age === null || age === undefined) return;
+      if(age === "" || age === null || age === undefined){
+        if(badge) badge.remove();
+        return;
+      }
 
       if(!badge){
         badge = document.createElement("span");
-        badge.className = "season-age-badge-v3747";
-        img.insertAdjacentElement("afterend", badge);
+        badge.className = "season-age-badge-v3750";
+        if(img) img.insertAdjacentElement("afterend", badge);
+        else card.prepend(badge);
       }
 
       badge.textContent = `${age} anos`;
     });
   }catch(err){
-    console.warn("Falha ao aplicar idade/escudo nos cards:", err);
+    console.warn("Falha nos cards de temporada v3.7.50:", err);
   }
 }
 
-function getCareerTotalsV3747(){
-  const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
-
-  return stats.reduce((acc,s)=>{
-    acc.jogos += Number(s.jogos || 0);
-    acc.gols += Number(s.gols || 0);
-    acc.assistencias += Number(s.assistencias || 0);
-    return acc;
-  }, {jogos:0,gols:0,assistencias:0});
-}
-
-function getSeasonAggregatesV3747(){
+function getStatsBySeasonV3750(){
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
   const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
 
   return seasons.map(season=>{
-    const seasonStats = stats.filter(s=>String(s.carreira_temporada_id) === String(season.id));
-    const total = seasonStats.reduce((acc,s)=>{
+    const rows = stats.filter(s=>String(s.carreira_temporada_id) === String(season.id));
+    const total = rows.reduce((acc,s)=>{
       acc.jogos += Number(s.jogos || 0);
       acc.gols += Number(s.gols || 0);
       acc.assistencias += Number(s.assistencias || 0);
       return acc;
     }, {jogos:0,gols:0,assistencias:0});
 
-    total.season = season;
-    total.age = calculateAgeAtSeasonV3747(season);
-    return total;
+    return {
+      season,
+      age: calcAgeAtSeasonStartV3750(season),
+      jogos: total.jogos,
+      gols: total.gols,
+      assistencias: total.assistencias
+    };
   }).filter(x=>x.jogos || x.gols || x.assistencias);
 }
 
-function getCurrentCareerAgeV3747(){
-  const aggs = getSeasonAggregatesV3747().filter(x=>x.age !== "" && x.age !== null && x.age !== undefined);
-  if(aggs.length) return Math.max(...aggs.map(x=>Number(x.age)));
-
-  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-  const birth = parseDateOrAgeV3747(getPersonagemBirthValueV3747(personagem));
-  if(!birth) return "";
-
-  if(birth.ageFixed !== undefined) return birth.ageFixed;
-
-  const now = new Date();
-  let age = now.getFullYear() - birth.year;
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  if(month < birth.month || (month === birth.month && day < birth.day)) age--;
-
-  return age;
-}
-
-function ageDeclineFactorV3747(age){
+function ageDeclineFactorV3750(age){
   const a = Number(age);
   if(!Number.isFinite(a)) return 1;
-
   if(a <= 29) return 1;
   if(a <= 32) return Math.max(.88, 1 - (a - 29) * .04);
   if(a <= 35) return Math.max(.70, .88 - (a - 32) * .06);
@@ -8590,47 +8053,42 @@ function ageDeclineFactorV3747(age){
   return .50;
 }
 
-function buildProjectionUntil38V3747(){
-  const aggs = getSeasonAggregatesV3747();
-  const totals = getCareerTotalsV3747();
+function buildProjectionUntil38V3750(){
+  const rows = getStatsBySeasonV3750();
+  if(!rows.length) return null;
 
-  if(!aggs.length) return null;
-
-  const validSeasons = aggs.filter(a=>a.jogos > 0);
-  const avgBase = validSeasons.length ? validSeasons : aggs;
-
-  const avg = avgBase.reduce((acc,s)=>{
-    acc.jogos += s.jogos;
-    acc.gols += s.gols;
-    acc.assistencias += s.assistencias;
+  const totals = rows.reduce((acc,r)=>{
+    acc.jogos += r.jogos;
+    acc.gols += r.gols;
+    acc.assistencias += r.assistencias;
     return acc;
   }, {jogos:0,gols:0,assistencias:0});
 
-  avg.jogos /= avgBase.length || 1;
-  avg.gols /= avgBase.length || 1;
-  avg.assistencias /= avgBase.length || 1;
+  const avg = {
+    jogos: totals.jogos / rows.length,
+    gols: totals.gols / rows.length,
+    assistencias: totals.assistencias / rows.length
+  };
 
-  const currentAge = Number(getCurrentCareerAgeV3747());
-  if(!Number.isFinite(currentAge)) return null;
+  const ages = rows.map(r=>Number(r.age)).filter(n=>Number.isFinite(n));
+  const currentAge = ages.length ? Math.max(...ages) : "";
+  if(currentAge === "" || currentAge >= 38) return null;
 
-  const remainingAges = [];
+  const future = {jogos:0,gols:0,assistencias:0};
+  let seasonsLeft = 0;
+
   for(let age=currentAge+1; age<=38; age++){
-    remainingAges.push(age);
+    seasonsLeft++;
+    const f = ageDeclineFactorV3750(age);
+    future.jogos += avg.jogos * f;
+    future.gols += avg.gols * f;
+    future.assistencias += avg.assistencias * f;
   }
-
-  const future = remainingAges.reduce((acc,age)=>{
-    const f = ageDeclineFactorV3747(age);
-    acc.jogos += avg.jogos * f;
-    acc.gols += avg.gols * f;
-    acc.assistencias += avg.assistencias * f;
-    return acc;
-  }, {jogos:0,gols:0,assistencias:0});
 
   return {
     currentAge,
-    seasonsLeft: remainingAges.length,
+    seasonsLeft,
     totals,
-    avg,
     future,
     final:{
       jogos: totals.jogos + future.jogos,
@@ -8640,102 +8098,145 @@ function buildProjectionUntil38V3747(){
   };
 }
 
-function injectCareerProjectionV3747(){
+function injectProjectionBoxV3750(){
   try{
-    const projection = buildProjectionUntil38V3747();
+    const projection = buildProjectionUntil38V3750();
+    document.querySelectorAll(".career-projection-v3747").forEach(el=>el.remove());
+
     if(!projection) return;
 
     const dashboard =
-      document.querySelector("#dashboard.active, #resumo.active, .page.active") ||
-      document.querySelector("#dashboard, #resumo") ||
+      document.querySelector("#dashboard, #resumo, .page.active") ||
       document.body;
 
     if(!dashboard) return;
 
-    let box = document.querySelector(".career-projection-v3747");
-
+    let box = document.querySelector(".career-projection-v3750");
     if(!box){
       box = document.createElement("div");
-      box.className = "career-projection-v3747";
+      box.className = "career-projection-v3750";
 
       const clubsTitle = [...dashboard.querySelectorAll("h2,h3,strong")]
         .find(el=>/clubes da carreira/i.test(el.textContent || ""));
 
-      if(clubsTitle && clubsTitle.parentElement){
-        clubsTitle.parentElement.insertAdjacentElement("afterend", box);
+      if(clubsTitle){
+        clubsTitle.insertAdjacentElement("beforebegin", box);
       }else{
-        const hero = dashboard.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, section, .content-card");
+        const hero = dashboard.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, .content-card");
         if(hero) hero.appendChild(box);
         else dashboard.prepend(box);
       }
     }
 
     const p = projection;
-
     box.innerHTML = `
-      <div class="projection-title">
+      <div class="projection-title-v3750">
         <span>Previsão até 38 anos</span>
-        <small>Baseada na média por temporada com queda gradual por idade</small>
+        <small>Média por temporada com queda gradual por idade</small>
       </div>
-      <div class="projection-grid">
-        <div>
-          <small>Jogos finais</small>
-          <strong>${Math.round(p.final.jogos)}</strong>
-          <span>+${Math.round(p.future.jogos)} previstos</span>
-        </div>
-        <div>
-          <small>Gols finais</small>
-          <strong>${Math.round(p.final.gols)}</strong>
-          <span>+${Math.round(p.future.gols)} previstos</span>
-        </div>
-        <div>
-          <small>Assistências finais</small>
-          <strong>${Math.round(p.final.assistencias)}</strong>
-          <span>+${Math.round(p.future.assistencias)} previstas</span>
-        </div>
+      <div class="projection-grid-v3750">
+        <div><small>Jogos finais</small><strong>${Math.round(p.final.jogos)}</strong><span>+${Math.round(p.future.jogos)}</span></div>
+        <div><small>Gols finais</small><strong>${Math.round(p.final.gols)}</strong><span>+${Math.round(p.future.gols)}</span></div>
+        <div><small>Assistências finais</small><strong>${Math.round(p.final.assistencias)}</strong><span>+${Math.round(p.future.assistencias)}</span></div>
       </div>
-      <div class="projection-foot">
-        Idade atual estimada: ${p.currentAge} anos • ${p.seasonsLeft} temporadas restantes até 38
-      </div>
+      <div class="projection-foot-v3750">Idade atual estimada: ${p.currentAge} anos • ${p.seasonsLeft} temporadas até 38</div>
     `;
   }catch(err){
-    console.warn("Falha ao criar projeção até 38:", err);
+    console.warn("Falha na projeção v3.7.50:", err);
   }
 }
 
-function applyResumoEnhancementsV3747(){
-  injectAgeOnSeasonCardsV3747();
-  injectCareerProjectionV3747();
+function isPersonagemFormV3750(){
+  if(!form) return false;
+  const names = [...form.querySelectorAll("input, select, textarea")].map(i=>String(i.name || "").toLowerCase());
+  return names.includes("carreira_id") && names.includes("nome") && names.includes("posicao") && names.includes("nacionalidade");
 }
 
-const __renderAllOriginalV3747 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3747 && !window.__renderAllV3747Wrapped){
-  window.__renderAllV3747Wrapped = true;
+function injectPersonagemBirthFieldV3750(){
+  try{
+    if(!form || !modal?.classList?.contains("active")) return;
+    if(!isPersonagemFormV3750()) return;
+    if(form.querySelector("[name='idade']") || form.querySelector("[name='data_nascimento']")) return;
+
+    const id = form.querySelector("[name='id']")?.value || "";
+    const p = id
+      ? getTable("PERSONAGENS").find(x=>String(x.id)===String(id))
+      : (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
+
+    const value = getPersonagemBirthValueV3750(p);
+
+    const html = `
+      <div class="form-field personagem-age-field-v3750">
+        <label>Data de nascimento / idade</label>
+        <input name="data_nascimento" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/2008 ou 18">
+        <small>Usa a coluna I como data_nascimento. A coluna H pode ficar como idade/base.</small>
+      </div>
+    `;
+
+    const nacionalidade = form.querySelector("[name='nacionalidade']");
+    const field = nacionalidade?.closest(".form-field");
+    if(field) field.insertAdjacentHTML("afterend", html);
+    else form.insertAdjacentHTML("beforeend", html);
+  }catch(err){}
+}
+
+function restorePlayerImageV3750(){
+  try{
+    const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+    const url = getPersonagemImageUrlV3750(p);
+    if(!url) return;
+
+    document.querySelectorAll("img").forEach(img=>{
+      const src = img.getAttribute("src") || "";
+      const isHero = img.closest(".player-card, .profile-card, .summary-hero, .hero-card, .protagonist-card");
+      if(isHero && (!src || src.includes("undefined") || src.includes("placeholder") || src === "#")){
+        img.src = url;
+      }
+    });
+  }catch(err){}
+}
+
+function applyResumoCleanEnhancementsV3750(){
+  applySeasonCardsAgeAndEmblemV3750();
+  injectProjectionBoxV3750();
+  restorePlayerImageV3750();
+}
+
+const __renderAllOriginalV3750 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3750 && !window.__renderAllWrappedV3750){
+  window.__renderAllWrappedV3750 = true;
   renderAll = function(){
-    const result = __renderAllOriginalV3747.apply(this, arguments);
-    setTimeout(applyResumoEnhancementsV3747, 120);
-    setTimeout(applyResumoEnhancementsV3747, 700);
+    const result = __renderAllOriginalV3750.apply(this, arguments);
+    setTimeout(applyResumoCleanEnhancementsV3750, 150);
+    setTimeout(applyResumoCleanEnhancementsV3750, 800);
     return result;
   };
 }
 
-setInterval(()=>{
-  if(document.visibilityState === "visible") applyResumoEnhancementsV3747();
-}, 2500);
+const __apiPostOriginalV3750 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3750 && !window.__apiPostWrappedV3750){
+  window.__apiPostWrappedV3750 = true;
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const birthInput = form?.querySelector("[name='data_nascimento'], [name='idade']");
+        if(birthInput){
+          payload.record.data_nascimento = birthInput.value || "";
+          payload.record.idade = payload.record.idade || birthInput.value || "";
+        }
 
-window.applyResumoEnhancementsV3747 = applyResumoEnhancementsV3747;
-window.buildProjectionUntil38V3747 = buildProjectionUntil38V3747;
+        const imgInput = form?.querySelector("[name='imagem_url'], [name='foto_url'], [name='foto'], [name='image_url']");
+        if(imgInput?.value){
+          payload.record.imagem_url = imgInput.value;
+        }
+      }
+    }catch(err){}
+    return await __apiPostOriginalV3750(payload);
+  };
+}
 
-
-
-// ===== V3.7.48 FIX EDITAR TEMPORADA: TIME JÁ EXISTENTE =====
-// Corrige erro:
-// "Selecione um time pela busca da API."
-// ao editar uma temporada antiga que já tem clube salvo.
-//
-// Se selectedSeasonTeam estiver vazio, reconstrói pelo existing/clube salvo.
-
-function normalizeClubKeyV3748(value){
+// Fallback para editar temporada antiga sem selectedSeasonTeam.
+function normalizeClubKeyV3750(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -8744,41 +8245,21 @@ function normalizeClubKeyV3748(value){
     .replace(/[^a-z0-9]/g,"");
 }
 
-function findClubByNameOrIdV3748(name, id){
-  const clubs = getTable("CLUBES");
-
-  if(id){
-    const byId = clubs.find(c=>String(c.id)===String(id));
-    if(byId) return byId;
-  }
-
-  const key = normalizeClubKeyV3748(name);
-  if(!key) return null;
-
-  return clubs.find(c=>{
-    const ck = normalizeClubKeyV3748(c.nome);
-    return ck && (ck === key || ck.includes(key) || key.includes(ck));
-  }) || null;
-}
-
-function ensureSelectedSeasonTeamV3748(existing=null){
+function ensureSelectedSeasonTeamV3750(existing=null){
   if(selectedSeasonTeam && selectedSeasonTeam.name) return selectedSeasonTeam;
 
-  const inputName =
-    document.querySelector("#seasonTeamSearch")?.value ||
-    "";
+  const inputName = document.querySelector("#seasonTeamSearch")?.value || "";
+  const clubName = existing?.clube_nome || existing?.clube || inputName || "";
+  const clubId = existing?.clube_id || "";
+  const clubs = getTable("CLUBES");
 
-  const clubName =
-    existing?.clube_nome ||
-    existing?.clube ||
-    inputName ||
-    "";
-
-  const clubId =
-    existing?.clube_id ||
-    "";
-
-  const club = findClubByNameOrIdV3748(clubName, clubId);
+  const club = clubId
+    ? clubs.find(c=>String(c.id)===String(clubId))
+    : clubs.find(c=>{
+        const a = normalizeClubKeyV3750(c.nome);
+        const b = normalizeClubKeyV3750(clubName);
+        return a && b && (a === b || a.includes(b) || b.includes(a));
+      });
 
   if(!clubName && !club?.nome) return null;
 
@@ -8790,221 +8271,37 @@ function ensureSelectedSeasonTeamV3748(existing=null){
     api_id: club?.api_id || ""
   };
 
-  // Reforça box visual, se existir.
-  try{
-    const box = document.querySelector("#selectedTeamBox");
-    if(box && selectedSeasonTeam.name){
-      box.classList.add("active");
-      if(!box.innerHTML.trim()){
-        box.innerHTML = `
-          ${selectedSeasonTeam.badge ? `<img src="${escapeAttr(selectedSeasonTeam.badge)}" onerror="this.style.display='none'">` : ""}
-          <div>
-            <strong>${escapeHtml(selectedSeasonTeam.name)}</strong>
-            <small>${escapeHtml(selectedSeasonTeam.league || "")}</small>
-          </div>
-        `;
-      }
-    }
-  }catch(err){}
-
   return selectedSeasonTeam;
 }
 
-// Wrapper no saveSeasonFull: antes de montar payload, garante time.
-const __saveSeasonFullOriginalV3748 = typeof saveSeasonFullV3736 === "function" ? saveSeasonFullV3736 : null;
-if(__saveSeasonFullOriginalV3748 && !window.__saveSeasonFullTeamFallbackWrappedV3748){
-  window.__saveSeasonFullTeamFallbackWrappedV3748 = true;
-
-  saveSeasonFullV3736 = async function(data, existing=null){
-    ensureSelectedSeasonTeamV3748(existing || window.__editingSeasonRecord || null);
-    return await __saveSeasonFullOriginalV3748(data, existing);
-  };
-}
-
-// Wrapper extra no build payload, caso algum fluxo chame direto.
-const __buildSeasonFullPayloadOriginalV3748 = typeof buildSeasonFullPayloadV3736 === "function" ? buildSeasonFullPayloadV3736 : null;
-if(__buildSeasonFullPayloadOriginalV3748 && !window.__buildSeasonFullPayloadTeamFallbackWrappedV3748){
-  window.__buildSeasonFullPayloadTeamFallbackWrappedV3748 = true;
-
+const __buildSeasonFullPayloadOriginalV3750 = typeof buildSeasonFullPayloadV3736 === "function" ? buildSeasonFullPayloadV3736 : null;
+if(__buildSeasonFullPayloadOriginalV3750 && !window.__buildSeasonPayloadWrappedV3750){
+  window.__buildSeasonPayloadWrappedV3750 = true;
   buildSeasonFullPayloadV3736 = function(data, existing=null){
-    ensureSelectedSeasonTeamV3748(existing || window.__editingSeasonRecord || null);
-    return __buildSeasonFullPayloadOriginalV3748(data, existing);
+    ensureSelectedSeasonTeamV3750(existing || window.__editingSeasonRecord || null);
+    return __buildSeasonFullPayloadOriginalV3750(data, existing);
   };
 }
 
-window.ensureSelectedSeasonTeamV3748 = ensureSelectedSeasonTeamV3748;
-
-
-
-// ===== V3.7.49 RESTAURA IMAGEM DO PERSONAGEM =====
-// Corrige sumiço da imagem após ajustes de idade.
-// Lê a imagem por vários nomes possíveis e preserva no salvar PERSONAGENS.
-
-function getPersonagemImageUrlV3749(p){
-  if(!p) return "";
-
-  return (
-    p.imagem_url ||
-    p.foto_url ||
-    p.foto ||
-    p.image_url ||
-    p.avatar_url ||
-    p.avatar ||
-    p.url_imagem ||
-    p["imagem"] ||
-    p["Foto URL"] ||
-    p["foto URL"] ||
-    p["foto_url"] ||
-    ""
-  );
-}
-
-function ensurePersonagemImageFieldInModalV3749(){
-  try{
-    if(!form || !modal?.classList?.contains("active")) return;
-
-    const names = [...form.querySelectorAll("input, select, textarea")].map(i=>String(i.name || "").toLowerCase());
-    const isPersonagem =
-      names.includes("nome") &&
-      names.includes("posicao") &&
-      names.includes("nacionalidade") &&
-      names.includes("carreira_id");
-
-    if(!isPersonagem) return;
-
-    const existingImgInput =
-      form.querySelector("[name='imagem_url']") ||
-      form.querySelector("[name='foto_url']") ||
-      form.querySelector("[name='foto']") ||
-      form.querySelector("[name='image_url']");
-
-    const id = form.querySelector("[name='id']")?.value || "";
-    const personagem = id
-      ? getTable("PERSONAGENS").find(p=>String(p.id)===String(id))
-      : (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
-
-    const imgUrl = getPersonagemImageUrlV3749(personagem);
-
-    if(existingImgInput){
-      if(!existingImgInput.value && imgUrl) existingImgInput.value = imgUrl;
-      existingImgInput.name = "imagem_url";
-      return;
-    }
-
-    const html = `
-      <div class="form-field personagem-image-field-v3749">
-        <label>Foto URL</label>
-        <div class="file-row">
-          <input name="imagem_url" value="${escapeAttr(imgUrl || "")}" placeholder="URL gerada automaticamente">
-          <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
-        </div>
-        <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
-      </div>
-    `;
-
-    const nome = form.querySelector("[name='nome']");
-    const nomeField = nome?.closest(".form-field");
-
-    if(nomeField) nomeField.insertAdjacentHTML("afterend", html);
-    else form.insertAdjacentHTML("beforeend", html);
-  }catch(err){
-    console.warn("Falha ao garantir campo de imagem do personagem:", err);
-  }
-}
-
-// Preserva imagem ao salvar PERSONAGENS.
-const __apiPostOriginalV3749 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3749 && !window.__apiPostPersonagemImageWrappedV3749){
-  window.__apiPostPersonagemImageWrappedV3749 = true;
-
-  apiPost = async function(payload){
-    try{
-      if(payload && payload.table === "PERSONAGENS" && payload.record){
-        const id = payload.id || payload.record.id || form?.querySelector("[name='id']")?.value || "";
-        const old = id ? getTable("PERSONAGENS").find(p=>String(p.id)===String(id)) : null;
-
-        const imgInput =
-          form?.querySelector("[name='imagem_url']") ||
-          form?.querySelector("[name='foto_url']") ||
-          form?.querySelector("[name='foto']") ||
-          form?.querySelector("[name='image_url']");
-
-        const img = imgInput?.value || getPersonagemImageUrlV3749(old);
-
-        if(img){
-          payload.record.imagem_url = img;
-          payload.record.foto_url = img; // compatibilidade
-        }
-
-        const ageInput = form?.querySelector("[name='idade'], [name='data_nascimento']");
-        if(ageInput){
-          payload.record.idade = ageInput.value || "";
-          payload.record.data_nascimento = ageInput.value || "";
-        }
-      }
-    }catch(err){}
-
-    return await __apiPostOriginalV3749(payload);
-  };
-}
-
-// Garante campo imagem e idade após abrir modal genérico.
-const __openFormOriginalV3749 = typeof openForm === "function" ? openForm : null;
-if(__openFormOriginalV3749 && !window.__openFormPersonagemImageWrappedV3749){
-  window.__openFormPersonagemImageWrappedV3749 = true;
-
+const __openFormOriginalV3750 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3750 && !window.__openFormWrappedV3750){
+  window.__openFormWrappedV3750 = true;
   openForm = function(){
-    const result = __openFormOriginalV3749.apply(this, arguments);
-    setTimeout(ensurePersonagemImageFieldInModalV3749, 120);
-    setTimeout(ensurePersonagemImageFieldInModalV3749, 400);
-
-    if(typeof injectPersonagemBirthFieldV3746 === "function"){
-      setTimeout(injectPersonagemBirthFieldV3746, 160);
-      setTimeout(injectPersonagemBirthFieldV3746, 450);
-    }
-
-    return result;
-  };
-}
-
-// Se algum render usa foto_url/imagem_url com nomes diferentes, tenta corrigir imagem quebrada no resumo.
-function restoreBrokenPersonagemImagesV3749(){
-  try{
-    const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-    const url = getPersonagemImageUrlV3749(p);
-    if(!url) return;
-
-    document.querySelectorAll("img").forEach(img=>{
-      const altTitle = `${img.alt || ""} ${img.title || ""}`.toLowerCase();
-      const src = img.getAttribute("src") || "";
-
-      const looksLikePlayer =
-        altTitle.includes("milton") ||
-        altTitle.includes(String(p?.nome || "").toLowerCase()) ||
-        img.closest(".player-card, .profile-card, .summary-hero, .hero-card, .protagonist-card");
-
-      if(looksLikePlayer && (!src || src.includes("placeholder") || src.includes("undefined") || src === "#")){
-        img.src = url;
-      }
-    });
-  }catch(err){}
-}
-
-const __renderAllOriginalV3749 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3749 && !window.__renderAllPersonagemImageWrappedV3749){
-  window.__renderAllPersonagemImageWrappedV3749 = true;
-  renderAll = function(){
-    const result = __renderAllOriginalV3749.apply(this, arguments);
-    setTimeout(restoreBrokenPersonagemImagesV3749, 150);
-    setTimeout(restoreBrokenPersonagemImagesV3749, 700);
+    const result = __openFormOriginalV3750.apply(this, arguments);
+    setTimeout(injectPersonagemBirthFieldV3750, 150);
+    setTimeout(injectPersonagemBirthFieldV3750, 500);
     return result;
   };
 }
 
 document.addEventListener("click", function(){
-  setTimeout(ensurePersonagemImageFieldInModalV3749, 150);
+  setTimeout(injectPersonagemBirthFieldV3750, 180);
 }, true);
 
-window.getPersonagemImageUrlV3749 = getPersonagemImageUrlV3749;
-window.ensurePersonagemImageFieldInModalV3749 = ensurePersonagemImageFieldInModalV3749;
+setInterval(()=>{
+  if(document.visibilityState === "visible") applyResumoCleanEnhancementsV3750();
+}, 3000);
+
+window.applyResumoCleanEnhancementsV3750 = applyResumoCleanEnhancementsV3750;
+window.buildProjectionUntil38V3750 = buildProjectionUntil38V3750;
 

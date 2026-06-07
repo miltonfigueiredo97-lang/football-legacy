@@ -1867,130 +1867,96 @@ button[disabled],
 }
 
 
-/* ===== V3.7.45 IDADE POR TEMPORADA ===== */
-.season-age-badge-v3745{
-  display:inline-flex;
+/* ===== V3.7.50 LIMPEZA IDADE/ESCUDO/PROJEÇÃO ===== */
+.season-age-badge-v3745,
+.season-age-badge-v3746,
+.season-age-badge-v3747{
+  display:none!important;
+}
+
+.season-row-clean-v3750 .season-age-badge-v3750{
+  display:inline-flex!important;
   align-items:center;
   justify-content:center;
-  margin-left:10px;
-  padding:5px 9px;
+  margin-left:8px;
+  padding:3px 7px;
   border-radius:999px;
   background:rgba(251,191,36,.14);
-  border:1px solid rgba(251,191,36,.36);
+  border:1px solid rgba(251,191,36,.35);
   color:#fbbf24;
-  font-size:12px;
+  font-size:11px;
+  line-height:1;
   font-weight:1000;
   white-space:nowrap;
   vertical-align:middle;
+  position:static!important;
+  transform:none!important;
 }
 
-.personagem-age-field-v3745 small{
-  color:#9fb0c7;
-  font-size:12px;
-  font-weight:700;
-}
-
-
-/* ===== V3.7.46 IDADE PERSONAGEM + TEMPORADA LIMPA ===== */
-.season-age-badge-v3746{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  margin-left:10px;
-  padding:5px 9px;
-  border-radius:999px;
-  background:rgba(251,191,36,.14);
-  border:1px solid rgba(251,191,36,.38);
-  color:#fbbf24;
-  font-size:12px;
-  font-weight:1000;
-  white-space:nowrap;
-  vertical-align:middle;
-}
-
-.personagem-age-field-v3746 small{
-  color:#9fb0c7;
-  font-size:12px;
-  font-weight:700;
-}
-
-
-/* ===== V3.7.47 ESCUDOS + IDADE + PROJEÇÃO ===== */
-.season-emblem-box-fixed-v3747{
+.season-emblem-box-clean-v3750{
   overflow:visible!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
 }
 
-.season-emblem-fixed-v3747{
+.season-emblem-clean-v3750{
   object-fit:contain!important;
   object-position:center!important;
+  width:52px!important;
+  height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
   padding:5px!important;
+  box-sizing:border-box!important;
   background:rgba(255,255,255,.04)!important;
   border-radius:12px!important;
-  box-sizing:border-box!important;
-  overflow:visible!important;
 }
 
-.season-age-badge-v3747{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  margin-left:10px;
-  padding:5px 9px;
-  border-radius:999px;
-  background:rgba(251,191,36,.14);
-  border:1px solid rgba(251,191,36,.38);
-  color:#fbbf24;
-  font-size:12px;
-  font-weight:1000;
-  white-space:nowrap;
-  vertical-align:middle;
-}
-
-.career-projection-v3747{
+.career-projection-v3750{
   max-width:720px;
-  margin:18px 0 22px;
+  margin:16px 0 22px;
   padding:16px 18px;
   border-radius:22px;
-  border:1px solid rgba(251,191,36,.22);
+  border:1px solid rgba(251,191,36,.24);
   background:
-    radial-gradient(circle at top left,rgba(251,191,36,.18),transparent 38%),
+    radial-gradient(circle at top left,rgba(251,191,36,.18),transparent 36%),
     linear-gradient(135deg,rgba(33,28,18,.92),rgba(15,23,42,.88));
-  box-shadow:0 18px 50px rgba(0,0,0,.22);
 }
 
-.projection-title{
+.projection-title-v3750{
   display:flex;
   flex-direction:column;
   gap:3px;
   margin-bottom:12px;
 }
 
-.projection-title span{
+.projection-title-v3750 span{
   color:#fbbf24;
   font-weight:1000;
   font-size:16px;
 }
 
-.projection-title small{
+.projection-title-v3750 small{
   color:#cbd5e1;
   font-weight:700;
   font-size:12px;
 }
 
-.projection-grid{
+.projection-grid-v3750{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;
 }
 
-.projection-grid > div{
+.projection-grid-v3750 > div{
   padding:12px;
   border-radius:16px;
   background:rgba(15,23,42,.62);
   border:1px solid rgba(255,255,255,.08);
 }
 
-.projection-grid small{
+.projection-grid-v3750 small{
   display:block;
   color:#93c5fd;
   font-size:11px;
@@ -1998,7 +1964,7 @@ button[disabled],
   text-transform:uppercase;
 }
 
-.projection-grid strong{
+.projection-grid-v3750 strong{
   display:block;
   margin-top:3px;
   color:#fff;
@@ -2006,7 +1972,7 @@ button[disabled],
   line-height:1;
 }
 
-.projection-grid span{
+.projection-grid-v3750 span{
   display:block;
   margin-top:5px;
   color:#fbbf24;
@@ -2014,24 +1980,21 @@ button[disabled],
   font-weight:900;
 }
 
-.projection-foot{
+.projection-foot-v3750{
   margin-top:10px;
   color:#9fb0c7;
   font-size:12px;
   font-weight:800;
 }
 
-@media(max-width:800px){
-  .projection-grid{
-    grid-template-columns:1fr;
-  }
+.personagem-age-field-v3750 small{
+  color:#9fb0c7;
+  font-size:12px;
+  font-weight:700;
 }
 
-
-/* ===== V3.7.49 RESTAURA IMAGEM PERSONAGEM ===== */
-.personagem-image-field-v3749 .file-row{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:10px;
-  align-items:center;
+@media(max-width:800px){
+  .projection-grid-v3750{
+    grid-template-columns:1fr;
+  }
 }
