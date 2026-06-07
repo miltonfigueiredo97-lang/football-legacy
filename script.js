@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.69 separated delete buttons');
+console.log('Football Legacy script carregado v3.7.72 final stable tabs season x');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8881,211 +8881,364 @@ window.deleteCareerSeasonFullV3767 = deleteCareerSeasonFullV3767;
 window.injectDeleteSeasonButtonsV3767 = injectDeleteSeasonButtonsV3767;
 
 
-// ===== V3.7.69 X SEPARADO PARA ITENS DE CARREIRA =====
-// Regras:
-// - Excluir temporada continua apagando só CARREIRA_TEMPORADAS + ESTATISTICAS_CARREIRA.
-// - Campeões, Seleções, TOP11 e Bola de Ouro têm X próprio.
-// - Cada X apaga só a própria tabela/ID.
+// ===== V3.7.70 FIX X TEMPORADA VINCULADO AO CARD CERTO =====
+// Corrige bug do X de excluir temporada pegando ID de outra temporada.
+// Agora o ID vem diretamente do botão Editar temporada do mesmo card:
+// editSeasonRecord('ID')
 
-const CAREER_DELETE_TABLES_V3769 = [
-  "CAMPEOES_CARREIRA",
-  "SELECOES_CARREIRA",
-  "TOP11_CARREIRA",
-  "BOLA_DE_OURO_CARREIRA"
-];
+function getSeasonIdFromCardEditButtonV3770(card){
+  if(!card) return "";
 
-function careerDeleteLabelV3769(table){
-  const map = {
-    CAMPEOES_CARREIRA: "título/campeão",
-    SELECOES_CARREIRA: "registro da seleção",
-    TOP11_CARREIRA: "jogador do Top 11",
-    BOLA_DE_OURO_CARREIRA: "registro do Bola de Ouro"
-  };
-  return map[table] || "registro";
+  const buttons = [...card.querySelectorAll("button, a")]
+    .filter(el => /editar temporada/i.test(el.textContent || "") || String(el.getAttribute("onclick") || "").includes("editSeasonRecord"));
+
+  for(const btn of buttons){
+    const onclick = String(btn.getAttribute("onclick") || "");
+    const m = onclick.match(/editSeasonRecord\(['"]([^'"]+)['"]\)/);
+    if(m && m[1]) return m[1];
+  }
+
+  return "";
 }
 
-function recordLabelV3769(table, record){
-  if(!record) return careerDeleteLabelV3769(table);
+function findSeasonCardByEditButtonV3770(btn){
+  let el = btn.parentElement;
 
-  if(table === "CAMPEOES_CARREIRA"){
-    return `${record.temporada || ""} ${record.competicao || ""} ${record.clube || ""}`.trim() || "título/campeão";
-  }
+  for(let i=0; i<8 && el; i++){
+    const txt = el.textContent || "";
+    const rect = el.getBoundingClientRect();
 
-  if(table === "SELECOES_CARREIRA"){
-    return `${record.temporada || ""} ${record.selecao || ""}`.trim() || "registro da seleção";
-  }
-
-  if(table === "TOP11_CARREIRA"){
-    return `${record.temporada || ""} ${record.posicao_tatica || ""} ${record.jogador || ""}`.trim() || "jogador do Top 11";
-  }
-
-  if(table === "BOLA_DE_OURO_CARREIRA"){
-    return `${record.temporada || record.ano || ""} #${record.posicao || ""} ${record.jogador || ""}`.trim() || "registro do Bola de Ouro";
-  }
-
-  return record.nome || record.jogador || record.temporada || careerDeleteLabelV3769(table);
-}
-
-async function deleteCareerItemV3769(table, id){
-  const record = (db[table] || []).find(r => String(r.id) === String(id));
-  const label = recordLabelV3769(table, record);
-
-  const ok = confirm(`Excluir ${careerDeleteLabelV3769(table)}?\n\n${label}\n\nIsso apaga somente este item da tabela ${table}.`);
-
-  if(!ok) return;
-
-  try{
-    setStatus("Excluindo registro...", "loading");
-
-    const result = await apiPost({
-      action: "deleteCareerItem",
-      table,
-      id
-    });
-
-    if(!result || !result.ok){
-      throw new Error(result?.error || "Apps Script não confirmou a exclusão.");
+    if(
+      rect.width > 400 &&
+      rect.height > 50 &&
+      /editar temporada/i.test(txt) &&
+      /jogos|gols|assist/i.test(txt)
+    ){
+      return el;
     }
 
-    if(Array.isArray(db[table])){
-      db[table] = db[table].filter(r => String(r.id) !== String(id));
-    }
-
-    if(typeof renderAll === "function") renderAll();
-
-    setStatus("Registro excluído.", "ok");
-  }catch(err){
-    console.error(err);
-    setStatus("Erro ao excluir registro: " + err.message, "error");
+    el = el.parentElement;
   }
+
+  return btn.closest("article, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card") || btn.parentElement;
 }
 
-function normalizeTextDeleteV3769(value){
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .replace(/\s+/g," ")
-    .trim();
-}
-
-function cardMatchesRecordV3769(card, table, record){
-  const txt = normalizeTextDeleteV3769(card.textContent || "");
-
-  if(table === "CAMPEOES_CARREIRA"){
-    return (
-      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
-      (!record.competicao || txt.includes(normalizeTextDeleteV3769(record.competicao))) &&
-      (!record.clube || txt.includes(normalizeTextDeleteV3769(record.clube)))
-    );
-  }
-
-  if(table === "SELECOES_CARREIRA"){
-    return (
-      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
-      (!record.selecao || txt.includes(normalizeTextDeleteV3769(record.selecao))) &&
-      (
-        txt.includes("selecao") ||
-        txt.includes("seleção") ||
-        txt.includes("jogos") ||
-        txt.includes("gols")
-      )
-    );
-  }
-
-  if(table === "TOP11_CARREIRA"){
-    return (
-      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
-      (!record.jogador || txt.includes(normalizeTextDeleteV3769(record.jogador))) &&
-      (!record.posicao_tatica || txt.includes(normalizeTextDeleteV3769(record.posicao_tatica)))
-    );
-  }
-
-  if(table === "BOLA_DE_OURO_CARREIRA"){
-    return (
-      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
-      (!record.jogador || txt.includes(normalizeTextDeleteV3769(record.jogador))) &&
-      (
-        txt.includes("bola de ouro") ||
-        txt.includes("ranking") ||
-        txt.includes(normalizeTextDeleteV3769(record.jogador))
-      )
-    );
-  }
-
-  return false;
-}
-
-function findCardsForCareerDeleteV3769(table, record){
-  const generic = [...document.querySelectorAll("article, tr, .entity-card, .content-card, .season-card, .ranking-card, .record-card, .table-row, .card, li, div")]
-    .filter(el=>{
-      if(el.querySelector(".delete-career-item-x-v3769")) return false;
-
-      const rect = el.getBoundingClientRect();
-      if(rect.width < 140 || rect.height < 28) return false;
-      if(rect.height > 500) return false;
-
-      return cardMatchesRecordV3769(el, table, record);
-    });
-
-  const filtered = generic.filter(el=>!generic.some(other=>other !== el && other.contains(el)));
-
-  return filtered.slice(0, 2);
-}
-
-function injectSeparatedDeleteButtonsV3769(){
+function injectDeleteSeasonButtonsV3770(){
   try{
-    CAREER_DELETE_TABLES_V3769.forEach(table=>{
-      const rows = Array.isArray(db[table]) ? db[table] : [];
+    // Remove botões antigos que foram criados por heurística errada.
+    document.querySelectorAll(".delete-season-x-v3767").forEach(btn => btn.remove());
 
-      rows.forEach(record=>{
-        if(!record.id) return;
-
-        const cards = findCardsForCareerDeleteV3769(table, record);
-
-        cards.forEach(card=>{
-          if(card.querySelector(`.delete-career-item-x-v3769[data-table="${table}"][data-id="${String(record.id)}"]`)) return;
-
-          card.classList.add("career-delete-ready-v3769");
-
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "delete-career-item-x-v3769";
-          btn.dataset.table = table;
-          btn.dataset.id = String(record.id);
-          btn.title = `Excluir ${careerDeleteLabelV3769(table)}`;
-          btn.innerHTML = "×";
-
-          btn.addEventListener("click", function(e){
-            e.preventDefault();
-            e.stopPropagation();
-            deleteCareerItemV3769(table, record.id);
-          });
-
-          card.appendChild(btn);
-        });
+    const editButtons = [...document.querySelectorAll("button, a")]
+      .filter(el => {
+        const onclick = String(el.getAttribute("onclick") || "");
+        return /editar temporada/i.test(el.textContent || "") || onclick.includes("editSeasonRecord");
       });
+
+    editButtons.forEach(editBtn=>{
+      const onclick = String(editBtn.getAttribute("onclick") || "");
+      const m = onclick.match(/editSeasonRecord\(['"]([^'"]+)['"]\)/);
+
+      if(!m || !m[1]) return;
+
+      const seasonId = m[1];
+      const card = findSeasonCardByEditButtonV3770(editBtn);
+
+      if(!card) return;
+      if(card.querySelector(`.delete-season-x-v3770[data-season-id="${CSS.escape(String(seasonId))}"]`)) return;
+
+      card.classList.add("season-card-delete-ready-v3767", "season-card-delete-ready-v3770");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "delete-season-x-v3770";
+      btn.dataset.seasonId = String(seasonId);
+      btn.title = "Excluir esta temporada";
+      btn.innerHTML = "×";
+
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        deleteCareerSeasonFullV3767(seasonId);
+      });
+
+      card.appendChild(btn);
     });
   }catch(err){
-    console.warn("Falha ao inserir X separado:", err);
+    console.warn("Falha ao corrigir X de temporada v3.7.70:", err);
   }
 }
 
-const __renderAllOriginalV3769 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3769 && !window.__renderAllSeparatedDeleteWrappedV3769){
-  window.__renderAllSeparatedDeleteWrappedV3769 = true;
+const __renderAllOriginalV3770 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3770 && !window.__renderAllDeleteSeasonV3770Wrapped){
+  window.__renderAllDeleteSeasonV3770Wrapped = true;
 
   renderAll = function(){
-    const result = __renderAllOriginalV3769.apply(this, arguments);
-    setTimeout(injectSeparatedDeleteButtonsV3769, 150);
-    setTimeout(injectSeparatedDeleteButtonsV3769, 900);
+    const result = __renderAllOriginalV3770.apply(this, arguments);
+    setTimeout(injectDeleteSeasonButtonsV3770, 120);
+    setTimeout(injectDeleteSeasonButtonsV3770, 800);
     return result;
   };
 }
 
 document.addEventListener("click", function(){
-  setTimeout(injectSeparatedDeleteButtonsV3769, 250);
+  setTimeout(injectDeleteSeasonButtonsV3770, 250);
 }, true);
 
-window.deleteCareerItemV3769 = deleteCareerItemV3769;
-window.injectSeparatedDeleteButtonsV3769 = injectSeparatedDeleteButtonsV3769;
+window.injectDeleteSeasonButtonsV3770 = injectDeleteSeasonButtonsV3770;
+
+
+// ===== V3.7.71 REMOVE X ESPALHADOS =====
+// Remove/desativa X genéricos das outras seções.
+// Mantém apenas o X correto de temporada jogada, criado pela v3.7.70.
+
+function removeScatteredCareerDeleteXV3771(){
+  try{
+    document.querySelectorAll(".delete-career-item-x-v3769").forEach(el => el.remove());
+
+    document.querySelectorAll(".career-delete-ready-v3769").forEach(el=>{
+      el.classList.remove("career-delete-ready-v3769");
+    });
+  }catch(err){
+    console.warn("Falha ao remover X espalhados:", err);
+  }
+}
+
+// Neutraliza as funções antigas, caso tenham ficado no arquivo/cache.
+window.injectSeparatedDeleteButtonsV3769 = function(){
+  removeScatteredCareerDeleteXV3771();
+};
+
+window.deleteCareerItemV3769 = function(){
+  alert("Exclusão separada desativada nesta versão. Use apenas o X de temporada por enquanto.");
+};
+
+const __renderAllOriginalV3771 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3771 && !window.__renderAllRemoveScatteredXWrappedV3771){
+  window.__renderAllRemoveScatteredXWrappedV3771 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3771.apply(this, arguments);
+    setTimeout(removeScatteredCareerDeleteXV3771, 80);
+    setTimeout(removeScatteredCareerDeleteXV3771, 500);
+
+    if(typeof injectDeleteSeasonButtonsV3770 === "function"){
+      setTimeout(injectDeleteSeasonButtonsV3770, 140);
+      setTimeout(injectDeleteSeasonButtonsV3770, 800);
+    }
+
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(removeScatteredCareerDeleteXV3771, 120);
+  if(typeof injectDeleteSeasonButtonsV3770 === "function"){
+    setTimeout(injectDeleteSeasonButtonsV3770, 220);
+  }
+}, true);
+
+window.removeScatteredCareerDeleteXV3771 = removeScatteredCareerDeleteXV3771;
+
+
+// ===== V3.7.72 FINAL STABLE TABS + SEASON X ONLY =====
+// Pacote final desta rodada.
+// Objetivos:
+// 1) manter somente o X correto da temporada;
+// 2) remover X espalhados;
+// 3) evitar bug ao trocar de aba onde fica só o card do jogador;
+// 4) não mexer na formatação visual boa;
+// 5) manter compatibilidade com Apps Script v3.5.29.
+
+function flSafeNoopV3772(){}
+
+// Alguns builds antigos chamam funções que podem não existir depois da limpeza.
+// Isso quebrava a troca de abas e deixava só o card do jogador na tela.
+if(typeof renderSidebar !== "function") window.renderSidebar = flSafeNoopV3772;
+if(typeof renderEstatisticas !== "function" && typeof renderStats === "function") window.renderEstatisticas = renderStats;
+if(typeof renderEstatisticas !== "function") window.renderEstatisticas = flSafeNoopV3772;
+if(typeof renderTrofeus !== "function" && typeof renderTrophies === "function") window.renderTrofeus = renderTrophies;
+if(typeof renderTrofeus !== "function") window.renderTrofeus = flSafeNoopV3772;
+if(typeof renderTop11 !== "function") window.renderTop11 = flSafeNoopV3772;
+if(typeof renderMuseu !== "function") window.renderMuseu = flSafeNoopV3772;
+if(typeof renderClubes !== "function" && typeof renderClubs === "function") window.renderClubes = renderClubs;
+if(typeof renderClubes !== "function") window.renderClubes = flSafeNoopV3772;
+
+function removeScatteredCareerDeleteXV3772(){
+  try{
+    // Remove de vez X genéricos espalhados de CAMPEOES/SELECOES/TOP11/BOLA.
+    document.querySelectorAll(".delete-career-item-x-v3769").forEach(el => el.remove());
+    document.querySelectorAll(".career-delete-ready-v3769").forEach(el => el.classList.remove("career-delete-ready-v3769"));
+  }catch(err){
+    console.warn("Falha ao remover X espalhados v3.7.72:", err);
+  }
+}
+
+function cleanupWrongSeasonXV3772(){
+  try{
+    // Remove os X antigos que usavam heurística por texto e podiam apontar para outra temporada.
+    document.querySelectorAll(".delete-season-x-v3767").forEach(el => el.remove());
+  }catch(err){}
+}
+
+function getSeasonIdFromCardEditButtonV3772(card){
+  if(!card) return "";
+
+  const buttons = [...card.querySelectorAll("button, a")]
+    .filter(el => /editar temporada/i.test(el.textContent || "") || String(el.getAttribute("onclick") || "").includes("editSeasonRecord"));
+
+  for(const btn of buttons){
+    const onclick = String(btn.getAttribute("onclick") || "");
+    const m = onclick.match(/editSeasonRecord\(['"]([^'"]+)['"]\)/);
+    if(m && m[1]) return m[1];
+  }
+
+  return "";
+}
+
+function findSeasonCardByEditButtonV3772(btn){
+  let el = btn.parentElement;
+
+  for(let i=0; i<10 && el; i++){
+    const txt = el.textContent || "";
+    const rect = el.getBoundingClientRect();
+
+    if(
+      rect.width > 400 &&
+      rect.height > 50 &&
+      /editar temporada/i.test(txt) &&
+      /jogos|gols|assist/i.test(txt)
+    ){
+      return el;
+    }
+
+    el = el.parentElement;
+  }
+
+  return btn.closest("article, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card") || btn.parentElement;
+}
+
+function injectDeleteSeasonButtonsV3772(){
+  try{
+    cleanupWrongSeasonXV3772();
+
+    const editButtons = [...document.querySelectorAll("button, a")]
+      .filter(el => {
+        const onclick = String(el.getAttribute("onclick") || "");
+        return /editar temporada/i.test(el.textContent || "") || onclick.includes("editSeasonRecord");
+      });
+
+    editButtons.forEach(editBtn=>{
+      const onclick = String(editBtn.getAttribute("onclick") || "");
+      const m = onclick.match(/editSeasonRecord\(['"]([^'"]+)['"]\)/);
+      if(!m || !m[1]) return;
+
+      const seasonId = String(m[1]);
+      const card = findSeasonCardByEditButtonV3772(editBtn);
+      if(!card) return;
+
+      // Evita duplicar.
+      if(card.querySelector(`.delete-season-x-v3772[data-season-id="${CSS.escape(seasonId)}"]`)) return;
+
+      // Se ainda existir o v3770, deixa só um botão final.
+      card.querySelectorAll(".delete-season-x-v3770").forEach(old => old.remove());
+
+      card.classList.add("season-card-delete-ready-v3772");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "delete-season-x-v3772";
+      btn.dataset.seasonId = seasonId;
+      btn.title = "Excluir esta temporada";
+      btn.innerHTML = "×";
+
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+
+        if(typeof deleteCareerSeasonFullV3767 === "function"){
+          deleteCareerSeasonFullV3767(seasonId);
+        }else{
+          alert("Função de excluir temporada não encontrada.");
+        }
+      });
+
+      card.appendChild(btn);
+    });
+  }catch(err){
+    console.warn("Falha ao inserir X correto de temporada v3.7.72:", err);
+  }
+}
+
+// Corrige tela quebrada ao trocar de aba.
+// O bug acontecia quando uma renderização falhava e sobrava apenas card do jogador.
+function cleanupOrphanPlayerCardOnNonResumoV3772(){
+  try{
+    const activeNav = [...document.querySelectorAll(".active, .selected, [aria-current='page']")]
+      .map(el => (el.textContent || "").toLowerCase())
+      .join(" ");
+
+    const isResumo =
+      activeNav.includes("resumo") ||
+      document.body.dataset.page === "resumo" ||
+      location.hash.toLowerCase().includes("resumo");
+
+    if(isResumo) return;
+
+    // Em páginas que não são resumo, remove card grande do jogador se ele ficar órfão.
+    const bigCards = [...document.querySelectorAll(".player-card-onepiece, .player-card-shell-fixed, .main-player-card, .player-card")]
+      .filter(el=>{
+        const rect = el.getBoundingClientRect();
+        return rect.width > 180 && rect.height > 220;
+      });
+
+    bigCards.forEach(card=>{
+      const parentText = (card.parentElement?.textContent || "").toLowerCase();
+      const pageLooksEmpty = document.body.innerText.length < 2500;
+
+      if(pageLooksEmpty || !parentText.includes("resumo da carreira")){
+        const shell = card.closest(".player-card-shell-fixed, .hero-card, .content-card") || card;
+        shell.remove();
+      }
+    });
+  }catch(err){
+    console.warn("Falha cleanup card órfão v3.7.72:", err);
+  }
+}
+
+function stableTabsAfterRenderV3772(){
+  removeScatteredCareerDeleteXV3772();
+  cleanupWrongSeasonXV3772();
+
+  if(typeof injectDeleteSeasonButtonsV3770 === "function"){
+    try{ injectDeleteSeasonButtonsV3770(); }catch(err){}
+  }
+
+  injectDeleteSeasonButtonsV3772();
+  cleanupOrphanPlayerCardOnNonResumoV3772();
+}
+
+const __renderAllOriginalV3772 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3772 && !window.__renderAllStableTabsWrappedV3772){
+  window.__renderAllStableTabsWrappedV3772 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3772.apply(this, arguments);
+    setTimeout(stableTabsAfterRenderV3772, 80);
+    setTimeout(stableTabsAfterRenderV3772, 500);
+    setTimeout(stableTabsAfterRenderV3772, 1400);
+    return result;
+  };
+}
+
+// Também aplica em troca de aba.
+document.addEventListener("click", function(e){
+  const navClick = e.target.closest("button, a, [data-page], .nav-item, .sidebar *");
+  if(navClick){
+    setTimeout(stableTabsAfterRenderV3772, 120);
+    setTimeout(stableTabsAfterRenderV3772, 600);
+  }
+}, true);
+
+window.injectDeleteSeasonButtonsV3772 = injectDeleteSeasonButtonsV3772;
+window.removeScatteredCareerDeleteXV3772 = removeScatteredCareerDeleteXV3772;
+window.stableTabsAfterRenderV3772 = stableTabsAfterRenderV3772;
