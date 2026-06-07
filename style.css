@@ -1515,3 +1515,40 @@ button.saving::before,
     max-height:none!important;
   }
 }
+
+
+/* ===== V3.7.11 BOLA DE OURO CLUB BADGE ===== */
+.ballon-player-cell{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  max-width:100%;
+}
+
+.ballon-player-name{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.ballon-club-badge{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.35));
+}
+
+.ballon-table td:nth-child(2),
+.ballon-row .player,
+.ballon-list .player{
+  overflow:visible!important;
+}
+
+@media(max-width:900px){
+  .ballon-club-badge{
+    width:20px;
+    height:20px;
+  }
+}

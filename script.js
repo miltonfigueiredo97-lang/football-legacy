@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.10 player card full height');
+console.log('Football Legacy script carregado v3.7.12 intercontinental clubes');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -1682,7 +1682,7 @@ function competitionSuggestions(team){
     list.push("KNVB Cup","Johan Cruyff Shield");
   }
 
-  list.push("Champions League","Europa League","Conference League","Mundial de Clubes");
+  list.push("Champions League","Europa League","Conference League","Mundial de Clubes","Intercontinental de Clubes");
 
   return [...new Set(list.filter(Boolean))];
 }
@@ -4040,6 +4040,147 @@ function renderDashboardJourney(){
       </div>
     `;
   }
+}
+
+
+// ===== V3.7.11 BOLA DE OURO ESCUDO DO CLUBE + SUPERCOPA UEFA =====
+function normalizeClubKey(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/football club|fc|cf|sc|ac|afc|calcio|club de futbol/g,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function clubBadgeStatic(name){
+  const key = normalizeClubKey(name);
+
+  const map = [
+    ["parissaintgermain","https://r2.thesportsdb.com/images/media/team/badge/rwqrrq1473504808.png"],
+    ["psg","https://r2.thesportsdb.com/images/media/team/badge/rwqrrq1473504808.png"],
+    ["realmadrid","https://r2.thesportsdb.com/images/media/team/badge/vwvwrw1473502969.png"],
+    ["barcelona","https://r2.thesportsdb.com/images/media/team/badge/kkk3w61558409356.png"],
+    ["manchestercity","https://r2.thesportsdb.com/images/media/team/badge/vwpvry1467462651.png"],
+    ["manchesterunited","https://r2.thesportsdb.com/images/media/team/badge/xzqdr11517660252.png"],
+    ["liverpool","https://r2.thesportsdb.com/images/media/team/badge/spqlmo1583434991.png"],
+    ["bayernmunich","https://r2.thesportsdb.com/images/media/team/badge/2m8psv1686848407.png"],
+    ["bayernmunchen","https://r2.thesportsdb.com/images/media/team/badge/2m8psv1686848407.png"],
+    ["borussiadortmund","https://r2.thesportsdb.com/images/media/team/badge/yqppxq1473504813.png"],
+    ["chelsea","https://r2.thesportsdb.com/images/media/team/badge/yvwvtu1448813215.png"],
+    ["arsenal","https://r2.thesportsdb.com/images/media/team/badge/uyhbfe1612467038.png"],
+    ["tottenhamhotspur","https://r2.thesportsdb.com/images/media/team/badge/6l4m9v1547616546.png"],
+    ["tottenham","https://r2.thesportsdb.com/images/media/team/badge/6l4m9v1547616546.png"],
+    ["juventus","https://r2.thesportsdb.com/images/media/team/badge/83jffy1687276118.png"],
+    ["acmilan","https://r2.thesportsdb.com/images/media/team/badge/0i78xi1629706488.png"],
+    ["milan","https://r2.thesportsdb.com/images/media/team/badge/0i78xi1629706488.png"],
+    ["intermilan","https://r2.thesportsdb.com/images/media/team/badge/1dwuox1687866515.png"],
+    ["internazionale","https://r2.thesportsdb.com/images/media/team/badge/1dwuox1687866515.png"],
+    ["napoli","https://r2.thesportsdb.com/images/media/team/badge/xqk4oz1630590102.png"],
+    ["atleticomadrid","https://r2.thesportsdb.com/images/media/team/badge/83meck1670837138.png"],
+    ["benfica","https://r2.thesportsdb.com/images/media/team/badge/vwuqur1466189654.png"],
+    ["porto","https://r2.thesportsdb.com/images/media/team/badge/yxstss1466189652.png"],
+    ["sportingcp","https://r2.thesportsdb.com/images/media/team/badge/uxyxxp1466189590.png"],
+    ["ajax","https://r2.thesportsdb.com/images/media/team/badge/gtqurq1466026297.png"],
+    ["newcastleunited","https://r2.thesportsdb.com/images/media/team/badge/2j5uli1590251329.png"],
+    ["newcastle","https://r2.thesportsdb.com/images/media/team/badge/2j5uli1590251329.png"],
+    ["corinthians","https://r2.thesportsdb.com/images/media/team/badge/vvuvps1473538042.png"],
+    ["santos","https://r2.thesportsdb.com/images/media/team/badge/h5e5a81613513628.png"],
+    ["flamengo","https://r2.thesportsdb.com/images/media/team/badge/uzqoqt1473452887.png"],
+    ["palmeiras","https://r2.thesportsdb.com/images/media/team/badge/1vxxu21613513711.png"],
+    ["saopaulo","https://r2.thesportsdb.com/images/media/team/badge/1k42ae1613514162.png"],
+    ["alhilal","https://r2.thesportsdb.com/images/media/team/badge/x7i8pi1591512874.png"],
+    ["intermiami","https://r2.thesportsdb.com/images/media/team/badge/0w7ywq1591511372.png"]
+  ];
+
+  const found = map.find(([k]) => key === k || key.includes(k) || k.includes(key));
+  return found ? found[1] : "";
+}
+
+function clubBadgeForBallon(row){
+  const raw = row.clube || row.club || row.time || "";
+  if(!raw) return "";
+
+  const firstClub = String(raw).split("/")[0].split(",")[0].trim();
+  const allClubs = getTable("CLUBES");
+
+  const fromDb = allClubs.find(c =>
+    sameScope(c.nome, firstClub) ||
+    sameScope(c.nome, raw) ||
+    sameScope(firstClub, c.nome)
+  );
+
+  return (fromDb && fromDb.escudo) ? fromDb.escudo : clubBadgeStatic(firstClub || raw);
+}
+
+function renderBallonPlayerCell(row, sourceLabel=""){
+  const badge = clubBadgeForBallon(row);
+  const name = row.jogador || row.player || "-";
+  return `
+    <span class="ballon-player-cell">
+      <span class="ballon-player-name">${escapeHtml(name)}</span>
+      ${badge ? `<img class="ballon-club-badge" src="${escapeAttr(badge)}" title="${escapeAttr(row.clube || row.club || "")}" onerror="this.remove()">` : ""}
+      ${sourceLabel ? `<em class="source-pill">${escapeHtml(sourceLabel)}</em>` : ""}
+    </span>
+  `;
+}
+
+// Reforço: times europeus sempre sugerem Supercopa da UEFA.
+function competitionSuggestions(team){
+  const list = [];
+
+  if(team.league) list.push(team.league);
+
+  const country = String(team.country || "").toLowerCase();
+
+  const europeCountries = [
+    "england","spain","italy","germany","france","portugal","netherlands",
+    "belgium","scotland","turkey","austria","switzerland","ukraine",
+    "russia","greece","denmark","sweden","norway","croatia","serbia",
+    "czech","poland"
+  ];
+
+  const isEuropean = europeCountries.some(c=>country.includes(c));
+
+  if(country.includes("england")){
+    list.push("FA Cup","Carabao Cup","Community Shield");
+  }else if(country.includes("spain")){
+    list.push("Copa del Rey","Supercopa de España");
+  }else if(country.includes("italy")){
+    list.push("Coppa Italia","Supercoppa Italiana");
+  }else if(country.includes("germany")){
+    list.push("DFB-Pokal","DFL-Supercup");
+  }else if(country.includes("france")){
+    list.push("Coupe de France","Trophée des Champions");
+  }else if(country.includes("brazil")){
+    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+  }else if(country.includes("portugal")){
+    list.push("Taça de Portugal","Taça da Liga","Supertaça");
+  }else if(country.includes("netherlands")){
+    list.push("KNVB Cup","Johan Cruyff Shield");
+  }
+
+  if(isEuropean){
+    list.push("Champions League","Europa League","Conference League","Supercopa da UEFA","Mundial de Clubes","Intercontinental de Clubes");
+  }else{
+    list.push("Champions League","Europa League","Conference League","Mundial de Clubes","Intercontinental de Clubes");
+  }
+
+  return [...new Set(list.filter(Boolean))];
+}
+
+
+// ===== V3.7.12 GARANTIA INTERCONTINENTAL DE CLUBES =====
+if(typeof MAIN_SEASON_TITLES !== "undefined" && !MAIN_SEASON_TITLES.includes("Intercontinental de Clubes")){
+  MAIN_SEASON_TITLES.splice(MAIN_SEASON_TITLES.indexOf("Mundial de Clubes") + 1, 0, "Intercontinental de Clubes");
+}
+
+const __oldCompetitionSuggestionsV3712 = typeof competitionSuggestions === "function" ? competitionSuggestions : null;
+function competitionSuggestions(team){
+  const list = __oldCompetitionSuggestionsV3712 ? __oldCompetitionSuggestionsV3712(team) : [];
+  if(!list.includes("Mundial de Clubes")) list.push("Mundial de Clubes");
+  if(!list.includes("Intercontinental de Clubes")) list.push("Intercontinental de Clubes");
+  return [...new Set(list.filter(Boolean))];
 }
 
 function startFootballLegacy(){

@@ -1,3 +1,3 @@
-# Football Legacy V3.7.10
+# Football Legacy V3.7.12
 
-Ajusta o card do jogador para ocupar a altura toda da lateral do Resumo, removendo o vazio embaixo. Não altera imagem, apenas CSS/layout.
+Adiciona Intercontinental de Clubes junto do Mundial de Clubes nas sugestões de competições ao criar temporada e nos títulos gerais.
