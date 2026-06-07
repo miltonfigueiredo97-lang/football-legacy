@@ -1,3 +1,3 @@
-# Football Legacy V3.7.60
+# Football Legacy V3.7.61
 
-Seleções implementadas de forma estrutural: renderDashboardJourney e renderPlayedSeasons foram sobrescritos com HTML estável. Corrige imagem do jogador por imagem_url/foto, remove Cartões/Nota Média, renomeia G/J/A/J para nomes completos, inclui seleção por temporada à direita e cria blocos Atual/Previsto até 38 anos no resumo.
+Corrige salvamento do novo ranking Bola de Ouro. O dashboard agora força o salvamento linha por linha na aba BOLA_DE_OURO_CARREIRA, remove registros antigos da mesma temporada e mantém clube/idade/valor/imagem.

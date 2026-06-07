@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.60 selecoes estrutural limpo');
+console.log('Football Legacy script carregado v3.7.61 fix ballon save to sheets');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8465,3 +8465,221 @@ if(__openFormOriginalV3760 && !window.__openFormSelectionWrappedV3760){
 }
 
 window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
+
+
+// ===== V3.7.61 FIX BOLA DE OURO SALVAR NO SHEETS =====
+// Corrige caso o novo ranking apareça no dashboard mas não vá para BOLA_DE_OURO_CARREIRA.
+// Força salvamento linha por linha na tabela correta.
+
+function normalizeBallonSeasonValueV3761(value){
+  const raw = String(value || "").trim();
+
+  // Ex: "2024/2025 - 2025" -> salva 2025
+  let m = raw.match(/-\s*(\d{4})$/);
+  if(m) return m[1];
+
+  // Ex: "2024/2025" -> Bola de Ouro de 2025
+  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return m[2];
+
+  // Ex: "2025"
+  m = raw.match(/(\d{4})/);
+  if(m) return m[1];
+
+  return raw;
+}
+
+function getBallonFormRowsV3761(){
+  const modalRoot = form || document;
+  const rows = [];
+
+  const lineCandidates = [...modalRoot.querySelectorAll(".ballon-form-row, .ballon-row-form, tr, .ranking-row, .form-ranking-row, div")]
+    .filter(el=>{
+      const inputs = el.querySelectorAll("input,select,textarea");
+      if(inputs.length < 3) return false;
+
+      const txt = (el.textContent || "").toLowerCase();
+      return txt.includes("jogador") || inputs.length >= 4;
+    });
+
+  const finalRows = lineCandidates.filter(el=>!lineCandidates.some(other=>other !== el && other.contains(el)));
+
+  finalRows.forEach((rowEl, idx)=>{
+    const inputs = [...rowEl.querySelectorAll("input,select,textarea")];
+    if(inputs.length < 3) return;
+
+    const byName = name => rowEl.querySelector(`[name='${name}'], [data-field='${name}']`)?.value || "";
+
+    const jogador =
+      byName("jogador") ||
+      byName("nome") ||
+      inputs[0]?.value ||
+      "";
+
+    if(!String(jogador || "").trim()) return;
+
+    const pais =
+      byName("pais") ||
+      byName("país") ||
+      byName("nacionalidade") ||
+      inputs[1]?.value ||
+      "";
+
+    const clube =
+      byName("clube") ||
+      byName("club") ||
+      byName("time") ||
+      inputs.find(i=>String(i.placeholder || "").toLowerCase().includes("clube"))?.value ||
+      inputs[2]?.value ||
+      "";
+
+    const idadeInput =
+      byName("idade") ||
+      inputs.find(i=>String(i.placeholder || "").toLowerCase().includes("idade"))?.value ||
+      inputs[3]?.value ||
+      "";
+
+    const valor =
+      byName("valor") ||
+      byName("valor_mercado") ||
+      inputs.find(i=>String(i.placeholder || "").toLowerCase().includes("€"))?.value ||
+      inputs[4]?.value ||
+      "";
+
+    rows.push({
+      posicao: idx + 1,
+      jogador:String(jogador).trim(),
+      pais:String(pais).trim(),
+      nacionalidade:String(pais).trim(),
+      clube:String(clube).trim(),
+      idade:String(idadeInput).trim(),
+      valor_mercado:String(valor).trim()
+    });
+  });
+
+  return rows.slice(0,10);
+}
+
+function getBallonWinnerImageV3761(){
+  const root = form || document;
+  return (
+    root.querySelector("[name='imagem_destaque_url']")?.value ||
+    root.querySelector("[name='imagem_url']")?.value ||
+    root.querySelector("#ballonWinnerImage")?.value ||
+    root.querySelector("input[placeholder*='URL']")?.value ||
+    ""
+  );
+}
+
+function getBallonSeasonFromModalV3761(){
+  const root = form || document;
+
+  const value =
+    root.querySelector("[name='temporada']")?.value ||
+    root.querySelector("[name='ano']")?.value ||
+    root.querySelector("#ballonSeason")?.value ||
+    root.querySelector("select")?.value ||
+    "";
+
+  return normalizeBallonSeasonValueV3761(value || getActiveBallonSeason?.() || "");
+}
+
+async function saveBallonRankingCareerV3761(){
+  const btn = $("saveBtn") || document.querySelector(".gold-btn");
+  if(btn && btn.disabled) return;
+
+  const temporada = getBallonSeasonFromModalV3761();
+  const imagem = getBallonWinnerImageV3761();
+  const rows = getBallonFormRowsV3761();
+
+  if(!temporada){
+    setStatus("Erro ao salvar Bola de Ouro: selecione a temporada.", "error");
+    return;
+  }
+
+  if(!rows.length){
+    setStatus("Erro ao salvar Bola de Ouro: preencha ao menos um jogador.", "error");
+    return;
+  }
+
+  setButtonSaving(btn);
+
+  try{
+    if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
+
+    // Remove do Sheets ranking anterior dessa temporada para evitar duplicar.
+    const existing = db.BOLA_DE_OURO_CARREIRA.filter(r=>String(r.temporada) === String(temporada));
+
+    for(const old of existing){
+      if(old.id){
+        try{
+          await apiPost({
+            action:"delete",
+            table:"BOLA_DE_OURO_CARREIRA",
+            id:old.id
+          });
+        }catch(err){
+          console.warn("Não consegui apagar linha antiga Bola de Ouro:", old, err);
+        }
+      }
+    }
+
+    db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r=>String(r.temporada) !== String(temporada));
+
+    for(const row of rows){
+      const record = {
+        temporada,
+        ano: temporada,
+        posicao: row.posicao,
+        jogador: row.jogador,
+        pais: row.pais,
+        nacionalidade: row.nacionalidade || row.pais,
+        clube: row.clube,
+        idade: row.idade,
+        valor_mercado: row.valor_mercado,
+        imagem_destaque_url: row.posicao === 1 ? imagem : "",
+        imagem_url: row.posicao === 1 ? imagem : ""
+      };
+
+      const result = await apiPost({
+        action:"create",
+        table:"BOLA_DE_OURO_CARREIRA",
+        record
+      });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+      }
+
+      db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, record, result.data || {}, {
+        id: result?.data?.id || result?.id || record.id || ("local_" + Date.now() + "_" + row.posicao),
+        __source:"career"
+      }));
+    }
+
+    clearButtonSaving(btn);
+    closeModal();
+    if(typeof renderAll === "function") renderAll();
+    setStatus("Ranking Bola de Ouro salvo na planilha.", "ok");
+  }catch(err){
+    clearButtonSaving(btn);
+    console.error(err);
+    setStatus("Erro ao salvar Bola de Ouro: " + err.message, "error");
+  }
+}
+
+// Captura submit do modal Bola de Ouro e força salvamento real.
+document.addEventListener("submit", function(e){
+  const title = (modalTitle?.textContent || "").toLowerCase();
+  const isBallon =
+    title.includes("bola de ouro") ||
+    (form && form.textContent && form.textContent.toLowerCase().includes("novo ranking bola de ouro"));
+
+  if(isBallon){
+    e.preventDefault();
+    e.stopPropagation();
+    saveBallonRankingCareerV3761();
+  }
+}, true);
+
+window.saveBallonRankingCareerV3761 = saveBallonRankingCareerV3761;
