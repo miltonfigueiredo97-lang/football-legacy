@@ -1,3 +1,3 @@
-# Football Legacy V3.7.23
+# Football Legacy V3.7.24
 
-Correção visual do modal Novo ranking Bola de Ouro: inputs voltam ao estilo escuro, grid alinhado, espaçamento corrigido e botões fixos no rodapé. Não altera carregamento nem salvamento.
+Corrige salvamento infinito em adicionar/editar temporada, principalmente com Supercopa da UEFA e Intercontinental de Clubes. Usa chaves seguras para competições especiais, salva estatísticas com nome normalizado e destrava o botão mesmo se o reload do dashboard falhar.

@@ -1783,3 +1783,46 @@ button[disabled]{
     display:none;
   }
 }
+
+
+/* ===== V3.7.24 SPECIAL COMPETITIONS SAVE FIX ===== */
+.competition-pill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  color:#bfdbfe;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.competition-pill input{
+  accent-color:#fbbf24;
+}
+
+.season-stat-row{
+  display:grid;
+  grid-template-columns:minmax(190px,1.1fr) repeat(5,minmax(110px,.7fr));
+  gap:8px;
+  align-items:center;
+  padding:12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.season-stat-row strong{
+  color:#fbbf24;
+}
+
+@media(max-width:1000px){
+  .season-stat-row{
+    grid-template-columns:1fr 1fr;
+  }
+  .season-stat-row strong{
+    grid-column:1/-1;
+  }
+}

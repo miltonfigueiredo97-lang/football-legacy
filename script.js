@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.23 fix ballon modal style');
+console.log('Football Legacy script carregado v3.7.24 season save special competitions fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -5575,4 +5575,295 @@ window.addEventListener("unhandledrejection", function(e){
 });
 
 window.forceRefreshData = forceRefreshData;
+
+
+
+// ===== V3.7.24 SAVE TEMPORADA + COMPETIÇÕES ESPECIAIS =====
+// Foco: parar salvamento infinito e corrigir Supercopa da UEFA / Intercontinental de Clubes.
+
+function competitionKeySafe(name){
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+}
+
+function normalizeCompetitionName(name){
+  const raw = String(name || "").trim();
+  const key = competitionKeySafe(raw);
+
+  const aliases = {
+    "supercopa_da_uefa":"Supercopa da UEFA",
+    "uefa_super_cup":"Supercopa da UEFA",
+    "supercopa_uefa":"Supercopa da UEFA",
+    "intercontinental_de_clubes":"Intercontinental de Clubes",
+    "copa_intercontinental_de_clubes":"Intercontinental de Clubes",
+    "intercontinental_cup":"Intercontinental de Clubes",
+    "mundial_de_clubes":"Mundial de Clubes",
+    "fifa_club_world_cup":"Mundial de Clubes",
+    "champions_league":"Champions League",
+    "uefa_champions_league":"Champions League",
+    "europa_league":"Europa League",
+    "conference_league":"Conference League"
+  };
+
+  return aliases[key] || raw;
+}
+
+function sameCompetition(a,b){
+  return competitionKeySafe(normalizeCompetitionName(a)) === competitionKeySafe(normalizeCompetitionName(b));
+}
+
+function escapeName(value){
+  return competitionKeySafe(value);
+}
+
+function getSelectedSeasonCompetitions(){
+  const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
+
+  return [...new Set(checks.map(ch=>{
+    return normalizeCompetitionName(ch.dataset.competition || ch.value || ch.name || "");
+  }).filter(Boolean))];
+}
+
+function renderCompetitionSuggestions(team, preselected=[]){
+  const wrap = $("seasonCompetitionChecks");
+  if(!wrap) return;
+
+  const selected = new Set((preselected || []).map(c=>competitionKeySafe(normalizeCompetitionName(c))));
+  const suggestions = competitionSuggestions(team).map(normalizeCompetitionName);
+  const unique = [...new Set(suggestions.filter(Boolean))];
+
+  wrap.innerHTML = unique.map(comp=>{
+    const key = competitionKeySafe(comp);
+    const checked = selected.has(key) ? "checked" : "";
+    return `
+      <label class="competition-pill">
+        <input type="checkbox" value="${escapeAttr(comp)}" data-competition="${escapeAttr(comp)}" ${checked} onchange="renderSeasonStatsRowsSafe()">
+        <span>${escapeHtml(comp)}</span>
+      </label>
+    `;
+  }).join("");
+
+  renderSeasonStatsRowsSafe();
+}
+
+function renderSeasonStatsRowsSafe(){
+  const rows = $("seasonStatsRows");
+  if(!rows) return;
+
+  const comps = getSelectedSeasonCompetitions();
+  const existingStats = window.__editingSeasonStats || [];
+
+  if(!comps.length){
+    rows.innerHTML = `<small>Selecione as competições jogadas para preencher os dados.</small>`;
+    if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+    return;
+  }
+
+  rows.innerHTML = comps.map(comp=>{
+    const key = competitionKeySafe(comp);
+    const old = existingStats.find(s=>sameCompetition(s.competicao || compName(s.competicao_id), comp)) || {};
+    return `
+      <div class="season-stat-row">
+        <strong>${escapeHtml(comp)}</strong>
+        <input name="jogos_${key}" type="number" value="${escapeAttr(old.jogos || "")}" placeholder="Jogos">
+        <input name="gols_${key}" type="number" value="${escapeAttr(old.gols || "")}" placeholder="Gols">
+        <input name="assistencias_${key}" type="number" value="${escapeAttr(old.assistencias || "")}" placeholder="Assist.">
+        <input name="cartoes_${key}" type="number" value="${escapeAttr(old.cartoes || "")}" placeholder="Cartões">
+        <input name="media_geral_${key}" value="${escapeAttr(old.nota_geral || old.media_geral || "")}" placeholder="Nota">
+      </div>
+    `;
+  }).join("");
+
+  if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+}
+
+// Mantém nome antigo chamando o seguro.
+function renderSeasonStatsRows(existingStats=null){
+  if(existingStats) window.__editingSeasonStats = existingStats;
+  renderSeasonStatsRowsSafe();
+}
+
+function getCurrentSelectedCompetitionsFromModal(){
+  return getSelectedSeasonCompetitions();
+}
+
+async function saveSeasonFlow(data, button, existing=null){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+  if(!temporada) throw new Error("Informe o início no time ou a temporada.");
+
+  const comps = getCurrentSelectedCompetitionsFromModal().map(normalizeCompetitionName);
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  setButtonSaving(button);
+  setStatus("Salvando temporada...");
+
+  let clube = getTable("CLUBES").find(c => sameScope(c.nome, selectedSeasonTeam.name));
+
+  if(!clube){
+    const clubeJson = await apiPost({
+      action:"create",
+      table:"CLUBES",
+      record:{
+        nome:selectedSeasonTeam.name,
+        pais:selectedSeasonTeam.country || "",
+        escudo:selectedSeasonTeam.badge || "",
+        estadio:""
+      }
+    });
+
+    if(!clubeJson.ok) throw new Error(clubeJson.error || "Erro ao criar clube.");
+    clube = clubeJson.data;
+  }
+
+  const seasonRecord = {
+    carreira_id:active.carreira_id,
+    temporada_base_id: existing?.temporada_base_id || "",
+    temporada,
+    ordem_na_carreira: existing?.ordem_na_carreira || "",
+    clube_id:clube.id,
+    clube_nome:selectedSeasonTeam.name,
+    escudo:selectedSeasonTeam.badge || clube.escudo || "",
+    liga:selectedSeasonTeam.league || existing?.liga || "",
+    competicoes:comps.join(", "),
+    status:data.status || existing?.status || "em andamento",
+    data_inicio:data.data_inicio || "",
+    data_fim:data.data_fim || ""
+  };
+
+  const seasonPayload = existing
+    ? {action:"update", table:"CARREIRA_TEMPORADAS", id:existing.id, record:seasonRecord}
+    : {action:"create", table:"CARREIRA_TEMPORADAS", record:seasonRecord};
+
+  const tempJson = await apiPost(seasonPayload);
+  if(!tempJson.ok) throw new Error(tempJson.error || "Erro ao salvar temporada.");
+
+  const savedSeason = tempJson.data || existing || {};
+  const carreiraTemporadaId = savedSeason.id || existing?.id;
+  if(!carreiraTemporadaId) throw new Error("Não consegui identificar o ID da temporada salva.");
+
+  const oldStatsAll = getTable("ESTATISTICAS_CARREIRA").filter(s =>
+    String(s.carreira_temporada_id) === String(carreiraTemporadaId) &&
+    String(s.personagem_id) === String(active.protagonista_id)
+  );
+
+  for(const old of oldStatsAll){
+    const oldComp = normalizeCompetitionName(old.competicao || compName(old.competicao_id) || "");
+    if(oldComp && !comps.some(c=>sameCompetition(c, oldComp))){
+      try{
+        await apiPost({action:"delete", table:"ESTATISTICAS_CARREIRA", id:old.id});
+      }catch(err){
+        console.warn("Não consegui apagar estatística removida:", oldComp, err);
+      }
+    }
+  }
+
+  for(const compNameText of comps){
+    const compLabel = normalizeCompetitionName(compNameText);
+    let comp = getTable("COMPETICOES").find(c => sameCompetition(c.nome, compLabel));
+
+    if(!comp){
+      const compJson = await apiPost({
+        action:"create",
+        table:"COMPETICOES",
+        record:{nome:compLabel}
+      });
+
+      if(!compJson.ok) throw new Error(compJson.error || "Erro ao criar competição " + compLabel);
+      comp = compJson.data;
+    }
+
+    const key = competitionKeySafe(compLabel);
+    const oldStats = oldStatsAll.find(s => sameCompetition(s.competicao || compName(s.competicao_id), compLabel));
+
+    const statRecord = {
+      carreira_id:active.carreira_id,
+      carreira_temporada_id:carreiraTemporadaId,
+      personagem_id:active.protagonista_id,
+      competicao_id:comp.id,
+      competicao:compLabel,
+      jogos:data[`jogos_${key}`] || "",
+      gols:data[`gols_${key}`] || "",
+      assistencias:data[`assistencias_${key}`] || "",
+      cartoes:data[`cartoes_${key}`] || "",
+      nota_geral:data[`media_geral_${key}`] || "",
+      clube_id:clube.id,
+      clube_nome:selectedSeasonTeam.name
+    };
+
+    const statPayload = oldStats
+      ? {action:"update", table:"ESTATISTICAS_CARREIRA", id:oldStats.id, record:statRecord}
+      : {action:"create", table:"ESTATISTICAS_CARREIRA", record:statRecord};
+
+    const statJson = await apiPost(statPayload);
+    if(!statJson.ok) throw new Error(statJson.error || "Erro ao salvar estatística de " + compLabel);
+  }
+
+  active.temporada = temporada;
+  saveActive();
+
+  return {id:carreiraTemporadaId, temporada, competicoes:comps};
+}
+
+// Salvar temporada sem ficar preso esperando reload completo.
+async function finishSeasonSaveAndRefresh(button){
+  clearButtonSaving(button);
+  closeModal();
+  setStatus("Temporada salva. Atualizando dados...", "ok");
+
+  try{
+    await loadData();
+  }catch(err){
+    console.warn("Dados salvos, mas reload falhou:", err);
+    setStatus("Temporada salva na planilha. Se não aparecer, clique em Atualizar.", "warn");
+  }
+}
+
+// Reabre openSeasonFlow só para garantir estado de edição e submit destravado.
+const __oldOpenSeasonFlowV3724 = typeof openSeasonFlow === "function" ? openSeasonFlow : null;
+function openSeasonFlow(existingId=null){
+  __oldOpenSeasonFlowV3724(existingId);
+
+  setTimeout(()=>{
+    window.__editingSeasonRecord = existingId
+      ? getCareerSeasonRecords().find(t=>String(t.id)===String(existingId))
+      : null;
+
+    if(window.__editingSeasonRecord){
+      window.__editingSeasonStats = getSeasonStatsForRecord(window.__editingSeasonRecord);
+    }
+
+    form.onsubmit = async e=>{
+      e.preventDefault();
+      const btn = $("saveBtn");
+      if(btn && btn.disabled) return;
+
+      try{
+        const data = Object.fromEntries(new FormData(form).entries());
+        await saveSeasonFlow(data, btn, window.__editingSeasonRecord || null);
+
+        try{
+          if(typeof saveSeasonTitlesFlow === "function"){
+            await saveSeasonTitlesFlow(data, window.__editingSeasonRecord || null);
+          }
+        }catch(titleErr){
+          console.warn("Temporada salva, mas títulos falharam:", titleErr);
+        }
+
+        await finishSeasonSaveAndRefresh(btn);
+      }catch(err){
+        clearButtonSaving(btn);
+        console.error(err);
+        setStatus("Erro ao salvar temporada: " + err.message, "error");
+      }
+    };
+  },0);
+}
 
