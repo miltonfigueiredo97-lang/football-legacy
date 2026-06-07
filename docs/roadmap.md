@@ -1,3 +1,3 @@
-# Football Legacy V3.7.93
+# Football Legacy V3.7.94
 
-Corrige X perdido, restaura X em temporadas jogadas, organiza Melhores em lista vertical e torna leitura do TOP11_BASE mais robusta para formato largo/vertical. Exibe aviso se um Top 11 tiver menos de 11 jogadores lidos.
+Corrige TOP11_BASE com posicao_origem genérica (GOL/DEF/MEI/ATA), distribuindo os 11 jogadores pela ordem dentro da temporada. Remove X vermelho perdido no topo do resumo de forma mais agressiva.

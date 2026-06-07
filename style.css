@@ -4099,3 +4099,20 @@ body[data-current-page="museu"] #museu{
 .season-delete-x-v3793:hover{
   filter:brightness(1.15);
 }
+
+
+/* ===== V3.7.94 REMOVE X PERDIDO + TOP11 GENERIC FIX ===== */
+body > button[style*="right"][style*="top"],
+body > .delete-career-item-x-v3769,
+body > .season-delete-x-v3793,
+body > .remove-season-x-v3793{
+  display:none!important;
+}
+
+.top11-pitch-v3790 .top11-player-v3790{
+  z-index:4;
+}
+
+.top11-pitch-v3790 .top11-player-v3790:hover{
+  z-index:10;
+}
