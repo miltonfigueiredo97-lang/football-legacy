@@ -1,3 +1,3 @@
-# Football Legacy V3.7.91
+# Football Legacy V3.7.92
 
-Corrige posicionamento do Top 11 no campo horizontal: goleiro na esquerda, defesa à frente, meio no centro e ataque na direita. A TOP11_BASE ignora x/y antigos e usa mapeamento horizontal por posicao_origem.
+Top 11 base robusta: normaliza cabeçalhos e garante os 11 jogadores por ano quando a base está completa. Melhores organizado com layout limpo, sem texto vazando, e ranking por aparições desc.

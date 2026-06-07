@@ -3836,3 +3836,123 @@ body[data-current-page="museu"] #museu{
 .top11-player-v3787 .top11-info-v3787{
   min-width:118px;
 }
+
+
+/* ===== V3.7.92 TOP11 MELHORES ORGANIZADO ===== */
+.top11-best-section-v3792{
+  overflow:hidden;
+}
+
+.top11-best-head-v3792{
+  align-items:center;
+}
+
+.top11-best-list-v3792{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+  gap:10px;
+}
+
+.top11-best-card-v3792{
+  min-width:0;
+  display:grid;
+  grid-template-columns:42px 54px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  border:1px solid rgba(148,163,184,.14);
+  background:rgba(2,6,23,.28);
+  border-radius:16px;
+  padding:10px;
+  overflow:hidden;
+}
+
+.top11-best-card-v3792 .rank{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(251,191,36,.16);
+  color:#fbbf24;
+  font-weight:1000;
+}
+
+.top11-best-card-v3792 .avatar{
+  width:50px;
+  height:50px;
+  border-radius:999px;
+  border:1px solid rgba(251,191,36,.35);
+  background:#0f172a;
+  color:#fbbf24;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:1000;
+  overflow:hidden;
+}
+
+.top11-best-card-v3792 .avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.top11-best-card-v3792 .info{
+  min-width:0;
+}
+
+.top11-best-card-v3792 .name-line{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.top11-best-card-v3792 strong{
+  display:block;
+  color:#fff;
+  font-size:15px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+
+.top11-best-card-v3792 b{
+  flex:0 0 auto;
+  color:#fbbf24;
+  font-size:20px;
+  text-align:right;
+}
+
+.top11-best-card-v3792 small{
+  display:block;
+  color:#93c5fd;
+  font-weight:800;
+  font-size:11px;
+  margin-top:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.top11-best-card-v3792 em{
+  display:block;
+  color:#bfdbfe;
+  font-style:normal;
+  font-size:11px;
+  margin-top:5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.top11-pitch-v3790 .top11-player-v3790{
+  z-index:4;
+}
+
+.top11-pitch-v3790 .top11-player-v3790:hover{
+  z-index:10;
+}
