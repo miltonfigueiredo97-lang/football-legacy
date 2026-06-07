@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.41 fix get selected season competitions');
+console.log('Football Legacy script carregado v3.7.45 age by season personagem col H');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -7311,4 +7311,787 @@ function getSelectedSeasonCompetitions(){
 
 window.getSelectedSeasonCompetitionsV3736 = getSelectedSeasonCompetitionsV3736;
 window.getSelectedSeasonCompetitions = getSelectedSeasonCompetitions;
+
+
+
+// ===== V3.7.42 FAST SUMMARY STABLE =====
+// Versão focada em velocidade, baseada na v3.7.41.
+// Não mexe em openSeasonFlow, renderSeasonStatsRows nem nos botões.
+// Só troca a estratégia de carregamento:
+// - abre com action=summary
+// - carrega action=all só quando necessário ou no botão Atualizar.
+
+let FL_FULL_DB_LOADED = false;
+let FL_FULL_DB_LOADING = false;
+
+function normalizeDbAfterLoadV3742(){
+  if(!db || typeof db !== "object") db = {};
+  Object.keys(db).forEach(k=>{
+    if(!Array.isArray(db[k])) db[k] = [];
+  });
+}
+
+async function fetchActionV3742(action){
+  const base = API_URL;
+  const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
+  console.log("Football Legacy API v3.7.42:", url);
+
+  let data;
+
+  if(API_URL.startsWith("/api/")){
+    const res = await fetch(url, {cache:"no-store"});
+    data = await res.json();
+  }else{
+    try{
+      data = await fetchJsonp(`${API_URL}?action=${encodeURIComponent(action)}`);
+    }catch(err){
+      const res = await fetch(url, {cache:"no-store"});
+      data = await res.json();
+    }
+  }
+
+  if(!data || !data.ok){
+    throw new Error(data?.error || `action=${action} indisponível`);
+  }
+
+  return data.data || {};
+}
+
+function mergeDbV3742(partial){
+  if(!db || typeof db !== "object") db = {};
+  Object.keys(partial || {}).forEach(k=>{
+    db[k] = Array.isArray(partial[k]) ? partial[k] : [];
+  });
+  normalizeDbAfterLoadV3742();
+}
+
+async function loadData(){
+  setStatus("Carregando resumo...");
+
+  try{
+    const summary = await fetchActionV3742("summary");
+    db = {};
+    mergeDbV3742(summary);
+    FL_FULL_DB_LOADED = false;
+
+    console.log("Football Legacy SUMMARY carregado:", {
+      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
+      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
+      BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length,
+      COMPETICOES:getTable("COMPETICOES").length
+    });
+
+    renderAll();
+    setStatus("Resumo carregado.", "ok");
+  }catch(err){
+    console.warn("Summary falhou, carregando all:", err);
+
+    try{
+      setStatus("Resumo indisponível. Carregando banco completo...");
+      const full = await fetchActionV3742("all");
+      db = full;
+      normalizeDbAfterLoadV3742();
+      FL_FULL_DB_LOADED = true;
+
+      renderAll();
+      setStatus("Dados carregados.", "ok");
+    }catch(fullErr){
+      console.error(fullErr);
+      setStatus("Erro ao carregar Google Sheets: " + fullErr.message, "error");
+    }
+  }
+}
+
+async function loadFullDbV3742(reason=""){
+  if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
+
+  FL_FULL_DB_LOADING = true;
+  setStatus(`Carregando base completa${reason ? " para " + reason : ""}...`);
+
+  try{
+    const full = await fetchActionV3742("all");
+    db = full;
+    normalizeDbAfterLoadV3742();
+    FL_FULL_DB_LOADED = true;
+    renderAll();
+    setStatus("Base completa carregada.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao carregar base completa: " + err.message, "error");
+  }finally{
+    FL_FULL_DB_LOADING = false;
+  }
+}
+
+async function forceRefreshData(){
+  FL_FULL_DB_LOADED = false;
+  await loadFullDbV3742("atualização manual");
+}
+
+window.forceRefreshData = forceRefreshData;
+window.loadFullDbV3742 = loadFullDbV3742;
+
+// Carrega base completa apenas quando clicar em abas pesadas.
+// Sem sobrescrever navigate; usa captura de clique em botões/links existentes.
+document.addEventListener("click", function(e){
+  const el = e.target.closest("[data-page], .nav-btn, .sidebar button, .tab-btn");
+  if(!el) return;
+
+  const txt = (el.dataset?.page || el.textContent || "").toLowerCase();
+
+  const heavy =
+    txt.includes("bola") ||
+    txt.includes("records") ||
+    txt.includes("recordes") ||
+    txt.includes("trofé") ||
+    txt.includes("trofe") ||
+    txt.includes("museu");
+
+  if(heavy && !FL_FULL_DB_LOADED){
+    setTimeout(()=>loadFullDbV3742("aba pesada"), 100);
+  }
+}, true);
+
+
+
+// ===== V3.7.43 SUMMARY THEN BACKGROUND FULL =====
+// Fluxo:
+// 1. summary carrega e renderiza o Resumo rápido.
+// 2. depois de 800ms, action=all carrega em segundo plano.
+// 3. se o usuário clicar em aba pesada antes de terminar, não duplica request.
+
+let FL_BG_FULL_TIMER = null;
+
+async function loadData(){
+  setStatus("Carregando resumo...");
+
+  try{
+    const summary = await fetchActionV3742("summary");
+    db = {};
+    mergeDbV3742(summary);
+    FL_FULL_DB_LOADED = false;
+
+    console.log("Football Legacy SUMMARY carregado:", {
+      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
+      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
+      BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length,
+      COMPETICOES:getTable("COMPETICOES").length
+    });
+
+    renderAll();
+    setStatus("Resumo carregado. Carregando base completa em segundo plano...", "ok");
+
+    if(FL_BG_FULL_TIMER) clearTimeout(FL_BG_FULL_TIMER);
+
+    FL_BG_FULL_TIMER = setTimeout(()=>{
+      loadFullDbV3743Background();
+    }, 800);
+
+  }catch(err){
+    console.warn("Summary falhou, carregando all:", err);
+
+    try{
+      setStatus("Resumo indisponível. Carregando banco completo...");
+      const full = await fetchActionV3742("all");
+      db = full;
+      normalizeDbAfterLoadV3742();
+      FL_FULL_DB_LOADED = true;
+
+      renderAll();
+      setStatus("Dados carregados.", "ok");
+    }catch(fullErr){
+      console.error(fullErr);
+      setStatus("Erro ao carregar Google Sheets: " + fullErr.message, "error");
+    }
+  }
+}
+
+async function loadFullDbV3743Background(){
+  if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
+
+  FL_FULL_DB_LOADING = true;
+
+  try{
+    const full = await fetchActionV3742("all");
+
+    // Guarda página atual para não jogar o usuário para outro lugar.
+    const activePage =
+      document.querySelector(".page.active")?.id ||
+      document.querySelector("section.active")?.id ||
+      "";
+
+    db = full;
+    normalizeDbAfterLoadV3742();
+    FL_FULL_DB_LOADED = true;
+
+    console.log("Football Legacy FULL carregado em segundo plano:", {
+      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
+      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
+      BOLA_DE_OURO_BASE:getTable("BOLA_DE_OURO_BASE").length,
+      RECORDS_BASE:getTable("RECORDS_BASE").length
+    });
+
+    renderAll();
+
+    // Tenta preservar a aba atual se o renderAll mexer no estado.
+    if(activePage && typeof navigate === "function"){
+      try{ navigate(activePage); }catch(err){}
+    }
+
+    setStatus("Base completa carregada em segundo plano.", "ok");
+  }catch(err){
+    console.warn("Base completa em segundo plano falhou:", err);
+    setStatus("Resumo carregado. Base completa falhou; use Atualizar se precisar.", "warn");
+  }finally{
+    FL_FULL_DB_LOADING = false;
+  }
+}
+
+async function loadFullDbV3742(reason=""){
+  if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
+
+  FL_FULL_DB_LOADING = true;
+  setStatus(`Carregando base completa${reason ? " para " + reason : ""}...`);
+
+  try{
+    const full = await fetchActionV3742("all");
+    db = full;
+    normalizeDbAfterLoadV3742();
+    FL_FULL_DB_LOADED = true;
+    renderAll();
+    setStatus("Base completa carregada.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao carregar base completa: " + err.message, "error");
+  }finally{
+    FL_FULL_DB_LOADING = false;
+  }
+}
+
+async function forceRefreshData(){
+  FL_FULL_DB_LOADED = false;
+  if(FL_BG_FULL_TIMER) clearTimeout(FL_BG_FULL_TIMER);
+  await loadFullDbV3742("atualização manual");
+}
+
+window.forceRefreshData = forceRefreshData;
+window.loadFullDbV3742 = loadFullDbV3742;
+window.loadFullDbV3743Background = loadFullDbV3743Background;
+
+
+
+// ===== V3.7.44 BOLA DE OURO ESCUDO + RECORDS MEU NÚMERO =====
+// Não mexe em temporada.
+// Não mexe em saveSeason.
+// Não mexe em Apps Script.
+
+const clubBadgeCacheV3744 = {};
+
+function normalizeClubKeyV3744(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/football club|futebol clube|sociedade esportiva|fc|cf|ac|sc|afc|calcio|club de futbol/g,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function getBallonClubNameV3744(row){
+  return row.clube || row.club || row.time || row.equipe || "";
+}
+
+function getClubBadgeFromDbV3744(clubName){
+  if(!clubName) return "";
+
+  const first = String(clubName).split("/")[0].split(",")[0].trim();
+  const clubs = getTable("CLUBES");
+
+  const found = clubs.find(c=>{
+    const a = normalizeClubKeyV3744(c.nome);
+    const b = normalizeClubKeyV3744(first);
+    return a && b && (a === b || a.includes(b) || b.includes(a));
+  });
+
+  return found?.escudo || "";
+}
+
+function getClubBadgeStaticV3744(clubName){
+  const key = normalizeClubKeyV3744(clubName);
+
+  const map = {
+    realmadrid:"https://r2.thesportsdb.com/images/media/team/badge/vwvwrw1473502969.png",
+    barcelona:"https://r2.thesportsdb.com/images/media/team/badge/kkk3w61558409356.png",
+    manchestercity:"https://r2.thesportsdb.com/images/media/team/badge/vwpvry1467462651.png",
+    manchesterunited:"https://r2.thesportsdb.com/images/media/team/badge/xzqdr11517660252.png",
+    liverpool:"https://r2.thesportsdb.com/images/media/team/badge/spqlmo1583434991.png",
+    bayernmunich:"https://r2.thesportsdb.com/images/media/team/badge/2m8psv1686848407.png",
+    bayernmunchen:"https://r2.thesportsdb.com/images/media/team/badge/2m8psv1686848407.png",
+    borussiadortmund:"https://r2.thesportsdb.com/images/media/team/badge/yqppxq1473504813.png",
+    psg:"https://r2.thesportsdb.com/images/media/team/badge/rwqrrq1473504808.png",
+    parissaintgermain:"https://r2.thesportsdb.com/images/media/team/badge/rwqrrq1473504808.png",
+    chelsea:"https://r2.thesportsdb.com/images/media/team/badge/yvwvtu1448813215.png",
+    arsenal:"https://r2.thesportsdb.com/images/media/team/badge/uyhbfe1612467038.png",
+    juventus:"https://r2.thesportsdb.com/images/media/team/badge/83jffy1687276118.png",
+    milan:"https://r2.thesportsdb.com/images/media/team/badge/0i78xi1629706488.png",
+    acmilan:"https://r2.thesportsdb.com/images/media/team/badge/0i78xi1629706488.png",
+    intermilan:"https://r2.thesportsdb.com/images/media/team/badge/1dwuox1687866515.png",
+    internazionale:"https://r2.thesportsdb.com/images/media/team/badge/1dwuox1687866515.png",
+    napoli:"https://r2.thesportsdb.com/images/media/team/badge/xqk4oz1630590102.png",
+    atleticomadrid:"https://r2.thesportsdb.com/images/media/team/badge/83meck1670837138.png",
+    benfica:"https://r2.thesportsdb.com/images/media/team/badge/vwuqur1466189654.png",
+    porto:"https://r2.thesportsdb.com/images/media/team/badge/yxstss1466189652.png",
+    ajax:"https://r2.thesportsdb.com/images/media/team/badge/gtqurq1466026297.png",
+    newcastle:"https://r2.thesportsdb.com/images/media/team/badge/2j5uli1590251329.png",
+    newcastleunited:"https://r2.thesportsdb.com/images/media/team/badge/2j5uli1590251329.png",
+    corinthians:"https://r2.thesportsdb.com/images/media/team/badge/vvuvps1473538042.png",
+    flamengo:"https://r2.thesportsdb.com/images/media/team/badge/uzqoqt1473452887.png",
+    palmeiras:"https://r2.thesportsdb.com/images/media/team/badge/1vxxu21613513711.png",
+    saopaulo:"https://r2.thesportsdb.com/images/media/team/badge/1k42ae1613514162.png",
+    intermiami:"https://r2.thesportsdb.com/images/media/team/badge/0w7ywq1591511372.png"
+  };
+
+  return map[key] || "";
+}
+
+function getClubBadgeInitialV3744(clubName){
+  if(!clubName) return "";
+  return getClubBadgeFromDbV3744(clubName) || getClubBadgeStaticV3744(clubName) || "";
+}
+
+async function fetchClubBadgeApiV3744(clubName){
+  const first = String(clubName || "").split("/")[0].split(",")[0].trim();
+  const key = normalizeClubKeyV3744(first);
+
+  if(!first || !key) return "";
+  if(clubBadgeCacheV3744[key] !== undefined) return clubBadgeCacheV3744[key];
+
+  const initial = getClubBadgeInitialV3744(first);
+  if(initial){
+    clubBadgeCacheV3744[key] = initial;
+    return initial;
+  }
+
+  try{
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(first)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const teams = data?.teams || [];
+
+    const exact = teams.find(t=>normalizeClubKeyV3744(t.strTeam) === key) || teams[0];
+    const badge = exact?.strBadge || "";
+
+    clubBadgeCacheV3744[key] = badge || "";
+    return badge || "";
+  }catch(err){
+    console.warn("Não consegui buscar escudo via API:", first, err);
+    clubBadgeCacheV3744[key] = "";
+    return "";
+  }
+}
+
+function ballonClubBadgeHtmlV3744(row){
+  const club = getBallonClubNameV3744(row);
+  if(!club) return "";
+
+  const badge = getClubBadgeInitialV3744(club);
+  const safeClub = escapeAttr(club);
+
+  if(badge){
+    return `<img class="ballon-club-badge-v3744" src="${escapeAttr(badge)}" title="${safeClub}" onerror="this.remove()">`;
+  }
+
+  return `<span class="ballon-club-badge-placeholder-v3744" data-club="${safeClub}" title="${safeClub}"></span>`;
+}
+
+async function enrichBallonClubBadgesV3744(){
+  const placeholders = [...document.querySelectorAll(".ballon-club-badge-placeholder-v3744[data-club]")];
+
+  for(const ph of placeholders){
+    const club = ph.dataset.club || "";
+    const badge = await fetchClubBadgeApiV3744(club);
+
+    if(badge && ph.isConnected){
+      const img = document.createElement("img");
+      img.className = "ballon-club-badge-v3744";
+      img.src = badge;
+      img.title = club;
+      img.onerror = () => img.remove();
+      ph.replaceWith(img);
+    }
+  }
+}
+
+function renderBolaOuro(){
+  renderBallonSeasonSelector();
+
+  const all = getBallonAllRowsForCurrentView();
+  const season = getActiveBallonSeason();
+
+  const rawRows = all
+    .filter(r=>!season || String(r.temporada)===String(season))
+    .sort((a,b)=>num(a.posicao)-num(b.posicao));
+
+  const rows = uniqueBallonRows(rawRows).slice(0,10);
+  const winner = rows.find(r=>String(r.posicao)==="1") || rows[0];
+
+  setText("ballonSeasonLabel", season?`1º ao 10º colocado • ${season}`:"1º ao 10º colocado");
+
+  const poster = $("ballon-poster");
+  if(poster){
+    const url = winner && (winner.imagem_destaque_url || winner.imagem_url || winner.url || "");
+    if(url){
+      poster.classList.add("has-image");
+      poster.style.backgroundImage = `url("${url}")`;
+    }else{
+      poster.classList.remove("has-image");
+      poster.style.backgroundImage = "";
+    }
+  }
+
+  const list = $("ballon-ranking-list");
+  if(!list) return;
+
+  list.innerHTML = `<div class="ballon-head"><div>#</div><div>Jogador</div><div>Idade</div><div>Valor</div><div></div></div>`+
+  rows.map(r=>{
+    return `<div class="ballon-row ${String(r.posicao)==="1"?"first":""}">
+      <div>${r.posicao||"-"}</div>
+      <div class="ballon-player-cell ballon-player-cell-v3744">
+        <span class="flag-dot">${flagFrom(r.nacionalidade || r.pais)}</span>
+        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
+        ${ballonClubBadgeHtmlV3744(r)}
+      </div>
+      <div>${escapeHtml(r.idade || r.idade_na_premiacao || "-")}</div>
+      <div>${escapeHtml(r.valor_mercado || "-")}</div>
+      <div class="ballon-actions"><button onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
+    </div>`;
+  }).join("")+
+  (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
+
+  enrichBallonClubBadgesV3744();
+}
+
+function renderRecordRowsList(containerId, allRows, category, label){
+  const el = $(containerId);
+  if(!el) return;
+
+  const sortedAll = allRows
+    .filter(r=>r.categoria===category)
+    .sort((a,b)=>num(b.valor)-num(a.valor) || String(a.jogador).localeCompare(String(b.jogador)));
+
+  const top3 = sortedAll.slice(0,3);
+  const protagonist = sortedAll.find(r=>r.isProtagonist);
+  const protagonistInTop3 = protagonist && top3.some(r=>r === protagonist);
+
+  if(!sortedAll.length){
+    el.innerHTML = `<div class="record-empty">Sem dados suficientes.</div>`;
+    return;
+  }
+
+  const rowsToRender = [...top3];
+
+  if(protagonist && !protagonistInTop3){
+    rowsToRender.push(Object.assign({}, protagonist, {
+      __myNumber: true,
+      __realRank: sortedAll.indexOf(protagonist) + 1
+    }));
+  }
+
+  el.innerHTML = rowsToRender.map((r,i)=>`
+    <article class="record-row ${r.isProtagonist ? "is-player-record" : ""} ${r.__myNumber ? "my-record-outside-top" : ""}">
+      <div class="record-rank">${r.__myNumber ? "Meu" : i+1}</div>
+      <div class="record-main">
+        <strong>${escapeHtml(r.jogador)}</strong>
+        <small>
+          ${r.__myNumber ? `Meu número no filtro • posição ${r.__realRank}` : escapeHtml(r.clube || r.competicao || r.escopo_nome || "Base real")}
+          ${!r.__myNumber && r.temporada ? " • " + escapeHtml(r.temporada) : ""}
+          ${r.__myNumber && r.temporada ? " • " + escapeHtml(r.temporada) : ""}
+        </small>
+      </div>
+      <div class="record-value">
+        <strong>${num(r.valor)}</strong>
+        <small>${escapeHtml(label)}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+window.renderBolaOuro = renderBolaOuro;
+window.renderRecordRowsList = renderRecordRowsList;
+
+
+
+// ===== V3.7.45 IDADE POR TEMPORADA — PERSONAGENS COLUNA H =====
+// Coluna H de PERSONAGENS = data_nascimento / idade.
+// No card de Temporadas jogadas, mostra "X anos" logo após o escudo.
+
+function getPersonagemBirthValueV3745(personagem){
+  if(!personagem) return "";
+
+  return (
+    personagem.data_nascimento ||
+    personagem.nascimento ||
+    personagem.aniversario ||
+    personagem.data_aniversario ||
+    personagem.idade ||
+    personagem.Idade ||
+    personagem["idade"] ||
+    personagem["data_nascimento"] ||
+    ""
+  );
+}
+
+function parseBrazilianOrIsoDateV3745(value){
+  const raw = String(value || "").trim();
+  if(!raw) return null;
+
+  // Se for apenas idade numérica, não é data.
+  if(/^\d{1,3}$/.test(raw)) return { ageFixed:Number(raw) };
+
+  // yyyy-mm-dd / yyyy-mm
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m){
+    return {
+      year:Number(m[1]),
+      month:Number(m[2]),
+      day:Number(m[3] || 1)
+    };
+  }
+
+  // dd/mm/yyyy
+  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    return {
+      year:Number(m[3]),
+      month:Number(m[2]),
+      day:Number(m[1])
+    };
+  }
+
+  // mm/yyyy ou yyyy
+  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
+  if(m){
+    return {
+      year:Number(m[2]),
+      month:Number(m[1]),
+      day:1
+    };
+  }
+
+  m = raw.match(/^(\d{4})$/);
+  if(m){
+    return {
+      year:Number(m[1]),
+      month:1,
+      day:1
+    };
+  }
+
+  return null;
+}
+
+function getSeasonStartDatePartsV3745(season){
+  if(!season) return null;
+
+  const start = String(season.data_inicio || "").trim();
+
+  // yyyy-mm-dd / yyyy-mm
+  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m){
+    return {
+      year:Number(m[1]),
+      month:Number(m[2]),
+      day:Number(m[3] || 1)
+    };
+  }
+
+  // temporada 2033/2034 -> considera 01/08/2033
+  const temp = String(season.temporada || "").trim();
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m){
+    return {
+      year:Number(m[1]),
+      month:8,
+      day:1
+    };
+  }
+
+  // ano simples
+  m = temp.match(/(\d{4})/);
+  if(m){
+    return {
+      year:Number(m[1]),
+      month:1,
+      day:1
+    };
+  }
+
+  return null;
+}
+
+function calculateAgeAtSeasonStartV3745(personagem, season){
+  const birthRaw = getPersonagemBirthValueV3745(personagem);
+  const birth = parseBrazilianOrIsoDateV3745(birthRaw);
+  const start = getSeasonStartDatePartsV3745(season);
+
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined && birth.ageFixed !== null) return birth.ageFixed;
+  if(!start) return "";
+
+  let age = start.year - birth.year;
+
+  const beforeBirthday =
+    start.month < birth.month ||
+    (start.month === birth.month && start.day < birth.day);
+
+  if(beforeBirthday) age--;
+
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+function ageBadgeHtmlV3745(season){
+  const personagem = getActiveProtagonist ? getActiveProtagonist() : null;
+  const age = calculateAgeAtSeasonStartV3745(personagem, season);
+  if(age === "" || age === null || age === undefined) return "";
+  return `<span class="season-age-badge-v3745">${age} anos</span>`;
+}
+
+// Injeta idade nos cards já renderizados de temporadas jogadas, sem reescrever todo render.
+function injectSeasonAgeBadgesV3745(){
+  try{
+    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+    if(!seasons.length) return;
+
+    const cards = [...document.querySelectorAll(".season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card")];
+
+    // Fallback visual: cards grandes do resumo normalmente têm botão Editar ou escudo.
+    const likelyCards = cards.length ? cards : [...document.querySelectorAll("article, .entity-card, .summary-card")]
+      .filter(el=>/editar|jogos|gols|assist/i.test(el.textContent || ""));
+
+    likelyCards.forEach(card=>{
+      if(card.querySelector(".season-age-badge-v3745")) return;
+
+      const text = card.textContent || "";
+      const season = seasons.find(s=>{
+        return text.includes(String(s.temporada || "")) &&
+               text.includes(String(s.clube_nome || ""));
+      });
+
+      if(!season) return;
+
+      const badgeHtml = ageBadgeHtmlV3745(season);
+      if(!badgeHtml) return;
+
+      const img = card.querySelector("img");
+      if(img){
+        img.insertAdjacentHTML("afterend", badgeHtml);
+      }else{
+        const title = card.querySelector("h3, h4, strong");
+        if(title) title.insertAdjacentHTML("beforebegin", badgeHtml);
+      }
+    });
+  }catch(err){
+    console.warn("Não consegui injetar idade nas temporadas:", err);
+  }
+}
+
+// Hook seguro após renderAll, sem recursão.
+const __renderAllOriginalV3745 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3745 && !window.__renderAllAgeWrappedV3745){
+  window.__renderAllAgeWrappedV3745 = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3745.apply(this, arguments);
+    setTimeout(injectSeasonAgeBadgesV3745, 80);
+    return result;
+  };
+}
+
+// Hook seguro após render de resumo, se existir.
+const __renderDashboardOriginalV3745 = typeof renderDashboard === "function" ? renderDashboard : null;
+if(__renderDashboardOriginalV3745 && !window.__renderDashboardAgeWrappedV3745){
+  window.__renderDashboardAgeWrappedV3745 = true;
+  renderDashboard = function(){
+    const result = __renderDashboardOriginalV3745.apply(this, arguments);
+    setTimeout(injectSeasonAgeBadgesV3745, 80);
+    return result;
+  };
+}
+
+// Campo de data/idade no editar personagem.
+// Sem reescrever a tela inteira: injeta campo se o modal de personagem abrir.
+function injectPersonagemBirthFieldV3745(existing=null){
+  try{
+    if(!form || !modal?.classList?.contains("active")) return;
+    const title = (modalTitle?.textContent || "").toLowerCase();
+    if(!title.includes("personagem")) return;
+    if(form.querySelector("[name='data_nascimento']")) return;
+
+    const personagem =
+      existing ||
+      (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
+
+    const value = getPersonagemBirthValueV3745(personagem);
+
+    const html = `
+      <div class="form-field personagem-age-field-v3745">
+        <label>Data de nascimento / idade</label>
+        <input name="data_nascimento" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/1997 ou 18">
+        <small>Usa a coluna H de PERSONAGENS. Para idade por temporada, prefira data completa.</small>
+      </div>
+    `;
+
+    const firstFull = form.querySelector(".form-field.full");
+    if(firstFull) firstFull.insertAdjacentHTML("afterend", html);
+    else form.insertAdjacentHTML("beforeend", html);
+  }catch(err){
+    console.warn("Não consegui injetar campo de idade/personagem:", err);
+  }
+}
+
+// Enriquecer payload do personagem com data_nascimento se o campo existir.
+// apiPost wrapper específico para PERSONAGENS.
+const __apiPostOriginalV3745 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3745 && !window.__apiPostPersonagemAgeWrappedV3745){
+  window.__apiPostPersonagemAgeWrappedV3745 = true;
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const input = document.querySelector("form [name='data_nascimento']");
+        if(input){
+          payload.record.data_nascimento = input.value || "";
+          // compatibilidade caso a planilha use coluna H com outro nome
+          payload.record.idade = input.value || "";
+        }
+      }
+    }catch(err){}
+    return await __apiPostOriginalV3745(payload);
+  };
+}
+
+// Observa abertura de modal para injetar campo.
+const __openFormOriginalV3745 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3745 && !window.__openFormAgeWrappedV3745){
+  window.__openFormAgeWrappedV3745 = true;
+  openForm = function(table, id){
+    const result = __openFormOriginalV3745.apply(this, arguments);
+    setTimeout(()=>{
+      if(String(table || "").toLowerCase().includes("personagem")){
+        const existing = getTable("PERSONAGENS").find(p=>String(p.id)===String(id));
+        injectPersonagemBirthFieldV3745(existing);
+      }
+    }, 80);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(e){
+  const btn = e.target.closest("button, a");
+  if(!btn) return;
+  if(/personagem/i.test(btn.textContent || "")){
+    setTimeout(()=>injectPersonagemBirthFieldV3745(), 120);
+  }
+}, true);
+
+window.injectSeasonAgeBadgesV3745 = injectSeasonAgeBadgesV3745;
+window.calculateAgeAtSeasonStartV3745 = calculateAgeAtSeasonStartV3745;
 

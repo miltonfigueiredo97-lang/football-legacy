@@ -1814,3 +1814,78 @@ button[disabled],
   opacity:.7;
   cursor:wait!important;
 }
+
+
+/* ===== V3.7.42 FAST SUMMARY STABLE ===== */
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
+}
+
+
+/* ===== V3.7.44 BOLA DE OURO BADGES + RECORDS MEU NÚMERO ===== */
+.ballon-player-cell-v3744{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+
+.ballon-club-badge-v3744{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));
+}
+
+.ballon-club-badge-placeholder-v3744{
+  width:24px;
+  height:24px;
+  display:inline-block;
+  flex:0 0 auto;
+}
+
+.ballon-source-pill{
+  display:none!important;
+}
+
+.record-row.my-record-outside-top{
+  border-color:rgba(251,191,36,.42)!important;
+  background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(59,130,246,.08))!important;
+}
+
+.record-row.my-record-outside-top .record-rank{
+  font-size:12px!important;
+  color:#fbbf24!important;
+}
+
+.record-row.my-record-outside-top .record-main strong{
+  color:#fef3c7!important;
+}
+
+
+/* ===== V3.7.45 IDADE POR TEMPORADA ===== */
+.season-age-badge-v3745{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:10px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(251,191,36,.14);
+  border:1px solid rgba(251,191,36,.36);
+  color:#fbbf24;
+  font-size:12px;
+  font-weight:1000;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+
+.personagem-age-field-v3745 small{
+  color:#9fb0c7;
+  font-size:12px;
+  font-weight:700;
+}
