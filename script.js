@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.8 player card overlay fix');
+console.log('Football Legacy script carregado v3.7.9 player card dom fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -3942,30 +3942,44 @@ function renderTrofeus(){
 }
 
 
-// ===== V3.7.8 PLAYER CARD OVERLAY FIX =====
-function renderPlayerOverlayCard(protagonist){
-  const side =
-    document.querySelector(".hero-side") ||
-    document.querySelector(".hero-player") ||
-    document.querySelector(".player-card-wrap") ||
-    document.querySelector(".character-card")?.parentElement ||
-    document.querySelector(".protagonist-card")?.parentElement;
+// ===== V3.7.9 PLAYER CARD DOM FIX =====
+function findPlayerCardShell(){
+  const nameEl = $("mainCharacter") || $("protagonistCardName") || document.querySelector("[id*='Character']");
+  if(!nameEl) return null;
 
-  if(!side) return;
+  let el = nameEl;
 
-  side.classList.add("player-overlay-side");
+  for(let i=0; i<8 && el; i++){
+    const hasImg = !!el.querySelector("img, #playerPhoto, #protagonistImage");
+    const text = (el.textContent || "").toLowerCase();
+    const looksLikeCard = hasImg || text.includes("atacante") || text.includes("selecione um protagonista");
 
-  const name = protagonist ? (protagonist.nome || "Protagonista") : "Football Legacy";
+    if(looksLikeCard && el.offsetWidth > 120 && el.offsetHeight > 120){
+      return el;
+    }
+
+    el = el.parentElement;
+  }
+
+  return nameEl.parentElement;
+}
+
+function applyPlayerCardOverlay(protagonist){
+  const shell = findPlayerCardShell();
+  if(!shell) return;
+
+  const name = protagonist?.nome || "Football Legacy";
   const meta = protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "SELECIONE UM PROTAGONISTA";
-  const photo = protagonist && protagonist.foto ? protagonist.foto : "";
+  const photo = protagonist?.foto || "";
 
-  side.innerHTML = `
-    <div class="player-overlay-card ${photo ? "has-photo" : ""}" ${photo ? `style="--player-photo:url('${escapeAttr(photo)}')"` : ""}>
-      ${photo ? `<img class="player-overlay-img" src="${escapeAttr(photo)}" alt="${escapeAttr(name)}">` : `<div class="player-overlay-empty">FL</div>`}
-      <div class="player-overlay-gradient"></div>
-      <div class="player-overlay-info">
-        <strong>${escapeHtml(name)}</strong>
-        <span>${escapeHtml(meta)}</span>
+  shell.classList.add("player-card-shell-fixed");
+  shell.innerHTML = `
+    <div class="player-card-onepiece ${photo ? "has-photo" : ""}">
+      ${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(name)}">` : `<div class="player-card-fl">FL</div>`}
+      <div class="player-card-shade"></div>
+      <div class="player-card-overlay-name">
+        <strong id="mainCharacter">${escapeHtml(name)}</strong>
+        <span id="mainCharacterSub">${escapeHtml(meta)}</span>
       </div>
     </div>
   `;
@@ -3991,10 +4005,8 @@ function renderDashboardJourney(){
   setText("currentSeason", season || "Banco conectado");
   setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
   setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
-  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
-  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
 
-  renderPlayerOverlayCard(protagonist);
+  applyPlayerCardOverlay(protagonist);
 
   const meta = document.querySelector(".hero-meta");
 
