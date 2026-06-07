@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.50 clean age projection image');
+console.log('Football Legacy script carregado v3.7.51 resumo clean age projection image');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -7820,11 +7820,12 @@ window.renderRecordRowsList = renderRecordRowsList;
 
 
 
-// ===== V3.7.50 LIMPO: IDADE SÓ NAS TEMPORADAS + PROJEÇÃO + IMAGEM =====
-// Base limpa: remove as tentativas anteriores de idade que quebraram layout.
-// Não mexe em salvamento de temporada, exceto fallback de time existente.
+// ===== V3.7.51 RESUMO LIMPO: IMAGEM + IDADE CERTA + PREVISÃO =====
+// Base v3.7.44. Não usa patches antigos de idade.
+// Estrutura PERSONAGENS atual:
+// A id | B carreira_id | C nome | D posicao | E nacionalidade | F imagem_url | G observacao | H idade | I data_nascimento
 
-function flNormTextV3750(value){
+function flCleanKeyV3751(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -7832,7 +7833,7 @@ function flNormTextV3750(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function getPersonagemImageUrlV3750(p){
+function getPlayerImageV3751(p){
   if(!p) return "";
   return (
     p.imagem_url ||
@@ -7842,62 +7843,52 @@ function getPersonagemImageUrlV3750(p){
     p.avatar_url ||
     p.avatar ||
     p.url_imagem ||
-    p["Foto URL"] ||
-    p["foto_url"] ||
     ""
   );
 }
 
-function getPersonagemBirthValueV3750(p){
+function normalizePersonagensV3751(){
+  try{
+    const arr = getTable("PERSONAGENS");
+    arr.forEach(p=>{
+      if(p.imagem_url && !p.foto_url) p.foto_url = p.imagem_url;
+      if(p.foto_url && !p.imagem_url) p.imagem_url = p.foto_url;
+      if(p.data_nascimento && !p.idade) p.idade = p.data_nascimento;
+    });
+  }catch(err){}
+}
+
+function getBirthValueV3751(p){
   if(!p) return "";
-  // Sua planilha correta:
-  // H = idade
-  // I = data_nascimento
-  // Para cálculo, data_nascimento tem prioridade quando existir.
-  return (
-    p.data_nascimento ||
-    p.idade ||
-    p.nascimento ||
-    p.aniversario ||
-    p.data_aniversario ||
-    p["data_nascimento"] ||
-    p["idade"] ||
-    ""
-  );
+  return p.data_nascimento || p.idade || p.nascimento || p.aniversario || "";
 }
 
-function parseBirthOrAgeV3750(value){
+function parseBirthV3751(value){
   const raw = String(value || "").trim();
   if(!raw) return null;
 
   if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
 
-  // ISO ou Date serializado: 2008-11-20 / 2008-11-20T...
-  let m = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3])};
-
-  // dd/mm/yyyy
-  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
 
-  // Google Date string: Thu Nov 20 2008...
-  const date = new Date(raw);
-  if(!Number.isNaN(date.getTime()) && date.getFullYear() > 1900){
-    return {year:date.getFullYear(), month:date.getMonth()+1, day:date.getDate()};
+  m = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3])};
+
+  const d = new Date(raw);
+  if(!Number.isNaN(d.getTime()) && d.getFullYear() > 1900){
+    return {year:d.getFullYear(), month:d.getMonth()+1, day:d.getDate()};
   }
 
   return null;
 }
 
-function getSeasonStartV3750(season){
-  const start = String(season?.data_inicio || "").trim();
-
-  // yyyy-mm-dd / yyyy-mm
-  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+function getSeasonStartV3751(season){
+  const raw = String(season?.data_inicio || "").trim();
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
   if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
 
-  // temporada 2033/2034 -> início padrão agosto/2033
-  const temp = String(season?.temporada || "").trim();
+  const temp = String(season?.temporada || "");
   m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
   if(m) return {year:Number(m[1]), month:8, day:1};
 
@@ -7907,10 +7898,10 @@ function getSeasonStartV3750(season){
   return null;
 }
 
-function calcAgeAtSeasonStartV3750(season){
+function calcAgeSeasonStartV3751(season){
   const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-  const birth = parseBirthOrAgeV3750(getPersonagemBirthValueV3750(p));
-  const start = getSeasonStartV3750(season);
+  const birth = parseBirthV3751(getBirthValueV3751(p));
+  const start = getSeasonStartV3751(season);
 
   if(!birth) return "";
   if(birth.ageFixed !== undefined) return birth.ageFixed;
@@ -7923,83 +7914,69 @@ function calcAgeAtSeasonStartV3750(season){
   return age;
 }
 
-function findSeasonListCardsV3750(){
-  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-  if(!seasons.length) return [];
-
-  // Somente cards de "Temporadas jogadas": são os que têm botão Editar e temporada/clube.
-  const cards = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
-    .filter(card=>{
-      const txt = card.textContent || "";
-      if(!/editar/i.test(txt)) return false;
-      if(!/jogos|gols|assist/i.test(txt)) return false;
-      if(!card.querySelector("img")) return false;
-
-      return seasons.some(s =>
-        txt.includes(String(s.temporada || "")) &&
-        txt.includes(String(s.clube_nome || ""))
-      );
-    });
-
-  // Remove pais se algum filho também foi encontrado.
-  return cards.filter(card => !cards.some(other => other !== card && card.contains(other)));
-}
-
-function removeOldBrokenAgeElementsV3750(){
+function removeBadAgePatchesV3751(){
   document.querySelectorAll(
-    ".season-age-badge-v3745,.season-age-badge-v3746,.season-age-badge-v3747,.career-projection-v3747"
+    ".season-age-badge-v3745,.season-age-badge-v3746,.season-age-badge-v3747,.season-age-badge-v3750,.career-projection-v3747,.career-projection-v3750"
   ).forEach(el=>el.remove());
 }
 
-function cleanDateTextFromSeasonCardV3750(card){
+function cleanSeasonDateTextV3751(card){
   try{
     const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while(walker.nextNode()) nodes.push(walker.currentNode);
 
     nodes.forEach(node=>{
-      const original = node.nodeValue || "";
-      let txt = original;
+      const old = node.nodeValue || "";
+      let txt = old;
 
+      txt = txt.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+at[eé]\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z/gi, "");
       txt = txt.replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "");
-      txt = txt.replace(/período não definido/gi, "");
-      txt = txt.replace(/periodo não definido/gi, "");
-      txt = txt.replace(/periodo nao definido/gi, "");
+      txt = txt.replace(/per[ií]odo n[aã]o definido/gi, "");
       txt = txt.replace(/\s*•\s*$/g, "").replace(/^\s*•\s*/g, "");
 
-      if(txt !== original) node.nodeValue = txt.trim() ? txt : "";
+      if(txt !== old) node.nodeValue = txt.trim() ? txt : "";
     });
   }catch(err){}
 }
 
-function applySeasonCardsAgeAndEmblemV3750(){
-  try{
-    removeOldBrokenAgeElementsV3750();
+function findSeasonCardsOnlyV3751(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+  if(!seasons.length) return [];
 
+  const all = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
+    .filter(card=>{
+      const txt = card.textContent || "";
+      if(!/editar/i.test(txt)) return false;
+      if(!/jogos/i.test(txt)) return false;
+      if(!card.querySelector("img")) return false;
+
+      return seasons.some(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
+    });
+
+  return all.filter(card=>!all.some(other=>other !== card && card.contains(other)));
+}
+
+function applySeasonAgesV3751(){
+  try{
     const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-    const cards = findSeasonListCardsV3750();
+    const cards = findSeasonCardsOnlyV3751();
 
     cards.forEach(card=>{
-      card.classList.add("season-row-clean-v3750");
-
-      const text = card.textContent || "";
-      const season = seasons.find(s =>
-        text.includes(String(s.temporada || "")) &&
-        text.includes(String(s.clube_nome || ""))
-      );
-
+      const txt = card.textContent || "";
+      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
       if(!season) return;
 
-      cleanDateTextFromSeasonCardV3750(card);
+      cleanSeasonDateTextV3751(card);
 
       const img = card.querySelector("img");
-      if(img){
-        img.classList.add("season-emblem-clean-v3750");
-        if(img.parentElement) img.parentElement.classList.add("season-emblem-box-clean-v3750");
-      }
+      if(!img) return;
 
-      let badge = card.querySelector(".season-age-badge-v3750");
-      const age = calcAgeAtSeasonStartV3750(season);
+      img.classList.add("season-emblem-fixed-v3751");
+      if(img.parentElement) img.parentElement.classList.add("season-emblem-box-fixed-v3751");
+
+      let badge = card.querySelector(".season-age-badge-v3751");
+      const age = calcAgeSeasonStartV3751(season);
 
       if(age === "" || age === null || age === undefined){
         if(badge) badge.remove();
@@ -8008,19 +7985,60 @@ function applySeasonCardsAgeAndEmblemV3750(){
 
       if(!badge){
         badge = document.createElement("span");
-        badge.className = "season-age-badge-v3750";
-        if(img) img.insertAdjacentElement("afterend", badge);
-        else card.prepend(badge);
+        badge.className = "season-age-badge-v3751";
+
+        // Coloca fora do quadrado/caixa do escudo: depois do pai do img.
+        const box = img.parentElement && img.parentElement !== card ? img.parentElement : img;
+        box.insertAdjacentElement("afterend", badge);
       }
 
       badge.textContent = `${age} anos`;
     });
   }catch(err){
-    console.warn("Falha nos cards de temporada v3.7.50:", err);
+    console.warn("Idade temporada v3.7.51 falhou:", err);
   }
 }
 
-function getStatsBySeasonV3750(){
+function restoreHeroImageV3751(){
+  try{
+    normalizePersonagensV3751();
+
+    const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+    const url = getPlayerImageV3751(p);
+    if(!url) return;
+
+    // 1) Corrige imagens existentes quebradas.
+    document.querySelectorAll("img").forEach(img=>{
+      const src = img.getAttribute("src") || "";
+      const area = img.closest(".summary-hero,.hero-card,.career-hero,.player-card,.profile-card,.protagonist-card");
+      if(area && (!src || src.includes("undefined") || src.includes("placeholder") || src === "#")){
+        img.src = url;
+      }
+    });
+
+    // 2) Corrige o card que está mostrando "FL".
+    const possible = [...document.querySelectorAll("div, article, section")]
+      .filter(el=>{
+        const txt = (el.textContent || "").trim();
+        return txt === "FL" || (txt.includes("FL") && txt.includes(p?.nome || ""));
+      })
+      .sort((a,b)=>a.textContent.length - b.textContent.length);
+
+    const box = possible.find(el=>{
+      const rect = el.getBoundingClientRect();
+      return rect.width >= 180 && rect.height >= 180;
+    });
+
+    if(box && !box.querySelector("img.player-photo-v3751")){
+      box.classList.add("player-photo-box-v3751");
+      box.innerHTML = `<img class="player-photo-v3751" src="${escapeAttr(url)}" alt="${escapeAttr(p?.nome || "Personagem")}">`;
+    }
+  }catch(err){
+    console.warn("Imagem personagem v3.7.51 falhou:", err);
+  }
+}
+
+function getSeasonAggregatesV3751(){
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
   const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
 
@@ -8035,7 +8053,7 @@ function getStatsBySeasonV3750(){
 
     return {
       season,
-      age: calcAgeAtSeasonStartV3750(season),
+      age: calcAgeSeasonStartV3751(season),
       jogos: total.jogos,
       gols: total.gols,
       assistencias: total.assistencias
@@ -8043,7 +8061,7 @@ function getStatsBySeasonV3750(){
   }).filter(x=>x.jogos || x.gols || x.assistencias);
 }
 
-function ageDeclineFactorV3750(age){
+function declineFactorV3751(age){
   const a = Number(age);
   if(!Number.isFinite(a)) return 1;
   if(a <= 29) return 1;
@@ -8053,8 +8071,8 @@ function ageDeclineFactorV3750(age){
   return .50;
 }
 
-function buildProjectionUntil38V3750(){
-  const rows = getStatsBySeasonV3750();
+function buildProjectionV3751(){
+  const rows = getSeasonAggregatesV3751();
   if(!rows.length) return null;
 
   const totals = rows.reduce((acc,r)=>{
@@ -8070,16 +8088,18 @@ function buildProjectionUntil38V3750(){
     assistencias: totals.assistencias / rows.length
   };
 
-  const ages = rows.map(r=>Number(r.age)).filter(n=>Number.isFinite(n));
-  const currentAge = ages.length ? Math.max(...ages) : "";
-  if(currentAge === "" || currentAge >= 38) return null;
+  const ages = rows.map(r=>Number(r.age)).filter(Number.isFinite);
+  if(!ages.length) return null;
+
+  const currentAge = Math.max(...ages);
+  if(currentAge >= 38) return null;
 
   const future = {jogos:0,gols:0,assistencias:0};
   let seasonsLeft = 0;
 
   for(let age=currentAge+1; age<=38; age++){
     seasonsLeft++;
-    const f = ageDeclineFactorV3750(age);
+    const f = declineFactorV3751(age);
     future.jogos += avg.jogos * f;
     future.gols += avg.gols * f;
     future.assistencias += avg.assistencias * f;
@@ -8088,176 +8108,130 @@ function buildProjectionUntil38V3750(){
   return {
     currentAge,
     seasonsLeft,
-    totals,
-    future,
     final:{
       jogos: totals.jogos + future.jogos,
       gols: totals.gols + future.gols,
       assistencias: totals.assistencias + future.assistencias
-    }
+    },
+    future
   };
 }
 
-function injectProjectionBoxV3750(){
+function injectProjectionV3751(){
   try{
-    const projection = buildProjectionUntil38V3750();
-    document.querySelectorAll(".career-projection-v3747").forEach(el=>el.remove());
+    const p = buildProjectionV3751();
+    if(!p) return;
 
-    if(!projection) return;
+    let box = document.querySelector(".career-projection-v3751");
 
-    const dashboard =
-      document.querySelector("#dashboard, #resumo, .page.active") ||
-      document.body;
-
-    if(!dashboard) return;
-
-    let box = document.querySelector(".career-projection-v3750");
     if(!box){
-      box = document.createElement("div");
-      box.className = "career-projection-v3750";
-
-      const clubsTitle = [...dashboard.querySelectorAll("h2,h3,strong")]
+      const title = [...document.querySelectorAll("h2,h3,strong")]
         .find(el=>/clubes da carreira/i.test(el.textContent || ""));
 
-      if(clubsTitle){
-        clubsTitle.insertAdjacentElement("beforebegin", box);
-      }else{
-        const hero = dashboard.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, .content-card");
+      box = document.createElement("div");
+      box.className = "career-projection-v3751";
+
+      if(title) title.insertAdjacentElement("beforebegin", box);
+      else {
+        const hero = document.querySelector(".summary-hero,.hero-card,.career-hero,.dashboard-hero,.content-card");
         if(hero) hero.appendChild(box);
-        else dashboard.prepend(box);
       }
     }
 
-    const p = projection;
+    if(!box) return;
+
     box.innerHTML = `
-      <div class="projection-title-v3750">
+      <div class="projection-title-v3751">
         <span>Previsão até 38 anos</span>
-        <small>Média por temporada com queda gradual por idade</small>
+        <small>Média por temporada com queda gradual pela idade</small>
       </div>
-      <div class="projection-grid-v3750">
+      <div class="projection-grid-v3751">
         <div><small>Jogos finais</small><strong>${Math.round(p.final.jogos)}</strong><span>+${Math.round(p.future.jogos)}</span></div>
         <div><small>Gols finais</small><strong>${Math.round(p.final.gols)}</strong><span>+${Math.round(p.future.gols)}</span></div>
         <div><small>Assistências finais</small><strong>${Math.round(p.final.assistencias)}</strong><span>+${Math.round(p.future.assistencias)}</span></div>
       </div>
-      <div class="projection-foot-v3750">Idade atual estimada: ${p.currentAge} anos • ${p.seasonsLeft} temporadas até 38</div>
+      <div class="projection-foot-v3751">${p.currentAge} anos agora • ${p.seasonsLeft} temporadas projetadas</div>
     `;
   }catch(err){
-    console.warn("Falha na projeção v3.7.50:", err);
+    console.warn("Projeção v3.7.51 falhou:", err);
   }
 }
 
-function isPersonagemFormV3750(){
+function isPersonagemFormV3751(){
   if(!form) return false;
-  const names = [...form.querySelectorAll("input, select, textarea")].map(i=>String(i.name || "").toLowerCase());
+  const names = [...form.querySelectorAll("input,select,textarea")].map(i=>String(i.name || "").toLowerCase());
   return names.includes("carreira_id") && names.includes("nome") && names.includes("posicao") && names.includes("nacionalidade");
 }
 
-function injectPersonagemBirthFieldV3750(){
+function injectBirthFieldV3751(){
   try{
     if(!form || !modal?.classList?.contains("active")) return;
-    if(!isPersonagemFormV3750()) return;
-    if(form.querySelector("[name='idade']") || form.querySelector("[name='data_nascimento']")) return;
+    if(!isPersonagemFormV3751()) return;
+    if(form.querySelector("[name='data_nascimento']")) return;
 
     const id = form.querySelector("[name='id']")?.value || "";
-    const p = id
-      ? getTable("PERSONAGENS").find(x=>String(x.id)===String(id))
-      : (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
-
-    const value = getPersonagemBirthValueV3750(p);
+    const p = id ? getTable("PERSONAGENS").find(x=>String(x.id)===String(id)) : getActiveProtagonist();
+    const value = getBirthValueV3751(p);
 
     const html = `
-      <div class="form-field personagem-age-field-v3750">
-        <label>Data de nascimento / idade</label>
-        <input name="data_nascimento" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/2008 ou 18">
-        <small>Usa a coluna I como data_nascimento. A coluna H pode ficar como idade/base.</small>
+      <div class="form-field personagem-birth-v3751">
+        <label>Data de nascimento</label>
+        <input name="data_nascimento" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/2008">
+        <small>Usa a coluna I. A coluna H pode ficar com idade/base.</small>
       </div>
     `;
 
-    const nacionalidade = form.querySelector("[name='nacionalidade']");
-    const field = nacionalidade?.closest(".form-field");
+    const nac = form.querySelector("[name='nacionalidade']");
+    const field = nac?.closest(".form-field");
     if(field) field.insertAdjacentHTML("afterend", html);
     else form.insertAdjacentHTML("beforeend", html);
   }catch(err){}
 }
 
-function restorePlayerImageV3750(){
-  try{
-    const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-    const url = getPersonagemImageUrlV3750(p);
-    if(!url) return;
+const __apiPostOriginalV3751 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3751 && !window.__apiPostWrappedV3751){
+  window.__apiPostWrappedV3751 = true;
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const birth = form?.querySelector("[name='data_nascimento']")?.value || "";
+        if(birth){
+          payload.record.data_nascimento = birth;
+          payload.record.idade = payload.record.idade || "";
+        }
 
-    document.querySelectorAll("img").forEach(img=>{
-      const src = img.getAttribute("src") || "";
-      const isHero = img.closest(".player-card, .profile-card, .summary-hero, .hero-card, .protagonist-card");
-      if(isHero && (!src || src.includes("undefined") || src.includes("placeholder") || src === "#")){
-        img.src = url;
+        const img = form?.querySelector("[name='imagem_url']")?.value || "";
+        if(img) payload.record.imagem_url = img;
       }
-    });
-  }catch(err){}
+    }catch(err){}
+    return await __apiPostOriginalV3751(payload);
+  };
 }
 
-function applyResumoCleanEnhancementsV3750(){
-  applySeasonCardsAgeAndEmblemV3750();
-  injectProjectionBoxV3750();
-  restorePlayerImageV3750();
-}
-
-const __renderAllOriginalV3750 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3750 && !window.__renderAllWrappedV3750){
-  window.__renderAllWrappedV3750 = true;
-  renderAll = function(){
-    const result = __renderAllOriginalV3750.apply(this, arguments);
-    setTimeout(applyResumoCleanEnhancementsV3750, 150);
-    setTimeout(applyResumoCleanEnhancementsV3750, 800);
+const __openFormOriginalV3751 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3751 && !window.__openFormWrappedV3751){
+  window.__openFormWrappedV3751 = true;
+  openForm = function(){
+    const result = __openFormOriginalV3751.apply(this, arguments);
+    setTimeout(injectBirthFieldV3751, 120);
+    setTimeout(injectBirthFieldV3751, 400);
     return result;
   };
 }
 
-const __apiPostOriginalV3750 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3750 && !window.__apiPostWrappedV3750){
-  window.__apiPostWrappedV3750 = true;
-  apiPost = async function(payload){
-    try{
-      if(payload && payload.table === "PERSONAGENS" && payload.record){
-        const birthInput = form?.querySelector("[name='data_nascimento'], [name='idade']");
-        if(birthInput){
-          payload.record.data_nascimento = birthInput.value || "";
-          payload.record.idade = payload.record.idade || birthInput.value || "";
-        }
-
-        const imgInput = form?.querySelector("[name='imagem_url'], [name='foto_url'], [name='foto'], [name='image_url']");
-        if(imgInput?.value){
-          payload.record.imagem_url = imgInput.value;
-        }
-      }
-    }catch(err){}
-    return await __apiPostOriginalV3750(payload);
-  };
-}
-
-// Fallback para editar temporada antiga sem selectedSeasonTeam.
-function normalizeClubKeyV3750(value){
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .replace(/football club|futebol clube|sociedade esportiva|fc|cf|ac|sc|afc|calcio|club de futbol/g,"")
-    .replace(/[^a-z0-9]/g,"");
-}
-
-function ensureSelectedSeasonTeamV3750(existing=null){
+// Fallback do time ao editar temporada antiga.
+function ensureSelectedSeasonTeamV3751(existing=null){
   if(selectedSeasonTeam && selectedSeasonTeam.name) return selectedSeasonTeam;
 
-  const inputName = document.querySelector("#seasonTeamSearch")?.value || "";
-  const clubName = existing?.clube_nome || existing?.clube || inputName || "";
+  const clubName = existing?.clube_nome || existing?.clube || document.querySelector("#seasonTeamSearch")?.value || "";
   const clubId = existing?.clube_id || "";
   const clubs = getTable("CLUBES");
 
   const club = clubId
     ? clubs.find(c=>String(c.id)===String(clubId))
     : clubs.find(c=>{
-        const a = normalizeClubKeyV3750(c.nome);
-        const b = normalizeClubKeyV3750(clubName);
+        const a = flCleanKeyV3751(c.nome);
+        const b = flCleanKeyV3751(clubName);
         return a && b && (a === b || a.includes(b) || b.includes(a));
       });
 
@@ -8266,7 +8240,7 @@ function ensureSelectedSeasonTeamV3750(existing=null){
   selectedSeasonTeam = {
     name: clubName || club?.nome || "",
     league: existing?.liga || club?.liga || "",
-    country: club?.pais || existing?.pais || "",
+    country: club?.pais || "",
     badge: existing?.escudo || club?.escudo || "",
     api_id: club?.api_id || ""
   };
@@ -8274,34 +8248,42 @@ function ensureSelectedSeasonTeamV3750(existing=null){
   return selectedSeasonTeam;
 }
 
-const __buildSeasonFullPayloadOriginalV3750 = typeof buildSeasonFullPayloadV3736 === "function" ? buildSeasonFullPayloadV3736 : null;
-if(__buildSeasonFullPayloadOriginalV3750 && !window.__buildSeasonPayloadWrappedV3750){
-  window.__buildSeasonPayloadWrappedV3750 = true;
+const __buildPayloadOriginalV3751 = typeof buildSeasonFullPayloadV3736 === "function" ? buildSeasonFullPayloadV3736 : null;
+if(__buildPayloadOriginalV3751 && !window.__buildPayloadWrappedV3751){
+  window.__buildPayloadWrappedV3751 = true;
   buildSeasonFullPayloadV3736 = function(data, existing=null){
-    ensureSelectedSeasonTeamV3750(existing || window.__editingSeasonRecord || null);
-    return __buildSeasonFullPayloadOriginalV3750(data, existing);
+    ensureSelectedSeasonTeamV3751(existing || window.__editingSeasonRecord || null);
+    return __buildPayloadOriginalV3751(data, existing);
   };
 }
 
-const __openFormOriginalV3750 = typeof openForm === "function" ? openForm : null;
-if(__openFormOriginalV3750 && !window.__openFormWrappedV3750){
-  window.__openFormWrappedV3750 = true;
-  openForm = function(){
-    const result = __openFormOriginalV3750.apply(this, arguments);
-    setTimeout(injectPersonagemBirthFieldV3750, 150);
-    setTimeout(injectPersonagemBirthFieldV3750, 500);
+function applyResumoFixesV3751(){
+  normalizePersonagensV3751();
+  removeBadAgePatchesV3751();
+  applySeasonAgesV3751();
+  restoreHeroImageV3751();
+  injectProjectionV3751();
+}
+
+const __renderAllOriginalV3751 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3751 && !window.__renderAllWrappedV3751){
+  window.__renderAllWrappedV3751 = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3751.apply(this, arguments);
+    setTimeout(applyResumoFixesV3751, 120);
+    setTimeout(applyResumoFixesV3751, 800);
     return result;
   };
 }
 
 document.addEventListener("click", function(){
-  setTimeout(injectPersonagemBirthFieldV3750, 180);
+  setTimeout(injectBirthFieldV3751, 150);
+  setTimeout(applyResumoFixesV3751, 250);
 }, true);
 
 setInterval(()=>{
-  if(document.visibilityState === "visible") applyResumoCleanEnhancementsV3750();
+  if(document.visibilityState === "visible") applyResumoFixesV3751();
 }, 3000);
 
-window.applyResumoCleanEnhancementsV3750 = applyResumoCleanEnhancementsV3750;
-window.buildProjectionUntil38V3750 = buildProjectionUntil38V3750;
+window.applyResumoFixesV3751 = applyResumoFixesV3751;
 

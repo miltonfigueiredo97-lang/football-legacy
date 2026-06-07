@@ -1,3 +1,3 @@
-# Football Legacy V3.7.50
+# Football Legacy V3.7.51
 
-Versão limpa antes das alterações que desformataram o resumo. Mantém base v3.7.44, adiciona idade apenas nos cards de Temporadas jogadas, remove textos de período, corrige emblemas, restaura imagem do personagem, adiciona projeção até 38 anos e fallback de time ao editar temporada antiga.
+Base limpa v3.7.44 com correções isoladas: imagem do personagem via imagem_url, idade apenas nos cards de Temporadas jogadas à direita do escudo, remoção de texto ISO, previsão até 38 anos no Resumo, fallback de time ao editar temporada antiga. Remove efeitos visuais quebrados das versões 3.7.45-3.7.50.

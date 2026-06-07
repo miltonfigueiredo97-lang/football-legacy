@@ -1867,53 +1867,70 @@ button[disabled],
 }
 
 
-/* ===== V3.7.50 LIMPEZA IDADE/ESCUDO/PROJEÇÃO ===== */
+/* ===== V3.7.51 RESUMO LIMPO ===== */
 .season-age-badge-v3745,
 .season-age-badge-v3746,
-.season-age-badge-v3747{
+.season-age-badge-v3747,
+.season-age-badge-v3750,
+.career-projection-v3747,
+.career-projection-v3750{
   display:none!important;
 }
 
-.season-row-clean-v3750 .season-age-badge-v3750{
+.season-age-badge-v3751{
   display:inline-flex!important;
   align-items:center;
   justify-content:center;
-  margin-left:8px;
-  padding:3px 7px;
-  border-radius:999px;
-  background:rgba(251,191,36,.14);
-  border:1px solid rgba(251,191,36,.35);
-  color:#fbbf24;
-  font-size:11px;
-  line-height:1;
-  font-weight:1000;
-  white-space:nowrap;
-  vertical-align:middle;
   position:static!important;
   transform:none!important;
+  margin-left:10px!important;
+  padding:5px 8px!important;
+  border-radius:999px!important;
+  background:rgba(251,191,36,.14)!important;
+  border:1px solid rgba(251,191,36,.38)!important;
+  color:#fbbf24!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+  white-space:nowrap!important;
+  z-index:auto!important;
 }
 
-.season-emblem-box-clean-v3750{
+.season-emblem-box-fixed-v3751{
   overflow:visible!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
 }
 
-.season-emblem-clean-v3750{
-  object-fit:contain!important;
-  object-position:center!important;
+.season-emblem-fixed-v3751{
   width:52px!important;
   height:52px!important;
   max-width:52px!important;
   max-height:52px!important;
+  object-fit:contain!important;
+  object-position:center!important;
   padding:5px!important;
   box-sizing:border-box!important;
   background:rgba(255,255,255,.04)!important;
   border-radius:12px!important;
 }
 
-.career-projection-v3750{
+.player-photo-box-v3751{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+
+.player-photo-v3751{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  display:block!important;
+}
+
+.career-projection-v3751{
   max-width:720px;
   margin:16px 0 22px;
   padding:16px 18px;
@@ -1924,39 +1941,39 @@ button[disabled],
     linear-gradient(135deg,rgba(33,28,18,.92),rgba(15,23,42,.88));
 }
 
-.projection-title-v3750{
+.projection-title-v3751{
   display:flex;
   flex-direction:column;
   gap:3px;
   margin-bottom:12px;
 }
 
-.projection-title-v3750 span{
+.projection-title-v3751 span{
   color:#fbbf24;
   font-weight:1000;
   font-size:16px;
 }
 
-.projection-title-v3750 small{
+.projection-title-v3751 small{
   color:#cbd5e1;
   font-weight:700;
   font-size:12px;
 }
 
-.projection-grid-v3750{
+.projection-grid-v3751{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;
 }
 
-.projection-grid-v3750 > div{
+.projection-grid-v3751 > div{
   padding:12px;
   border-radius:16px;
   background:rgba(15,23,42,.62);
   border:1px solid rgba(255,255,255,.08);
 }
 
-.projection-grid-v3750 small{
+.projection-grid-v3751 small{
   display:block;
   color:#93c5fd;
   font-size:11px;
@@ -1964,7 +1981,7 @@ button[disabled],
   text-transform:uppercase;
 }
 
-.projection-grid-v3750 strong{
+.projection-grid-v3751 strong{
   display:block;
   margin-top:3px;
   color:#fff;
@@ -1972,7 +1989,7 @@ button[disabled],
   line-height:1;
 }
 
-.projection-grid-v3750 span{
+.projection-grid-v3751 span{
   display:block;
   margin-top:5px;
   color:#fbbf24;
@@ -1980,21 +1997,21 @@ button[disabled],
   font-weight:900;
 }
 
-.projection-foot-v3750{
+.projection-foot-v3751{
   margin-top:10px;
   color:#9fb0c7;
   font-size:12px;
   font-weight:800;
 }
 
-.personagem-age-field-v3750 small{
+.personagem-birth-v3751 small{
   color:#9fb0c7;
   font-size:12px;
   font-weight:700;
 }
 
 @media(max-width:800px){
-  .projection-grid-v3750{
+  .projection-grid-v3751{
     grid-template-columns:1fr;
   }
 }
