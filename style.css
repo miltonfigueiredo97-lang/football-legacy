@@ -1806,3 +1806,11 @@ button[disabled],
   opacity:.7;
   cursor:wait!important;
 }
+
+
+/* ===== V3.7.40 SAFE ROLLBACK BUTTONS ===== */
+button[disabled],
+.gold-btn[disabled]{
+  opacity:.7;
+  cursor:wait!important;
+}

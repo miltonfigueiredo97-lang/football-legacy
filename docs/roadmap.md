@@ -1,3 +1,3 @@
-# Football Legacy V3.7.39
+# Football Legacy V3.7.41
 
-Temporada passa a salvar competições por ID primeiro. Checkboxes e linhas de estatísticas carregam data-competition-id a partir da aba COMPETICOES. O payload saveSeasonFull envia competicao_id + competicao. Nome vira fallback visual.
+Correção pontual do erro Maximum call stack size exceeded em getSelectedSeasonCompetitionsV3736. A função agora só lê diretamente os checkboxes do modal e não chama nenhuma função que possa recursar. Baseada na v3.7.40 rollback.
