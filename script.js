@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.5.2 country flags');
+console.log('Football Legacy script carregado v3.5.3 performance');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -150,7 +150,14 @@ async function loadData(){
     }
 
     db = json.data || {};
-    console.log("Football Legacy DB carregado:", db);
+    console.log("Football Legacy DB carregado:", {
+      usuarios: getTable("USUARIOS").length,
+      carreiras: getTable("CARREIRAS").length,
+      personagens: getTable("PERSONAGENS").length,
+      bolaBase: getTable("BOLA_DE_OURO_BASE").length,
+      bolaCarreira: getTable("BOLA_DE_OURO_CARREIRA").length,
+      temporadasBase: getTable("TEMPORADAS_BASE").length
+    });
 
     ensureActive();
     renderAll();

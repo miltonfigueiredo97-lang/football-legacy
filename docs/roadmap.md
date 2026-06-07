@@ -1,3 +1,3 @@
-# Football Legacy V3.5.2
+# Football Legacy V3.5.3
 
-Troca texto/código de país por bandeiras usando FlagCDN. Ex.: Spain/ESP/Espanha vira bandeira da Espanha. Mantém fallback para 🌐 quando o país não estiver mapeado.
+Hotfix de performance: remove log gigante do banco completo no console. Mantém proxy, bandeiras e lógica global/carreira da Bola de Ouro.
