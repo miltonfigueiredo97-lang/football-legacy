@@ -1,3 +1,3 @@
-# Football Legacy V3.7.36
+# Football Legacy V3.7.37
 
-Adiciona salvamento em lote para temporada usando action=saveSeasonFull. Uma temporada inteira, incluindo clube, temporada, estatísticas e títulos/campeões, passa a ser salva em uma única chamada ao Apps Script. Requer Apps Script v3.5.8.
+Corrige edição de temporada onde competições marcadas, como Coppa Italia, apareciam no modal mas não viravam linhas em ESTATISTICAS_CARREIRA. Agora o dashboard lê checkbox sem value, texto do label e vários formatos possíveis de chave dos inputs.

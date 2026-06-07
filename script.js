@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.36 batch save season');
+console.log('Football Legacy script carregado v3.7.37 season edit stats key fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -6756,4 +6756,196 @@ function openSeasonFlow(existingId=null){
 
 window.openSeasonFlow = openSeasonFlow;
 window.saveSeasonFullV3736 = saveSeasonFullV3736;
+
+
+
+// ===== V3.7.37 FIX EDIÇÃO TEMPORADA: CHAVES DOS INPUTS =====
+// Corrige caso competição marcada apareça no modal, mas não gere linha em ESTATISTICAS_CARREIRA.
+// Exemplo: Coppa Italia marcada e preenchida, mas não salva.
+
+function normalizeCompetitionLabelV3737(name){
+  const raw = String(name || "").trim();
+
+  const key = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+
+  const aliases = {
+    "supercopa_da_uefa":"Supercopa da UEFA",
+    "uefa_super_cup":"Supercopa da UEFA",
+    "supercopa_uefa":"Supercopa da UEFA",
+    "intercontinental_de_clubes":"Intercontinental de Clubes",
+    "intercontinental_cup":"Intercontinental de Clubes",
+    "mundial_de_clubes":"Mundial de Clubes",
+    "fifa_club_world_cup":"Mundial de Clubes"
+  };
+
+  return aliases[key] || raw;
+}
+
+function compKeyV3737(name){
+  return String(normalizeCompetitionLabelV3737(name) || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+}
+
+function getCheckboxCompetitionNameV3737(ch){
+  if(!ch) return "";
+
+  let value = ch.dataset?.competition || ch.value || ch.name || "";
+
+  // Quando checkbox não tem value, browser manda "on".
+  if(!value || value === "on" || value === "true"){
+    const label = ch.closest("label");
+    if(label){
+      value = (label.innerText || label.textContent || "")
+        .replace(/\s+/g," ")
+        .trim();
+    }
+  }
+
+  return normalizeCompetitionLabelV3737(value);
+}
+
+function getSelectedSeasonCompetitionsV3736(){
+  const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
+
+  const values = checks.map(getCheckboxCompetitionNameV3737)
+    .map(normalizeCompetitionLabelV3737)
+    .filter(Boolean);
+
+  return [...new Set(values)];
+}
+
+// Compatibilidade caso outra função use esse nome.
+function getSelectedSeasonCompetitions(){
+  return getSelectedSeasonCompetitionsV3736();
+}
+
+function getPossibleKeysForCompV3737(comp){
+  const raw = String(comp || "");
+  const keys = new Set();
+
+  keys.add(compKeyV3737(raw));
+
+  try{
+    if(typeof escapeName === "function") keys.add(escapeName(raw));
+  }catch(err){}
+
+  keys.add(raw);
+  keys.add(raw.replace(/\s+/g,"_"));
+  keys.add(raw.replace(/\s+/g,""));
+  keys.add(raw.toLowerCase().replace(/\s+/g,"_"));
+  keys.add(raw.toLowerCase().replace(/\s+/g,""));
+
+  const noAccent = raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  keys.add(noAccent);
+  keys.add(noAccent.replace(/\s+/g,"_"));
+  keys.add(noAccent.replace(/\s+/g,""));
+  keys.add(noAccent.toLowerCase().replace(/\s+/g,"_"));
+  keys.add(noAccent.toLowerCase().replace(/\s+/g,""));
+
+  return [...keys].filter(Boolean);
+}
+
+function getDataByCompFieldV3737(data, field, comp){
+  const keys = getPossibleKeysForCompV3737(comp);
+
+  for(const key of keys){
+    const name = `${field}_${key}`;
+    if(Object.prototype.hasOwnProperty.call(data, name)){
+      return data[name];
+    }
+  }
+
+  // Fallback: varre todas as chaves do FormData tentando bater normalizado.
+  const targetCompKey = compKeyV3737(comp);
+
+  for(const [k,v] of Object.entries(data)){
+    if(!k.startsWith(field + "_")) continue;
+
+    const suffix = k.slice(field.length + 1);
+    if(compKeyV3737(suffix) === targetCompKey){
+      return v;
+    }
+  }
+
+  return "";
+}
+
+function buildSeasonFullPayloadV3736(data, existing=null){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+  if(!temporada) throw new Error("Informe o início no time ou a temporada.");
+
+  const comps = getSelectedSeasonCompetitionsV3736();
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  const stats = comps.map(comp=>{
+    const compName = normalizeCompetitionLabelV3737(comp);
+    return {
+      competicao: compName,
+      jogos: getDataByCompFieldV3737(data, "jogos", compName),
+      gols: getDataByCompFieldV3737(data, "gols", compName),
+      assistencias: getDataByCompFieldV3737(data, "assistencias", compName),
+      cartoes: getDataByCompFieldV3737(data, "cartoes", compName),
+      nota_geral: getDataByCompFieldV3737(data, "media_geral", compName)
+    };
+  });
+
+  const titles = comps.map(comp=>{
+    const compName = normalizeCompetitionLabelV3737(comp);
+    const ganhouRaw = getDataByCompFieldV3737(data, "titulo", compName);
+    const won = !!ganhouRaw;
+
+    return {
+      competicao: compName,
+      ganhou: won,
+      campeao: getDataByCompFieldV3737(data, "campeao", compName) || (won ? selectedSeasonTeam.name : ""),
+      artilheiro: getDataByCompFieldV3737(data, "artilheiro", compName),
+      lider_assistencias:
+        getDataByCompFieldV3737(data, "assist", compName) ||
+        getDataByCompFieldV3737(data, "lider_assistencias", compName),
+      melhor_jogador:
+        getDataByCompFieldV3737(data, "melhor", compName) ||
+        getDataByCompFieldV3737(data, "melhor_jogador", compName)
+    };
+  });
+
+  console.log("SaveSeasonFull payload competições:", comps);
+  console.log("SaveSeasonFull payload stats:", stats);
+
+  return {
+    action: "saveSeasonFull",
+    existingSeasonId: existing?.id || "",
+    carreira_id: active.carreira_id,
+    personagem_id: active.protagonista_id,
+    temporada,
+    status: data.status || existing?.status || "em andamento",
+    data_inicio: data.data_inicio || "",
+    data_fim: data.data_fim || "",
+    team: {
+      name: selectedSeasonTeam.name || "",
+      country: selectedSeasonTeam.country || "",
+      badge: selectedSeasonTeam.badge || "",
+      league: selectedSeasonTeam.league || ""
+    },
+    competitions: comps,
+    stats,
+    titles
+  };
+}
+
+window.getSelectedSeasonCompetitionsV3736 = getSelectedSeasonCompetitionsV3736;
+window.getSelectedSeasonCompetitions = getSelectedSeasonCompetitions;
+window.buildSeasonFullPayloadV3736 = buildSeasonFullPayloadV3736;
 
