@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.51 resumo clean age projection image');
+console.log('Football Legacy script carregado v3.7.53 projection beside summary cards');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8286,4 +8286,357 @@ setInterval(()=>{
 }, 3000);
 
 window.applyResumoFixesV3751 = applyResumoFixesV3751;
+
+
+
+// ===== V3.7.52 PROJEÇÃO FIXA NO RESUMO =====
+// Adiciona previsão logo abaixo dos cards Jogos/Gols/Assistências.
+// Não mexe em imagem, idade, temporada, Bola de Ouro ou Apps Script.
+
+function flNumV3752(v){
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function flParseBirthV3752(value){
+  const raw = String(value || "").trim();
+  if(!raw) return null;
+
+  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
+
+  let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
+
+  m = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3])};
+
+  const d = new Date(raw);
+  if(!Number.isNaN(d.getTime()) && d.getFullYear() > 1900){
+    return {year:d.getFullYear(), month:d.getMonth()+1, day:d.getDate()};
+  }
+
+  return null;
+}
+
+function flSeasonStartV3752(season){
+  const raw = String(season?.data_inicio || "").trim();
+
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  const temp = String(season?.temporada || "");
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return {year:Number(m[1]), month:8, day:1};
+
+  m = temp.match(/(\d{4})/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function flGetBirthValueV3752(){
+  const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  if(!p) return "";
+
+  return (
+    p.data_nascimento ||
+    p.idade ||
+    p.nascimento ||
+    p.aniversario ||
+    p.data_aniversario ||
+    ""
+  );
+}
+
+function flAgeAtSeasonV3752(season){
+  const birth = flParseBirthV3752(flGetBirthValueV3752());
+  const start = flSeasonStartV3752(season);
+
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+  if(!start) return "";
+
+  let age = start.year - birth.year;
+  if(start.month < birth.month || (start.month === birth.month && start.day < birth.day)) age--;
+
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+function flDeclineV3752(age){
+  const a = Number(age);
+  if(!Number.isFinite(a)) return 1;
+
+  // pico até 29, depois queda gradual
+  if(a <= 29) return 1;
+  if(a <= 32) return Math.max(.88, 1 - (a - 29) * .04);
+  if(a <= 35) return Math.max(.70, .88 - (a - 32) * .06);
+  if(a <= 38) return Math.max(.52, .70 - (a - 35) * .06);
+  return .50;
+}
+
+function flGetSeasonRowsV3752(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+  const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
+
+  return seasons.map(season=>{
+    const rows = stats.filter(s=>String(s.carreira_temporada_id) === String(season.id));
+
+    const totals = rows.reduce((acc,s)=>{
+      acc.jogos += flNumV3752(s.jogos);
+      acc.gols += flNumV3752(s.gols);
+      acc.assistencias += flNumV3752(s.assistencias);
+      return acc;
+    }, {jogos:0,gols:0,assistencias:0});
+
+    return {
+      season,
+      age: flAgeAtSeasonV3752(season),
+      jogos: totals.jogos,
+      gols: totals.gols,
+      assistencias: totals.assistencias
+    };
+  }).filter(r=>r.jogos || r.gols || r.assistencias);
+}
+
+function flBuildProjectionV3752(){
+  const rows = flGetSeasonRowsV3752();
+  if(!rows.length) return null;
+
+  const totals = rows.reduce((acc,r)=>{
+    acc.jogos += r.jogos;
+    acc.gols += r.gols;
+    acc.assistencias += r.assistencias;
+    return acc;
+  }, {jogos:0,gols:0,assistencias:0});
+
+  const avg = {
+    jogos: totals.jogos / rows.length,
+    gols: totals.gols / rows.length,
+    assistencias: totals.assistencias / rows.length
+  };
+
+  const ages = rows.map(r=>Number(r.age)).filter(Number.isFinite);
+  let currentAge = ages.length ? Math.max(...ages) : "";
+
+  // fallback: se não conseguir calcular idade pela data, usa quantidade de temporadas
+  if(currentAge === ""){
+    currentAge = 18 + Math.max(0, rows.length - 1);
+  }
+
+  if(currentAge >= 38) return null;
+
+  const future = {jogos:0,gols:0,assistencias:0};
+  let seasonsLeft = 0;
+
+  for(let age=currentAge+1; age<=38; age++){
+    seasonsLeft++;
+    const factor = flDeclineV3752(age);
+
+    future.jogos += avg.jogos * factor;
+    future.gols += avg.gols * factor;
+    future.assistencias += avg.assistencias * factor;
+  }
+
+  return {
+    currentAge,
+    seasonsLeft,
+    totals,
+    avg,
+    future,
+    final:{
+      jogos: totals.jogos + future.jogos,
+      gols: totals.gols + future.gols,
+      assistencias: totals.assistencias + future.assistencias
+    }
+  };
+}
+
+function flFindResumoInsertionPointV3752(){
+  // Primeiro tenta achar "Clubes da carreira" e inserir antes dele.
+  const labels = [...document.querySelectorAll("h1,h2,h3,h4,strong,span,div")]
+    .filter(el=>/clubes da carreira/i.test(el.textContent || ""));
+
+  if(labels.length){
+    const label = labels[0];
+    return {
+      mode:"before",
+      target:label.closest("section, article, .content-card, .summary-hero, .hero-card, .dashboard-hero") === label.parentElement
+        ? label
+        : label
+    };
+  }
+
+  // Fallback: card principal do resumo.
+  const hero = document.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, .content-card, #dashboard, #resumo");
+  if(hero){
+    return {mode:"append", target:hero};
+  }
+
+  return {mode:"prepend", target:document.body};
+}
+
+function flInjectProjectionV3752(){
+  try{
+    const p = flBuildProjectionV3752();
+    if(!p) return;
+
+    let box = document.querySelector(".career-projection-v3752");
+
+    if(!box){
+      box = document.createElement("div");
+      box.className = "career-projection-v3752";
+
+      const spot = flFindResumoInsertionPointV3752();
+
+      if(spot.mode === "before" && spot.target){
+        spot.target.insertAdjacentElement("beforebegin", box);
+      }else if(spot.mode === "append" && spot.target){
+        spot.target.appendChild(box);
+      }else{
+        document.body.prepend(box);
+      }
+    }
+
+    box.innerHTML = `
+      <div class="projection-header-v3752">
+        <div>
+          <strong>Previsão até 38 anos</strong>
+          <small>Média por temporada com queda gradual conforme idade</small>
+        </div>
+        <span>${p.currentAge} anos agora • ${p.seasonsLeft} temporadas projetadas</span>
+      </div>
+
+      <div class="projection-cards-v3752">
+        <div>
+          <small>Jogos finais</small>
+          <strong>${Math.round(p.final.jogos)}</strong>
+          <span>+${Math.round(p.future.jogos)} previstos</span>
+        </div>
+        <div>
+          <small>Gols finais</small>
+          <strong>${Math.round(p.final.gols)}</strong>
+          <span>+${Math.round(p.future.gols)} previstos</span>
+        </div>
+        <div>
+          <small>Assistências finais</small>
+          <strong>${Math.round(p.final.assistencias)}</strong>
+          <span>+${Math.round(p.future.assistencias)} previstas</span>
+        </div>
+      </div>
+    `;
+  }catch(err){
+    console.warn("Falha ao inserir previsão v3.7.52:", err);
+  }
+}
+
+function flApplyProjectionV3752(){
+  setTimeout(flInjectProjectionV3752, 120);
+  setTimeout(flInjectProjectionV3752, 700);
+  setTimeout(flInjectProjectionV3752, 1400);
+}
+
+const __renderAllOriginalV3752 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3752 && !window.__renderAllProjectionWrappedV3752){
+  window.__renderAllProjectionWrappedV3752 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3752.apply(this, arguments);
+    flApplyProjectionV3752();
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  flApplyProjectionV3752();
+}, true);
+
+window.flInjectProjectionV3752 = flInjectProjectionV3752;
+window.flBuildProjectionV3752 = flBuildProjectionV3752;
+
+
+
+// ===== V3.7.53 PREVISÃO AO LADO DOS CARDS DO RESUMO =====
+// Move a previsão para o mesmo grupo dos cards Jogos/Gols/Assistências.
+
+function flFindSummaryStatsParentV3753(){
+  const candidates = [...document.querySelectorAll("div, section, article")]
+    .filter(el=>{
+      const txt = (el.textContent || "").toLowerCase();
+      return txt.includes("jogos") && txt.includes("gols") && txt.includes("assist");
+    })
+    .sort((a,b)=>{
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return (ar.width * ar.height) - (br.width * br.height);
+    });
+
+  // Pega o menor container que tenha os três cards, mas não a página inteira.
+  return candidates.find(el=>{
+    const rect = el.getBoundingClientRect();
+    const txt = el.textContent || "";
+    return rect.width > 250 && rect.width < window.innerWidth * 0.9 && txt.length < 900;
+  }) || null;
+}
+
+function flInjectProjectionV3752(){
+  try{
+    const p = flBuildProjectionV3752();
+    if(!p) return;
+
+    let box = document.querySelector(".career-projection-v3752");
+
+    if(!box){
+      box = document.createElement("div");
+      box.className = "career-projection-v3752 projection-beside-v3753";
+    }else{
+      box.classList.add("projection-beside-v3753");
+    }
+
+    const parent = flFindSummaryStatsParentV3753();
+
+    if(parent){
+      parent.classList.add("summary-stats-with-projection-v3753");
+      if(box.parentElement !== parent){
+        parent.appendChild(box);
+      }
+    }else if(!box.isConnected){
+      const hero = document.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, .content-card, #dashboard, #resumo");
+      if(hero) hero.appendChild(box);
+      else document.body.prepend(box);
+    }
+
+    box.innerHTML = `
+      <div class="projection-header-v3752">
+        <div>
+          <strong>Previsão até 38 anos</strong>
+          <small>Média por temporada com queda gradual conforme idade</small>
+        </div>
+        <span>${p.currentAge} anos • ${p.seasonsLeft} temp.</span>
+      </div>
+
+      <div class="projection-cards-v3752">
+        <div>
+          <small>Jogos</small>
+          <strong>${Math.round(p.final.jogos)}</strong>
+          <span>+${Math.round(p.future.jogos)}</span>
+        </div>
+        <div>
+          <small>Gols</small>
+          <strong>${Math.round(p.final.gols)}</strong>
+          <span>+${Math.round(p.future.gols)}</span>
+        </div>
+        <div>
+          <small>Assist.</small>
+          <strong>${Math.round(p.final.assistencias)}</strong>
+          <span>+${Math.round(p.future.assistencias)}</span>
+        </div>
+      </div>
+    `;
+  }catch(err){
+    console.warn("Falha ao inserir previsão v3.7.53:", err);
+  }
+}
+
+window.flInjectProjectionV3752 = flInjectProjectionV3752;
 
