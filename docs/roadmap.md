@@ -1,3 +1,3 @@
-# Football Legacy V3.7.85
+# Football Legacy V3.7.86
 
-Corrige escudo do Brasil espalhado removendo a injeção ampla. Mantém escudo de seleção apenas em componentes explícitos. Melhora modal Os melhores da Bola de Ouro com bandeiras para jogadores/países e escudos de clubes via TheSportsDB + fallback manual.
+Top 11 limpo: remove mapa duplicado antigo, cria botão +Top11 funcional por carreira, permite fundo recomendado 1600x1000 ou 1920x1200, mantém drag/posições. Remove texto azul claro de datas ISO sob o nome do time nas temporadas jogadas.

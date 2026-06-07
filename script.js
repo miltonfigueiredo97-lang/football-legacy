@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.85 fix br badge ballon icons');
+console.log('Football Legacy script carregado v3.7.86 top11 clean create season date');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -12647,3 +12647,458 @@ setTimeout(FL_removeScatteredBrazilBadgesV3785, 600);
 setTimeout(FL_removeScatteredBrazilBadgesV3785, 1600);
 
 window.FL_removeScatteredBrazilBadgesV3785 = FL_removeScatteredBrazilBadgesV3785;
+
+
+// ===== V3.7.86 TOP11 LIMPO + CRIAR TOP11 + REMOVER DATA AZUL =====
+// - Remove texto azul claro de data ISO em temporadas jogadas.
+// - Top 11 passa a ter apenas UM mapa.
+// - Remove o bloco antigo "Cadastre o Top 11" embaixo.
+// - Botão + Top11 funcional por carreira.
+// - Tamanho recomendado do fundo Top 11: 1600x1000 ou 1920x1200, proporção 16:10.
+
+let FL_TOP11_EDITING_V3786 = false;
+let FL_TOP11_MAP_URL_V3786 = "";
+
+function FL_normV3786(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_escapeV3786(value){
+  return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3786(value){
+  return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+function FL_activeCareerIdV3786(){
+  return active?.carreira_id || "";
+}
+
+function FL_activeSeasonIdV3786(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
+  return seasons[0]?.id || "";
+}
+
+function FL_removeSeasonIsoDatesV3786(){
+  try{
+    const candidates = [...document.querySelectorAll("#dashboard *,.season-card *,.career-season-card *,.played-season-card *,.season-row-card *")];
+    candidates.forEach(el=>{
+      if(el.children.length) return;
+      const txt = (el.textContent || "").trim();
+      if(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(txt) || /per[ií]odo n[aã]o definido/i.test(txt)){
+        el.style.display = "none";
+      }
+    });
+  }catch(err){
+    console.warn("Falha ao remover datas ISO:", err);
+  }
+}
+
+function FL_top11RowsV3786(){
+  const carreiraId = FL_activeCareerIdV3786();
+  return (getTable("TOP11_CARREIRA") || []).filter(r =>
+    !carreiraId || String(r.carreira_id || "") === String(carreiraId)
+  );
+}
+
+function FL_latestTop11RowsV3786(){
+  const rows = FL_top11RowsV3786();
+  if(!rows.length) return [];
+
+  const seasonId = FL_activeSeasonIdV3786();
+  let filtered = rows.filter(r => String(r.carreira_temporada_id || "") === String(seasonId));
+
+  if(!filtered.length){
+    const sorted = [...rows].sort((a,b)=>
+      String(b.temporada || "").localeCompare(String(a.temporada || "")) ||
+      Number(a.id || 0)-Number(b.id || 0)
+    );
+    const season = sorted[0]?.temporada || "";
+    filtered = rows.filter(r => String(r.temporada || "") === String(season));
+  }
+
+  return filtered.sort((a,b)=>{
+    const order = ["GOL","GK","LD","RB","ZAG","CB","LE","LB","VOL","CDM","MC","CM","MEI","CAM","PD","RW","PE","LW","CA","ST"];
+    const ao = order.indexOf(String(a.posicao_tatica || "").toUpperCase());
+    const bo = order.indexOf(String(b.posicao_tatica || "").toUpperCase());
+    return (ao === -1 ? 99 : ao) - (bo === -1 ? 99 : bo) || Number(a.id || 0)-Number(b.id || 0);
+  });
+}
+
+function FL_defaultTop11PositionsV3786(){
+  return [
+    ["GOL",50,88],
+    ["LD",78,70],["ZAG",60,72],["ZAG",40,72],["LE",22,70],
+    ["VOL",50,56],
+    ["MC",35,43],["MC",65,43],
+    ["PD",78,25],["CA",50,18],["PE",22,25]
+  ];
+}
+
+function FL_initialsV3786(name){
+  const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+}
+
+async function FL_fetchPlayerPhotoV3786(name){
+  if(typeof FL_fetchPlayerPhotoV3781 === "function"){
+    try{ return await FL_fetchPlayerPhotoV3781(name); }catch(err){}
+  }
+
+  const clean = String(name || "").trim();
+  if(!clean) return "";
+
+  try{
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
+    const data = await res.json();
+    const p = (data?.player || [])[0];
+    return p?.strCutout || p?.strRender || p?.strThumb || "";
+  }catch(err){
+    return "";
+  }
+}
+
+function FL_top11CardHtmlV3786(row, idx){
+  const d = FL_defaultTop11PositionsV3786()[idx] || ["POS",50,50];
+
+  const x = row.x !== undefined && row.x !== "" ? Number(row.x) : d[1];
+  const y = row.y !== undefined && row.y !== "" ? Number(row.y) : d[2];
+  const pos = row.posicao_tatica || d[0];
+  const name = row.jogador || "Jogador";
+  const foto = row.foto_url || "";
+  const club = row.clube || "";
+  const country = row.pais || "";
+
+  return `
+    <div class="top11-player-v3786 ${FL_TOP11_EDITING_V3786 ? "editing" : ""}"
+         data-id="${FL_escapeAttrV3786(row.id || "")}"
+         data-index="${idx}"
+         data-player="${FL_escapeAttrV3786(name)}"
+         style="left:${x}%; top:${y}%;">
+      <div class="top11-photo-v3786">
+        ${foto ? `<img src="${FL_escapeAttrV3786(foto)}" onerror="this.parentElement.innerHTML='${FL_escapeV3786(FL_initialsV3786(name))}'">` : FL_escapeV3786(FL_initialsV3786(name))}
+      </div>
+      <div class="top11-info-v3786">
+        <b>${FL_escapeV3786(name)}</b>
+        <span>${FL_escapeV3786(pos)}${club ? ` • ${FL_escapeV3786(club)}` : ""}${country ? ` • ${FL_escapeV3786(country)}` : ""}</span>
+      </div>
+    </div>
+  `;
+}
+
+function FL_renderTop11CleanV3786(){
+  const page = $("top11");
+  if(!page) return;
+
+  const rows = FL_latestTop11RowsV3786();
+  const mapUrl = FL_TOP11_MAP_URL_V3786 || rows.find(r=>r.mapa_url)?.mapa_url || "";
+
+  // Limpa tudo que existia antes para não duplicar mapas/blocos antigos.
+  page.innerHTML = `
+    <div class="top11-page-head-v3786">
+      <div>
+        <h2>Top 11</h2>
+        <p>Monte o melhor onze da carreira em um mapa visual.</p>
+        <small>Fundo recomendado: <b>1600×1000 px</b> ou <b>1920×1200 px</b>, proporção 16:10.</small>
+      </div>
+      <div class="top11-head-actions-v3786">
+        <button type="button" class="ghost" onclick="FL_toggleTop11EditV3786()">${FL_TOP11_EDITING_V3786 ? "Cancelar edição" : "Editar Top 11"}</button>
+        <button type="button" class="gold" onclick="FL_openCreateTop11V3786()">+ Top 11</button>
+      </div>
+    </div>
+
+    <section class="top11-map-section-v3786">
+      <div class="top11-map-toolbar-v3786" style="${FL_TOP11_EDITING_V3786 ? "" : "display:none"}">
+        <input id="top11-map-url-input-v3786" placeholder="URL da imagem de fundo do mapa/campo" value="${FL_escapeAttrV3786(mapUrl)}">
+        <button type="button" onclick="FL_applyTop11MapV3786()">Aplicar fundo</button>
+        <button type="button" class="gold" onclick="FL_saveTop11PositionsV3786()">Salvar posições</button>
+      </div>
+
+      <div class="top11-pitch-v3786 ${FL_TOP11_EDITING_V3786 ? "editing" : ""}"
+           style="${mapUrl ? `background-image:linear-gradient(rgba(2,6,23,.08),rgba(2,6,23,.20)),url('${FL_escapeAttrV3786(mapUrl)}')` : ""}">
+        ${rows.length ? rows.map(FL_top11CardHtmlV3786).join("") : `
+          <button type="button" class="top11-create-card-v3786" onclick="FL_openCreateTop11V3786()">
+            <b>+</b>
+            <span>Criar Top 11</span>
+          </button>
+        `}
+      </div>
+    </section>
+  `;
+
+  if(FL_TOP11_EDITING_V3786) FL_enableTop11DragV3786();
+  FL_enrichTop11PhotosV3786();
+}
+
+function FL_toggleTop11EditV3786(){
+  FL_TOP11_EDITING_V3786 = !FL_TOP11_EDITING_V3786;
+  FL_renderTop11CleanV3786();
+}
+
+function FL_applyTop11MapV3786(){
+  FL_TOP11_MAP_URL_V3786 = $("top11-map-url-input-v3786")?.value || "";
+  FL_renderTop11CleanV3786();
+}
+
+function FL_enableTop11DragV3786(){
+  const pitch = document.querySelector(".top11-pitch-v3786");
+  if(!pitch) return;
+
+  pitch.querySelectorAll(".top11-player-v3786").forEach(card=>{
+    if(card.dataset.dragReadyV3786) return;
+    card.dataset.dragReadyV3786 = "1";
+
+    let dragging = false;
+
+    const move = e=>{
+      if(!dragging) return;
+      const p = e.touches ? e.touches[0] : e;
+      const rect = pitch.getBoundingClientRect();
+
+      let x = ((p.clientX - rect.left) / rect.width) * 100;
+      let y = ((p.clientY - rect.top) / rect.height) * 100;
+
+      x = Math.max(4, Math.min(96, x));
+      y = Math.max(6, Math.min(94, y));
+
+      card.style.left = x + "%";
+      card.style.top = y + "%";
+      card.dataset.x = x.toFixed(2);
+      card.dataset.y = y.toFixed(2);
+    };
+
+    const stop = ()=>{
+      dragging = false;
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", stop);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", stop);
+    };
+
+    card.addEventListener("mousedown", e=>{
+      if(!FL_TOP11_EDITING_V3786) return;
+      e.preventDefault();
+      dragging = true;
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", stop);
+    });
+
+    card.addEventListener("touchstart", e=>{
+      if(!FL_TOP11_EDITING_V3786) return;
+      dragging = true;
+      document.addEventListener("touchmove", move, {passive:false});
+      document.addEventListener("touchend", stop);
+    }, {passive:false});
+  });
+}
+
+async function FL_enrichTop11PhotosV3786(){
+  const cards = [...document.querySelectorAll(".top11-player-v3786")];
+
+  for(const card of cards){
+    const id = card.dataset.id || "";
+    const name = card.dataset.player || "";
+    const row = FL_top11RowsV3786().find(r => String(r.id || "") === String(id));
+
+    if(row?.foto_url || !name) continue;
+
+    const img = await FL_fetchPlayerPhotoV3786(name);
+    if(!img || !card.isConnected) continue;
+
+    const photo = card.querySelector(".top11-photo-v3786");
+    if(photo){
+      photo.innerHTML = `<img src="${FL_escapeAttrV3786(img)}" onerror="this.parentElement.innerHTML='${FL_escapeV3786(FL_initialsV3786(name))}'">`;
+    }
+
+    if(row) row.foto_url = img;
+  }
+}
+
+function FL_openCreateTop11V3786(){
+  const defaults = FL_defaultTop11PositionsV3786();
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
+  const currentSeason = seasons[0] || {};
+  const defaultTemp = currentSeason.temporada || "";
+
+  openModal("Novo Top 11", `
+    <form id="top11-create-form-v3786" class="top11-create-form-v3786">
+      <label>Temporada</label>
+      <input name="temporada" value="${FL_escapeAttrV3786(defaultTemp)}" placeholder="Ex: 2033/2034">
+
+      <label>URL do fundo do mapa</label>
+      <input name="mapa_url" placeholder="Imagem 1600×1000 ou 1920×1200" value="${FL_escapeAttrV3786(FL_TOP11_MAP_URL_V3786)}">
+
+      <div class="top11-create-grid-v3786">
+        ${defaults.map((d,i)=>`
+          <div class="top11-create-row-v3786">
+            <b>${i+1}</b>
+            <input name="posicao_${i}" value="${FL_escapeAttrV3786(d[0])}" placeholder="POS">
+            <input name="jogador_${i}" placeholder="Jogador">
+            <input name="overall_${i}" placeholder="Overall">
+            <input name="clube_${i}" placeholder="Clube">
+            <input name="pais_${i}" placeholder="País">
+          </div>
+        `).join("")}
+      </div>
+    </form>
+  `, async ()=>{
+    await FL_saveNewTop11V3786();
+  });
+}
+
+async function FL_saveNewTop11V3786(){
+  const f = $("top11-create-form-v3786");
+  if(!f) return;
+
+  const temporada = f.temporada.value.trim();
+  const mapaUrl = f.mapa_url.value.trim();
+  const defaults = FL_defaultTop11PositionsV3786();
+  const rows = [];
+
+  for(let i=0;i<11;i++){
+    const jogador = f[`jogador_${i}`]?.value?.trim() || "";
+    if(!jogador) continue;
+
+    const foto = await FL_fetchPlayerPhotoV3786(jogador);
+
+    rows.push({
+      carreira_id: FL_activeCareerIdV3786(),
+      carreira_temporada_id: FL_activeSeasonIdV3786(),
+      temporada,
+      posicao_tatica: f[`posicao_${i}`]?.value?.trim() || defaults[i][0],
+      jogador,
+      overall: f[`overall_${i}`]?.value?.trim() || "",
+      clube: f[`clube_${i}`]?.value?.trim() || "",
+      pais: f[`pais_${i}`]?.value?.trim() || "",
+      foto_url: foto || "",
+      x: defaults[i][1],
+      y: defaults[i][2],
+      mapa_url: mapaUrl
+    });
+  }
+
+  if(!rows.length){
+    setStatus("Preencha pelo menos um jogador no Top 11.", "error");
+    return;
+  }
+
+  try{
+    setStatus("Salvando Top 11...", "loading");
+
+    const result = await apiPost({
+      action:"saveTop11CareerV2",
+      carreira_id: FL_activeCareerIdV3786(),
+      carreira_temporada_id: FL_activeSeasonIdV3786(),
+      temporada,
+      mapa_url: mapaUrl,
+      rows
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou salvamento do Top 11.");
+    }
+
+    if(!Array.isArray(db.TOP11_CARREIRA)) db.TOP11_CARREIRA = [];
+
+    const saved = result.data?.rows || rows;
+    saved.forEach(r=>db.TOP11_CARREIRA.push(r));
+
+    FL_TOP11_MAP_URL_V3786 = mapaUrl;
+    FL_TOP11_EDITING_V3786 = true;
+    closeModal();
+    FL_renderTop11CleanV3786();
+    setStatus("Top 11 criado. Ajuste as posições e clique em Salvar posições.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao salvar Top 11: " + err.message, "error");
+  }
+}
+
+async function FL_saveTop11PositionsV3786(){
+  const rows = FL_latestTop11RowsV3786();
+  const cards = [...document.querySelectorAll(".top11-player-v3786")];
+
+  if(!rows.length){
+    setStatus("Nenhum Top 11 para salvar.", "error");
+    return;
+  }
+
+  const mapUrl = $("top11-map-url-input-v3786")?.value || FL_TOP11_MAP_URL_V3786 || "";
+
+  const updates = cards.map(card=>{
+    const id = card.dataset.id || "";
+    const row = rows.find(r => String(r.id || "") === String(id));
+    if(!row) return null;
+
+    return Object.assign({}, row, {
+      x: card.dataset.x || parseFloat(card.style.left) || row.x || "",
+      y: card.dataset.y || parseFloat(card.style.top) || row.y || "",
+      mapa_url: mapUrl,
+      foto_url: row.foto_url || ""
+    });
+  }).filter(Boolean);
+
+  try{
+    setStatus("Salvando posições do Top 11...", "loading");
+
+    const result = await apiPost({
+      action:"saveTop11CareerV2",
+      carreira_id: FL_activeCareerIdV3786(),
+      carreira_temporada_id: rows[0]?.carreira_temporada_id || FL_activeSeasonIdV3786(),
+      temporada: rows[0]?.temporada || "",
+      mapa_url: mapUrl,
+      rows: updates
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou salvamento.");
+    }
+
+    const saved = result.data?.rows || updates;
+
+    saved.forEach(s=>{
+      const idx = db.TOP11_CARREIRA.findIndex(r => String(r.id) === String(s.id));
+      if(idx >= 0) db.TOP11_CARREIRA[idx] = Object.assign({}, db.TOP11_CARREIRA[idx], s);
+    });
+
+    FL_TOP11_MAP_URL_V3786 = mapUrl;
+    FL_TOP11_EDITING_V3786 = false;
+    FL_renderTop11CleanV3786();
+    setStatus("Top 11 salvo.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao salvar posições: " + err.message, "error");
+  }
+}
+
+// Override final do Top11 para remover mapas duplicados.
+renderTop11 = FL_renderTop11CleanV3786;
+window.renderTop11 = FL_renderTop11CleanV3786;
+
+const __renderAllOriginalV3786 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3786 && !window.__renderAllV3786Wrapped){
+  window.__renderAllV3786Wrapped = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3786.apply(this, arguments);
+    setTimeout(FL_removeSeasonIsoDatesV3786, 250);
+    return result;
+  };
+}
+
+document.addEventListener("click", ()=>{
+  setTimeout(FL_removeSeasonIsoDatesV3786, 300);
+}, true);
+
+setTimeout(FL_removeSeasonIsoDatesV3786, 800);
+setTimeout(FL_removeSeasonIsoDatesV3786, 1800);
+
+window.FL_renderTop11CleanV3786 = FL_renderTop11CleanV3786;
+window.FL_toggleTop11EditV3786 = FL_toggleTop11EditV3786;
+window.FL_applyTop11MapV3786 = FL_applyTop11MapV3786;
+window.FL_saveTop11PositionsV3786 = FL_saveTop11PositionsV3786;
+window.FL_openCreateTop11V3786 = FL_openCreateTop11V3786;
