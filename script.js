@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.4 ui restore');
+console.log('Football Legacy script carregado v3.5 ballon global career');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -12,7 +12,7 @@ let active = {
   temporada: localStorage.getItem("fl_active_temporada") || ""
 };
 
-const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO",top11:"TOP11",midia:"MIDIAS"};
+const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO_CARREIRA",bolaourobase:"BOLA_DE_OURO_BASE",top11:"TOP11",midia:"MIDIAS"};
 
 const schemas = {
   personagem:[["carreira_id","ID da carreira","number"],["tipo","Tipo","select",["protagonista","coadjuvante","real"]],["nome","Nome","text"],["foto","Foto URL","fileurl"],["posicao","Posição","text"],["nacionalidade","Nacionalidade","text"]],
@@ -22,6 +22,7 @@ const schemas = {
   estatistica:[["personagem_id","ID do personagem","number"],["competicao_id","ID da competição","number"],["temporada","Temporada","text"],["jogos","Jogos","number"],["gols","Gols","number"],["assistencias","Assistências","number"],["cartoes","Cartões","number"],["media_geral","Nota geral","text"]],
   top11:[["temporada","Temporada","text"],["posicao","Posição","text"],["jogador","Jogador","text"],["overall","Overall","number"]],
   bolaouro:[["temporada","Temporada","text"],["posicao","Posição","number"],["jogador","Jogador","text"],["idade","Idade","number"],["valor_mercado","Valor de mercado","text"],["nacionalidade","Nacionalidade / Bandeira","text"],["overall","Overall","number"],["imagem_destaque_url","Imagem destaque do vencedor","fileurl"]],
+  bolaourobase:[["temporada_base_id","ID temporada base","number"],["temporada","Temporada","text"],["ano","Ano","number"],["posicao","Posição","number"],["jogador","Jogador","text"],["pais","País","text"],["clube","Clube","text"],["idade_na_premiacao","Idade","number"],["valor_mercado","Valor de mercado","text"],["imagem_url","Imagem URL","fileurl"]],
   midia:[["carreira_id","ID da carreira","number"],["temporada","Temporada","text"],["tipo","Tipo","select",["imagem","video"]],["titulo","Título","text"],["descricao","Descrição","textarea"],["url","URL","fileurl"]]
 };
 
@@ -736,6 +737,318 @@ window.addEventListener('unhandledrejection', function(event){
 });
 
 
+
+
+// ===== V3.5 BALLON GLOBAL + CAREER OVERRIDES =====
+function normalizeSeasonValue(value){
+  return String(value || "").trim();
+}
+
+function getBallonBaseRows(){
+  return getTable("BOLA_DE_OURO_BASE").map(row=>Object.assign({__source:"base"}, row));
+}
+
+function getBallonCareerRows(){
+  const carreira = getActiveCareer();
+  if(!carreira) return [];
+
+  const careerRows = getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(row=>String(row.carreira_id)===String(carreira.id))
+    .map(row=>Object.assign({__source:"carreira"}, row));
+
+  // Mantém compatibilidade com a aba legada enquanto existir.
+  const legacyRows = getTable("BOLA_DE_OURO")
+    .map(row=>Object.assign({__source:"legado"}, row));
+
+  return [...careerRows, ...legacyRows];
+}
+
+function getBallonAllRowsForCurrentView(){
+  return [...getBallonBaseRows(), ...getBallonCareerRows()];
+}
+
+function getBallonSeasons(){
+  return [...new Set(getBallonAllRowsForCurrentView().map(x=>normalizeSeasonValue(x.temporada)).filter(Boolean))]
+    .sort((a,b)=>{
+      const ay = Number(String(a).match(/\d{4}/)?.[0] || 0);
+      const by = Number(String(b).match(/\d{4}/)?.[0] || 0);
+      return by - ay;
+    });
+}
+
+function getActiveBallonSeason(){
+  const seasons = getBallonSeasons();
+
+  if(activeBallonSeason && seasons.includes(activeBallonSeason)){
+    return activeBallonSeason;
+  }
+
+  const current = getCurrentSeason();
+  if(current && seasons.includes(current)){
+    activeBallonSeason = current;
+    localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+    return activeBallonSeason;
+  }
+
+  activeBallonSeason = seasons[0] || "";
+  localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+  return activeBallonSeason;
+}
+
+function renderBallonSeasonSelector(){
+  const select = $("ballonSeasonSelect");
+  if(!select) return;
+
+  const seasons = getBallonSeasons();
+  const selected = getActiveBallonSeason();
+
+  select.innerHTML = seasons.length
+    ? seasons.map(s=>`<option value="${s}" ${String(s)===String(selected)?"selected":""}>${s}</option>`).join("")
+    : `<option value="">Sem rankings</option>`;
+
+  select.value = selected || "";
+
+  select.onchange = e => {
+    activeBallonSeason = e.target.value;
+    localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+    renderBolaOuro();
+  };
+}
+
+function uniqueBallonRows(rows){
+  const map = new Map();
+
+  rows
+    .slice()
+    .sort((a,b)=>{
+      // Prioridade: carreira > legado > base em caso de mesma temporada/posição.
+      const weight = {carreira:3, legado:2, base:1};
+      return (num(a.posicao)-num(b.posicao)) || ((weight[b.__source]||0)-(weight[a.__source]||0)) || num(b.id)-num(a.id);
+    })
+    .forEach(row=>{
+      const pos = String(row.posicao || "").trim();
+      if(!pos) return;
+      if(!map.has(pos)) map.set(pos,row);
+    });
+
+  return [...map.values()].sort((a,b)=>num(a.posicao)-num(b.posicao));
+}
+
+function renderBolaOuro(){
+  renderBallonSeasonSelector();
+
+  const all = getBallonAllRowsForCurrentView();
+  const season = getActiveBallonSeason();
+
+  const rawRows = all
+    .filter(r=>!season || String(r.temporada)===String(season))
+    .sort((a,b)=>num(a.posicao)-num(b.posicao));
+
+  const rows = uniqueBallonRows(rawRows).slice(0,10);
+  const winner = rows.find(r=>String(r.posicao)==="1") || rows[0];
+
+  setText("ballonSeasonLabel", season?`1º ao 10º colocado • ${season}`:"1º ao 10º colocado");
+
+  const poster = $("ballon-poster");
+  if(poster){
+    const url = winner && (winner.imagem_destaque_url || winner.imagem_url || winner.url || "");
+    if(url){
+      poster.classList.add("has-image");
+      poster.style.backgroundImage = `url("${url}")`;
+    }else{
+      poster.classList.remove("has-image");
+      poster.style.backgroundImage = "";
+    }
+  }
+
+  const list = $("ballon-ranking-list");
+  if(!list) return;
+
+  list.innerHTML = `<div class="ballon-head"><div>#</div><div>Jogador</div><div>Idade</div><div>Valor</div><div></div></div>`+
+  rows.map(r=>{
+    const sourceLabel = r.__source === "base" ? "Real" : (r.__source === "carreira" ? "Carreira" : "Legado");
+    return `<div class="ballon-row ${String(r.posicao)==="1"?"first":""}">
+      <div>${r.posicao||"-"}</div>
+      <div class="ballon-player-cell">
+        <span class="flag-dot">${flagFrom(r.nacionalidade || r.pais)}</span>
+        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${r.jogador||"-"}</button>
+        <span class="ballon-source-pill">${sourceLabel}</span>
+      </div>
+      <div>${r.idade || r.idade_na_premiacao || "-"}</div>
+      <div>${r.valor_mercado || "-"}</div>
+      <div class="ballon-actions"><button onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
+    </div>`;
+  }).join("")+
+  (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
+}
+
+function getBallonWinnersRanking(){
+  const rows = getBallonAllRowsForCurrentView()
+    .filter(r=>String(r.posicao)==="1" && r.jogador && String(r.jogador).toLowerCase() !== "não concedido");
+
+  const grouped = new Map();
+
+  rows.forEach(row=>{
+    const name = String(row.jogador || "").trim();
+    const key = name.toLowerCase();
+
+    if(!grouped.has(key)){
+      grouped.set(key,{
+        jogador:name,
+        pais:row.nacionalidade || row.pais || "",
+        count:0,
+        temporadas:[],
+        fontes:new Set()
+      });
+    }
+
+    const item = grouped.get(key);
+    item.count += 1;
+    if(row.temporada) item.temporadas.push(row.temporada);
+    item.fontes.add(row.__source === "base" ? "Real" : (row.__source === "carreira" ? "Carreira" : "Legado"));
+  });
+
+  return [...grouped.values()]
+    .sort((a,b)=>b.count-a.count || a.jogador.localeCompare(b.jogador))
+    .slice(0,25)
+    .map((item,index)=>Object.assign(item,{rank:index+1, fontes:[...item.fontes]}));
+}
+
+function openBestBallonModal(){
+  const modal = $("bestBallonModal");
+  const list = $("bestBallonList");
+  if(!modal || !list) return;
+
+  const ranking = getBallonWinnersRanking();
+
+  list.innerHTML = ranking.length
+    ? ranking.map(item=>`
+      <article class="best-ballon-row">
+        <div class="best-ballon-rank">${item.rank}</div>
+        <div class="best-ballon-player">
+          <strong>${flagFrom(item.pais)} ${item.jogador}</strong>
+          <small>${item.fontes.join(" + ")}</small>
+        </div>
+        <div class="best-ballon-count">${item.count}x</div>
+        <div class="best-ballon-seasons">${item.temporadas.sort((a,b)=>{
+          const ay = Number(String(a).match(/\d{4}/)?.[0] || 0);
+          const by = Number(String(b).match(/\d{4}/)?.[0] || 0);
+          return ay - by;
+        }).join(" • ")}</div>
+      </article>
+    `).join("")
+    : `<div class="season-empty">Nenhum vencedor cadastrado ainda.</div>`;
+
+  modal.classList.add("active");
+}
+
+function closeBestBallonModal(){
+  const modal = $("bestBallonModal");
+  if(modal) modal.classList.remove("active");
+}
+
+function openBallonBatchForm(){
+  modalTitle.textContent="Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  form.className="form-grid ballon-batch";
+
+  const carreira = getActiveCareer();
+  const selectedSeason = getActiveBallonSeason() || getCurrentSeason();
+  const seasons=[...new Set([...getAvailableSeasonsForActivePlayer(),...getBallonSeasons()])].sort(compareSeasonsDesc);
+  const seasonOptions=seasons.length
+    ? seasons.map(s=>`<option value="${s}" ${s===selectedSeason?"selected":""}>${s}</option>`).join("")
+    : `<option value="${selectedSeason||""}">${selectedSeason||"Sem temporada"}</option>`;
+
+  const existingRows=uniqueBallonRows(getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(carreira?.id || "") && String(r.temporada)===String(selectedSeason)));
+
+  function existing(pos,field){
+    const row=existingRows.find(r=>String(r.posicao)===String(pos));
+    return row ? String(row[field] || "").replace(/"/g,"&quot;") : "";
+  }
+
+  const rows=Array.from({length:10},(_,i)=>i+1).map(i=>`<div class="batch-row">
+    <strong>${i}</strong>
+    <input name="jogador_${i}" value="${existing(i,'jogador')}" placeholder="Jogador">
+    <input name="nacionalidade_${i}" value="${existing(i,'nacionalidade')}" placeholder="País, código ou emoji">
+    <input name="idade_${i}" value="${existing(i,'idade')}" type="number" placeholder="Idade">
+    <input name="valor_${i}" value="${existing(i,'valor_mercado')}" placeholder="Ex: €90M">
+  </div>`).join("");
+
+  form.innerHTML=`<div class="form-field">
+      <label>Temporada</label>
+      <select name="temporada">${seasonOptions}</select>
+    </div>
+    <div class="form-field">
+      <label>Imagem do vencedor</label>
+      <div class="file-row"><input name="imagem" value="${existing(1,'imagem_destaque_url')}" placeholder="URL gerada automaticamente"><button type="button" class="upload-btn" onclick="triggerUpload('imagem')">Importar</button></div>
+      <input type="file" id="file_imagem" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'imagem')">
+    </div>
+    <div class="batch-grid">
+      <div class="batch-head"><div>#</div><div>Jogador</div><div>País</div><div>Idade</div><div>Valor</div></div>
+      ${rows}
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Salvar Ranking da Carreira</button>
+    </div>`;
+
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    const btn=$("saveBtn");
+    if(btn.disabled) return;
+    btn.disabled=true;
+    btn.textContent="Salvando...";
+
+    try{
+      const data=Object.fromEntries(new FormData(form).entries());
+      const season=data.temporada;
+      if(!season) throw new Error("Selecione uma temporada.");
+      if(!carreira) throw new Error("Nenhuma carreira selecionada.");
+
+      const seasonExisting=getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(carreira.id) && String(r.temporada)===String(season));
+
+      for(let i=1;i<=10;i++){
+        if(!data[`jogador_${i}`]) continue;
+
+        const record={
+          carreira_id:carreira.id,
+          carreira_temporada_id:"",
+          temporada:season,
+          posicao:i,
+          jogador:data[`jogador_${i}`],
+          nacionalidade:data[`nacionalidade_${i}`]||"",
+          idade:data[`idade_${i}`]||"",
+          valor_mercado:data[`valor_${i}`]||"",
+          overall:"",
+          imagem_destaque_url:i===1?(data.imagem||""):""
+        };
+
+        const existingRow=seasonExisting.find(r=>String(r.posicao)===String(i));
+
+        const payload=existingRow
+          ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existingRow.id, record}
+          : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record};
+
+        const res=await apiPost(payload);
+        if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + i);
+      }
+
+      activeBallonSeason=season;
+      localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
+
+      closeModal();
+      await loadData();
+    }catch(err){
+      btn.disabled=false;
+      btn.textContent="Salvar Ranking da Carreira";
+      setStatus("Erro ao salvar ranking: "+err.message,"error");
+      console.error(err);
+    }
+  };
+
+  modal.classList.add("active");
+}
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -761,6 +1074,10 @@ function startFootballLegacy(){
     if($("openSeasonBtn")) $("openSeasonBtn").onclick = openSeasonFlow;
     if($("top11BatchBtn")) $("top11BatchBtn").onclick = openTop11BatchForm;
     if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = openBallonBatchForm;
+    if($("ballonBestBtn")) $("ballonBestBtn").onclick = openBestBallonModal;
+    if($("closeBestBallon")) $("closeBestBallon").onclick = closeBestBallonModal;
+
+    if($("bestBallonModal")) $("bestBallonModal").onclick = e => { if(e.target === $("bestBallonModal")) closeBestBallonModal(); };
 
     if($("protagonistEditCard")){
       $("protagonistEditCard").onclick = ()=>{
@@ -858,3 +1175,6 @@ async function removeRecord(kind,id){
 if(typeof closeModal !== "undefined") window.closeModal = closeModal;
 if(typeof navigate !== "undefined") window.navigate = navigate;
 console.log('Funções UI restauradas v3.4');
+
+if(typeof openBestBallonModal !== "undefined") window.openBestBallonModal = openBestBallonModal;
+if(typeof closeBestBallonModal !== "undefined") window.closeBestBallonModal = closeBestBallonModal;

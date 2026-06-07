@@ -96,7 +96,7 @@
           <div><h3>Bola de Ouro</h3><p>Ranking do 1º ao 10º usando a arte do vencedor como fundo.</p></div>
           <div class="ballon-header-actions">
             <label>Temporada<select id="ballonSeasonSelect"></select></label>
-            <button class="gold-btn" id="ballonBatchBtn">+ Ranking</button>
+            <button class="ghost-btn" id="ballonBestBtn">🏆 Os melhores</button><button class="gold-btn" id="ballonBatchBtn">+ Ranking</button>
           </div>
         </div>
         <div class="ballon-poster" id="ballon-poster">
@@ -122,6 +122,14 @@
   </div>
 
   <div class="modal" id="modal"><div class="modal-box" id="modalBox"><button class="close-modal" id="close-modal">×</button><h3 id="modal-title">Novo registro</h3><form id="dynamic-form"></form></div></div>
+  <div class="modal" id="bestBallonModal">
+    <div class="modal-box wide">
+      <button class="close-modal" id="closeBestBallon">×</button>
+      <h3>Maiores vencedores da Bola de Ouro</h3>
+      <p class="modal-subtitle">Soma a base real global com os vencedores da carreira selecionada.</p>
+      <div id="bestBallonList" class="best-ballon-list"></div>
+    </div>
+  </div>
   <script>
     window.FOOTBALL_LEGACY_API = "/api/football-legacy";
     window.CLOUDINARY_CLOUD_NAME = "duq0dyp6b";

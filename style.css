@@ -247,3 +247,87 @@
   padding:10px;
   outline:none;
 }
+
+
+/* ===== V3.5 BALLON GLOBAL + CAREER ===== */
+.modal-subtitle{
+  color:#9fb0c7;
+  margin-top:6px;
+  margin-bottom:18px;
+}
+
+.best-ballon-list{
+  display:grid;
+  gap:10px;
+  margin-top:18px;
+}
+
+.best-ballon-row{
+  display:grid;
+  grid-template-columns:56px 1fr 90px minmax(190px,1.2fr);
+  align-items:center;
+  gap:12px;
+  padding:13px 14px;
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(15,23,42,.92),rgba(30,41,59,.74));
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.best-ballon-rank{
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:rgba(245,158,11,.18);
+  color:#fde68a;
+  font-weight:900;
+}
+
+.best-ballon-player strong{
+  display:block;
+  font-size:16px;
+}
+
+.best-ballon-player small{
+  display:block;
+  color:#9fb0c7;
+  margin-top:3px;
+}
+
+.best-ballon-count{
+  text-align:center;
+  color:#fbbf24;
+  font-weight:900;
+  font-size:22px;
+}
+
+.best-ballon-seasons{
+  color:#cbd5e1;
+  font-size:12px;
+  line-height:1.35;
+}
+
+.ballon-source-pill{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  color:#cbd5e1;
+  font-size:10px;
+  font-weight:900;
+  margin-left:6px;
+  text-transform:uppercase;
+}
+
+@media(max-width:800px){
+  .best-ballon-row{
+    grid-template-columns:44px 1fr;
+  }
+  .best-ballon-count,
+  .best-ballon-seasons{
+    grid-column:2;
+    text-align:left;
+  }
+}

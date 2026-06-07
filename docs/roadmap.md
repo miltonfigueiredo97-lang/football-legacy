@@ -1,3 +1,3 @@
-# Football Legacy V3.4
+# Football Legacy V3.5
 
-Correção cirúrgica em cima da V3.3: restaura variáveis do modal e função navigate, que causavam botões e abas sem funcionar apesar dos dados carregarem.
+Bola de Ouro agora lê BOLA_DE_OURO_BASE global + BOLA_DE_OURO_CARREIRA filtrada pela carreira atual. Adicionado botão Os melhores para ranking dos maiores vencedores somando base real e carreira atual.
