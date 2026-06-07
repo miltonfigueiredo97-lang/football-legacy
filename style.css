@@ -3000,3 +3000,26 @@ body[data-current-page="museu"] #museu{
   color:#93c5fd;
   font-weight:900;
 }
+
+
+/* ===== V3.7.84 ISOLAMENTO FORTE DE ABAS ===== */
+.page[hidden]{
+  display:none!important;
+}
+
+.page:not(.active){
+  display:none!important;
+}
+
+body[data-current-page="dashboard"] #dashboard,
+body[data-current-page="resumo"] #dashboard,
+body[data-current-page="personagens"] #personagens,
+body[data-current-page="estatisticas"] #estatisticas,
+body[data-current-page="trofeus"] #trofeus,
+body[data-current-page="top11"] #top11,
+body[data-current-page="bolaouro"] #bolaouro,
+body[data-current-page="records"] #records,
+body[data-current-page="clubes"] #clubes,
+body[data-current-page="museu"] #museu{
+  display:block!important;
+}

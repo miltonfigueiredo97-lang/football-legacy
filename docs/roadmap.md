@@ -1,3 +1,3 @@
-# Football Legacy V3.7.83
+# Football Legacy V3.7.84
 
-Bola de Ouro: remove painel de filtros de dentro da arte/tabela e coloca as visualizações dentro do modal Os melhores. Estatísticas: adiciona Brasileirão. Seleção: força fallback confiável de escudo do Brasil via Wikimedia Commons e reforça injeção de badge em cards de seleção.
+Corrige vazamento de conteúdo entre abas. Implementa isolamento forte: ao trocar de aba, todas as páginas são escondidas e só a página ativa fica visível. Blocos dinâmicos de Estatísticas, Top 11 e Bola de Ouro são removidos quando fora da aba correta.

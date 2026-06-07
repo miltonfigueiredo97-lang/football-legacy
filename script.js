@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.83 ballon modal brasileirao selecao badge');
+console.log('Football Legacy script carregado v3.7.84 hard page isolation');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -11997,3 +11997,198 @@ window.FL_renderBallonBestModalV3783 = FL_renderBallonBestModalV3783;
 window.FL_closeBallonBestModalV3783 = FL_closeBallonBestModalV3783;
 window.FL_ensureBrasileiraoStatsV3783 = FL_ensureBrasileiraoStatsV3783;
 window.FL_fixBrazilSelectionBadgesV3783 = FL_fixBrazilSelectionBadgesV3783;
+
+
+// ===== V3.7.84 ISOLAMENTO FORTE DE ABAS =====
+// Corrige bug onde conteúdo de Troféus/Estatísticas continuava aparecendo em Records ou outras abas.
+// Regra: só a aba ativa pode ficar visível. Blocos temporários são removidos ao sair da aba.
+
+function FL_currentPageV3784(){
+  try{
+    if(typeof currentPageId !== "undefined" && currentPageId) return currentPageId;
+  }catch(err){}
+
+  const activeMenu = document.querySelector(".menu-item.active[data-page]");
+  if(activeMenu?.dataset?.page) return activeMenu.dataset.page;
+
+  const activePage = document.querySelector(".page.active");
+  if(activePage?.id) return activePage.id;
+
+  return document.body.dataset.currentPage || "dashboard";
+}
+
+function FL_pageIdsV3784(){
+  return [
+    "dashboard",
+    "resumo",
+    "personagens",
+    "estatisticas",
+    "trofeus",
+    "top11",
+    "bolaouro",
+    "records",
+    "clubes",
+    "museu"
+  ];
+}
+
+function FL_removeForeignDynamicBlocksV3784(activePage){
+  try{
+    // Estatísticas nova só pode existir na aba estatisticas.
+    if(activePage !== "estatisticas"){
+      document.querySelectorAll("#stats-major-leagues-v3782,.stats-major-leagues-v3782").forEach(el=>el.remove());
+      document.querySelectorAll(".stats-old-hidden-v3782").forEach(el=>el.classList.remove("stats-old-hidden-v3782"));
+    }
+
+    // Top11 mapa só pode existir na aba top11.
+    if(activePage !== "top11"){
+      document.querySelectorAll("#top11-map-v3781,.top11-map-section-v3781").forEach(el=>el.remove());
+    }
+
+    // Bola de Ouro inline antigo nunca deve aparecer.
+    document.querySelectorAll("#ballon-best-v3780,.ballon-best-v3780").forEach(el=>el.remove());
+
+    // X espalhado antigo nunca deve aparecer.
+    document.querySelectorAll(".delete-career-item-x-v3769").forEach(el=>el.remove());
+  }catch(err){
+    console.warn("Falha limpando blocos estrangeiros v3.7.84:", err);
+  }
+}
+
+function FL_forceOnlyActivePageV3784(pageId){
+  const activePage = pageId || FL_currentPageV3784() || "dashboard";
+  document.body.dataset.currentPage = activePage;
+
+  try{
+    currentPageId = activePage;
+  }catch(err){}
+
+  const ids = FL_pageIdsV3784();
+
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+
+    const isActive = id === activePage || (activePage === "resumo" && id === "dashboard");
+
+    el.classList.toggle("active", isActive);
+    el.hidden = !isActive;
+    el.style.display = isActive ? "" : "none";
+  });
+
+  // Segurança: qualquer .page sem id conhecido também fica escondida se não for ativa.
+  document.querySelectorAll(".page").forEach(el=>{
+    const isActive = el.id === activePage || (activePage === "resumo" && el.id === "dashboard");
+    if(!isActive){
+      el.classList.remove("active");
+      el.hidden = true;
+      el.style.display = "none";
+    }
+  });
+
+  document.querySelectorAll(".menu-item[data-page]").forEach(item=>{
+    item.classList.toggle("active", item.dataset.page === activePage);
+  });
+
+  FL_removeForeignDynamicBlocksV3784(activePage);
+}
+
+function FL_renderActivePageV3784(pageId, force=false){
+  const page = pageId || FL_currentPageV3784() || "dashboard";
+
+  FL_forceOnlyActivePageV3784(page);
+
+  try{
+    if(typeof renderGlobalSelectorsOnly === "function"){
+      renderGlobalSelectorsOnly();
+    }
+  }catch(err){
+    console.error("Erro global selectors v3.7.84:", err);
+  }
+
+  try{
+    if(typeof renderPageById === "function"){
+      renderPageById(page, force);
+    }else{
+      // fallback por nome direto
+      if(page === "estatisticas" && typeof renderEstatisticas === "function") renderEstatisticas();
+      if(page === "trofeus" && typeof renderTrofeus === "function") renderTrofeus();
+      if(page === "top11" && typeof renderTop11 === "function") renderTop11();
+      if(page === "bolaouro" && typeof renderBolaOuro === "function") renderBolaOuro();
+    }
+  }catch(err){
+    console.error("Erro render page v3.7.84:", page, err);
+  }
+
+  // Isola de novo depois do render, porque alguns renders mexem no DOM.
+  FL_forceOnlyActivePageV3784(page);
+
+  // Re-render específico seguro, apenas se a aba ativa for a correta.
+  try{
+    if(page === "estatisticas" && typeof FL_renderEstatisticasMajorLeaguesV3782 === "function"){
+      FL_renderEstatisticasMajorLeaguesV3782();
+    }
+
+    if(page === "top11" && typeof FL_renderTop11MapV3781 === "function"){
+      FL_renderTop11MapV3781();
+    }
+
+    if(page === "bolaouro"){
+      if(typeof FL_bindBestButtonV3783 === "function") FL_bindBestButtonV3783();
+      if(typeof FL_hideInlineBallonBestV3783 === "function") FL_hideInlineBallonBestV3783();
+    }
+
+    if(typeof FL_fixBrazilSelectionBadgesV3783 === "function"){
+      FL_fixBrazilSelectionBadgesV3783();
+    }
+  }catch(err){
+    console.warn("Pós-render específico v3.7.84 falhou:", err);
+  }
+
+  FL_forceOnlyActivePageV3784(page);
+}
+
+// Sobrescreve navegação de forma definitiva.
+window.navigate = function(pageId){
+  if(!pageId) return;
+
+  try{
+    currentPageId = pageId;
+  }catch(err){}
+
+  document.body.dataset.currentPage = pageId;
+
+  FL_forceOnlyActivePageV3784(pageId);
+
+  setTimeout(()=>FL_renderActivePageV3784(pageId, true), 0);
+};
+
+// Sobrescreve renderAll para renderizar somente a aba ativa.
+window.renderAll = function(){
+  const page = FL_currentPageV3784() || "dashboard";
+  FL_renderActivePageV3784(page, true);
+};
+
+// Captura cliques no menu antes dos handlers antigos.
+document.addEventListener("click", function(e){
+  const menu = e.target.closest(".menu-item[data-page]");
+  if(menu?.dataset?.page){
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    window.navigate(menu.dataset.page);
+  }
+}, true);
+
+// Reforços após qualquer render tardio.
+function FL_periodicIsolationV3784(){
+  const page = FL_currentPageV3784() || document.body.dataset.currentPage || "dashboard";
+  FL_forceOnlyActivePageV3784(page);
+}
+
+setTimeout(FL_periodicIsolationV3784, 250);
+setTimeout(FL_periodicIsolationV3784, 1000);
+setTimeout(FL_periodicIsolationV3784, 2500);
+
+window.FL_forceOnlyActivePageV3784 = FL_forceOnlyActivePageV3784;
+window.FL_renderActivePageV3784 = FL_renderActivePageV3784;
