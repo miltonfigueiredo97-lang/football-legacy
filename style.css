@@ -1361,75 +1361,54 @@ button.saving::before,
 }
 
 
-/* ===== V3.7.4 PLAYER CARD FULL PHOTO ===== */
-/* Faz a foto completar o card inteiro e joga o nome por cima com degradê */
+/* ===== V3.7.6 SAFE PLAYER CARD FIX ===== */
+/* Remove qualquer tentativa anterior de usar a foto como background do card */
 .player-card-full-photo,
+.player-card-full-photo.has-player-photo,
 .hero-player-card,
 .protagonist-card,
 .player-card,
 .hero-card-side{
+  background-image:none!important;
+}
+
+/* Mantém imagem normal, sem distorcer, sem completar artificialmente */
+.player-photo,
+.protagonist-photo,
+.photo-box{
   overflow:hidden!important;
+  border-radius:24px!important;
 }
 
-.player-card-full-photo.has-player-photo{
-  background-image:
-    linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.08) 42%, rgba(15,23,42,.88) 78%, rgba(15,23,42,.98) 100%),
-    var(--player-card-bg)!important;
-  background-size:cover!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
-  min-height:360px!important;
-  border-radius:26px!important;
+.player-photo img,
+.protagonist-photo img,
+.photo-box img,
+#playerPhoto,
+#protagonistImage{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center top!important;
+  display:block;
+}
+
+/* Nome sempre abaixo da imagem, não sobreposto em cima da foto */
+.player-info,
+.protagonist-info,
+.character-card-info,
+.card-name{
   position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  z-index:auto!important;
 }
 
-/* Esconde o recorte antigo da foto quando o card já usa imagem completa */
-.player-card-full-photo.has-player-photo .player-photo,
-.player-card-full-photo.has-player-photo .protagonist-photo,
-.player-card-full-photo.has-player-photo > img,
-.player-card-full-photo.has-player-photo .photo-box{
-  opacity:0!important;
-  pointer-events:none!important;
-}
-
-/* O bloco de nome vira overlay dentro da própria imagem */
-.player-card-full-photo.has-player-photo .player-info,
-.player-card-full-photo.has-player-photo .protagonist-info,
-.player-card-full-photo.has-player-photo .card-name,
-.player-card-full-photo.has-player-photo .character-card-info{
-  position:absolute!important;
-  left:16px!important;
-  right:16px!important;
-  bottom:16px!important;
-  z-index:3!important;
-  border:0!important;
-  background:linear-gradient(180deg,rgba(15,23,42,.58),rgba(15,23,42,.86))!important;
-  backdrop-filter:blur(8px)!important;
-  border-radius:18px!important;
-  padding:14px!important;
-  min-height:auto!important;
-  text-align:center!important;
-}
-
-/* Se o HTML usa IDs em vez de classes, força o card textual a sobrepor */
-#mainCharacter,
-#protagonistCardName{
-  position:relative;
-  z-index:4;
-}
-
-.real-trophy-img{
-  width:116px!important;
-  height:116px!important;
-}
-
-.real-trophy-img img{
-  max-width:116px!important;
-  max-height:116px!important;
-  object-fit:contain!important;
-  filter:drop-shadow(0 18px 20px rgba(0,0,0,.45));
-}
-
-.real-trophy-card{
-  min-height:250px!important;
+/* Cache warning */
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
 }

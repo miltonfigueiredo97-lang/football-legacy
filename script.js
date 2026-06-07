@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.4 player card trophy images');
+console.log('Football Legacy script carregado v3.7.6 safe resumo trofeus cache');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -126,48 +126,148 @@ function getCurrentSeason(stats=getProtagonistStats()){
   active.temporada=all[0]||""; saveActive(); return active.temporada;
 }
 
-async function loadData(){
+
+// ===== V3.7.6 FAST LOAD WITH SAFE LOCAL CACHE =====
+const FL_CACHE_KEY = "football_legacy_db_cache_v1";
+const FL_CACHE_TIME_KEY = "football_legacy_db_cache_time_v1";
+const FL_CACHE_MAX_AGE = 1000 * 60 * 60 * 12;
+
+function saveDbCache(){
   try{
-    setStatus("Carregando dados do Google Sheets...");
-
-    const url = API_URL + "?action=all&cache=" + Date.now();
-
-    console.log("Football Legacy API via Vercel proxy:", url);
-
-    const res = await fetch(url, {
-      method: "GET",
-      cache: "no-store"
-    });
-
-    if(!res.ok){
-      throw new Error("HTTP " + res.status + " ao chamar proxy Vercel");
-    }
-
-    const json = await res.json();
-
-    if(!json.ok){
-      throw new Error(json.error || "Proxy/Apps Script retornou ok:false");
-    }
-
-    db = json.data || {};
-    console.log("Football Legacy DB carregado:", {
-      usuarios: getTable("USUARIOS").length,
-      carreiras: getTable("CARREIRAS").length,
-      personagens: getTable("PERSONAGENS").length,
-      bolaBase: getTable("BOLA_DE_OURO_BASE").length,
-      bolaCarreira: getTable("BOLA_DE_OURO_CARREIRA").length,
-      temporadasBase: getTable("TEMPORADAS_BASE").length
-    });
-
-    ensureActive();
-    renderAll();
-
-    setStatus("Dados carregados do Google Sheets com sucesso.","ok");
+    if(!db) return;
+    localStorage.setItem(FL_CACHE_KEY, JSON.stringify(db));
+    localStorage.setItem(FL_CACHE_TIME_KEY, String(Date.now()));
   }catch(err){
-    console.error("Erro loadData:", err);
-    setStatus("Erro ao carregar Google Sheets: " + err.message, "error");
+    console.warn("Não foi possível salvar cache local:", err);
   }
 }
+
+function readDbCache(){
+  try{
+    const raw = localStorage.getItem(FL_CACHE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(err){
+    console.warn("Cache local inválido:", err);
+    return null;
+  }
+}
+
+function getDbCacheAgeText(){
+  const t = Number(localStorage.getItem(FL_CACHE_TIME_KEY) || 0);
+  if(!t) return "";
+  const diff = Date.now() - t;
+  const min = Math.floor(diff / 60000);
+  if(min < 1) return "agora";
+  if(min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if(h < 24) return `${h} h`;
+  const d = Math.floor(h / 24);
+  return `${d} dias`;
+}
+
+function normalizeDbAfterLoad(){
+  if(!db || typeof db !== "object") db = {};
+  Object.keys(db).forEach(k=>{
+    if(!Array.isArray(db[k])) db[k] = [];
+  });
+}
+
+function applyCachedDb(){
+  const cached = readDbCache();
+  if(!cached) return false;
+
+  db = cached;
+  normalizeDbAfterLoad();
+
+  try{
+    renderAll();
+    const age = getDbCacheAgeText();
+    setStatus(`Dados carregados rapidamente do cache local${age ? " (" + age + ")" : ""}. Atualizando em segundo plano...`, "ok");
+  }catch(err){
+    console.error("Erro ao renderizar cache local:", err);
+    return false;
+  }
+
+  return true;
+}
+
+async function fetchFreshDb(){
+  const url = `${API_URL}${API_URL.includes("?") ? "&" : "?"}action=all&cache=${Date.now()}`;
+  console.log("Football Legacy API fresh:", url);
+
+  let data;
+
+  if(API_URL.startsWith("/api/")){
+    const res = await fetch(url, {cache:"no-store"});
+    data = await res.json();
+  }else{
+    try{
+      data = await fetchJsonp(`${API_URL}?action=all`);
+    }catch(jsonpErr){
+      console.warn("JSONP falhou, tentando fetch:", jsonpErr);
+      const res = await fetch(url, {cache:"no-store"});
+      data = await res.json();
+    }
+  }
+
+  if(!data || !data.ok){
+    throw new Error(data?.error || "Erro ao carregar dados do Google Sheets.");
+  }
+
+  return data.data || {};
+}
+
+async function loadData(options={}){
+  const force = !!options.force;
+  const usedCache = !force && applyCachedDb();
+
+  if(!usedCache){
+    setStatus("Conectando ao Google Sheets...");
+  }
+
+  try{
+    const fresh = await fetchFreshDb();
+    db = fresh;
+    normalizeDbAfterLoad();
+    saveDbCache();
+
+    console.log("Football Legacy DB carregado:", {
+      usuarios:getTable("USUARIOS").length,
+      carreiras:getTable("CARREIRAS").length,
+      personagens:getTable("PERSONAGENS").length,
+      temporadas:getTable("CARREIRA_TEMPORADAS").length,
+      stats:getTable("ESTATISTICAS_CARREIRA").length,
+      bolaBase:getTable("BOLA_DE_OURO_BASE").length,
+      recordsBase:getTable("RECORDS_BASE").length
+    });
+
+    renderAll();
+    setStatus("Dados carregados do Google Sheets com sucesso.","ok");
+  }catch(err){
+    console.error("Erro ao carregar Google Sheets:", err);
+    if(usedCache){
+      setStatus("Não consegui atualizar agora. Mantive os dados do cache local.", "warn");
+    }else{
+      setStatus("Erro ao carregar Google Sheets: " + err.message, "error");
+    }
+  }
+}
+
+function clearFootballLegacyCache(){
+  localStorage.removeItem(FL_CACHE_KEY);
+  localStorage.removeItem(FL_CACHE_TIME_KEY);
+  setStatus("Cache local apagado. Clique em Atualizar para buscar do Google Sheets.", "ok");
+}
+
+async function forceRefreshData(){
+  clearFootballLegacyCache();
+  await loadData({force:true});
+}
+
+window.clearFootballLegacyCache = clearFootballLegacyCache;
+window.forceRefreshData = forceRefreshData;
+
 
 async function apiPost(payload){
   const res = await fetch(API_URL, {
@@ -3838,127 +3938,6 @@ function renderTrofeus(){
       }).join("")}
     </div>
   `;
-}
-
-
-// ===== V3.7.4 PLAYER CARD + TROPHY REAL IMAGES =====
-function trophyImageForCompetition(name){
-  const key = normalizeTextKey(name);
-
-  const files = [
-    ["championsleague", "UEFA Champions League trophy.jpg"],
-    ["europaleague", "UEFA Europa League Trophy 2021.jpg"],
-    ["conferenceleague", "UEFA Europa Conference League trophy.jpg"],
-    ["libertadores", "Copa Libertadores trophy.jpg"],
-    ["sulamericana", "Copa Sudamericana trophy.jpg"],
-    ["copadomundo", "FIFA World Cup Trophy.jpg"],
-    ["worldcup", "FIFA World Cup Trophy.jpg"],
-    ["mundialdeclubes", "FIFA Club World Cup Trophy.jpg"],
-    ["intercontinentaldeclubes", "Intercontinental Cup trophy.jpg"],
-    ["premierleague", "Premier League Trophy.jpg"],
-    ["laliga", "La Liga trophy.jpg"],
-    ["serieaitaliana", "Serie A trophy.jpg"],
-    ["seriea", "Serie A trophy.jpg"],
-    ["bundesliga", "Meisterschale Bundesliga.jpg"],
-    ["ligue1", "Trophée Ligue 1.jpg"],
-    ["brasileirao", "Campeonato Brasileiro Série A trophy.jpg"],
-    ["brazilianseriea", "Campeonato Brasileiro Série A trophy.jpg"],
-    ["copadobrasil", "Copa do Brasil trophy.jpg"],
-    ["copadelrey", "Copa del Rey trophy.jpg"],
-    ["facup", "FA Cup Trophy.jpg"],
-    ["eurocopa", "UEFA European Championship trophy.jpg"],
-    ["copaamerica", "Copa América trophy.jpg"],
-    ["mundial", "FIFA Club World Cup Trophy.jpg"]
-  ];
-
-  const found = files.find(([k]) => key.includes(k) || k.includes(key));
-  if(!found) return "";
-
-  return "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(found[1]) + "?width=500";
-}
-
-// Reforça render do card do protagonista para usar uma única área com imagem + overlay.
-function setPlayerPhoto(protagonist){
-  const img = $("playerPhoto") || $("protagonistImage") || document.querySelector(".player-photo img") || document.querySelector(".protagonist-photo img");
-
-  if(img){
-    if(protagonist && protagonist.foto){
-      img.src = protagonist.foto;
-      img.style.display = "block";
-    }else{
-      img.removeAttribute("src");
-      img.style.display = "none";
-    }
-  }
-
-  const card = document.querySelector(".player-card") || document.querySelector(".protagonist-card") || document.querySelector(".hero-player-card") || document.querySelector(".hero-card-side");
-
-  if(card){
-    card.classList.add("player-card-full-photo");
-
-    if(protagonist && protagonist.foto){
-      card.style.setProperty("--player-card-bg", `url("${protagonist.foto}")`);
-      card.classList.add("has-player-photo");
-    }else{
-      card.style.removeProperty("--player-card-bg");
-      card.classList.remove("has-player-photo");
-    }
-  }
-}
-
-// Garante que o render do resumo chame setPlayerPhoto e deixe o card pronto.
-function renderDashboardJourney(){
-  const user = getActiveUser();
-  const career = getActiveCareer();
-  const protagonist = getActiveProtagonist();
-  const stats = getProtagonistStats();
-  const season = getCurrentSeason(stats);
-  const journey = buildClubJourney();
-  const totals = getCareerTotals();
-
-  setText("careerNameSide", career ? career.nome : "Football Legacy");
-  setText("careerMetaSide", user ? user.nome : "Google Sheets");
-
-  setText("currentSeason", season || "Banco conectado");
-  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
-  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
-  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
-  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
-
-  setPlayerPhoto(protagonist);
-
-  const meta = document.querySelector(".hero-meta");
-
-  if(meta){
-    meta.classList.add("club-journey-hero");
-    meta.innerHTML = `
-      <div class="career-total-strip">
-        <div><strong>${totals.jogos}</strong><span>Jogos</span></div>
-        <div><strong>${totals.gols}</strong><span>Gols</span></div>
-        <div><strong>${totals.assistencias}</strong><span>Assistências</span></div>
-      </div>
-
-      <div class="club-journey-head">
-        <span>Clubes da carreira</span>
-      </div>
-      <div class="club-journey-strip clean-club-strip">
-        ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
-            <span class="club-crest-wrap clean-club-crest">
-              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
-            </span>
-            <strong>${escapeHtml(c.clube_nome)}</strong>
-            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
-            <span class="club-full-stats">
-              <span><b>${c.jogos}</b> Jogos</span>
-              <span><b>${c.gols}</b> Gols</span>
-              <span><b>${c.assistencias}</b> Assistências</span>
-            </span>
-          </button>
-        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
-      </div>
-    `;
-  }
 }
 
 function startFootballLegacy(){

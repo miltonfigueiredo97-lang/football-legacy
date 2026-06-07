@@ -1,3 +1,3 @@
-# Football Legacy V3.7.4
+# Football Legacy V3.7.6
 
-Corrige card do protagonista: imagem completa até embaixo com nome sobreposto em overlay. Troca imagens de troféu para Special:FilePath do Wikimedia, tentando imagens reais dos troféus/logos.
+Rollback seguro da v3.7.4: remove alteração que bugava imagem do jogador. Mantém correções da v3.7.3: totais no resumo, records por competição e troféus. Adiciona cache local seguro para acelerar carregamento.
