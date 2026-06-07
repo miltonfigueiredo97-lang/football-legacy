@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.1 trofeus fix');
+console.log('Football Legacy script carregado v3.7.2 records base read');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -3275,6 +3275,202 @@ function renderDashboardJourney(){
   }
 }
 
+
+// ===== V3.7.2 RECORDS_BASE + CARREIRA =====
+function normalizeRecordCategory(cat){
+  const key = normalizeTextKey(cat);
+  if(key.includes("artilheiro")) return "maior_artilheiro";
+  if(key.includes("assist")) return "mais_assistencias";
+  if(key.includes("jogos")) return "mais_jogos";
+  if(key.includes("gols") && key.includes("temporada")) return "gols_em_uma_temporada";
+  return cat || "";
+}
+
+function getRecordsBaseStaticRows(){
+  return getTable("RECORDS_BASE")
+    .filter(r=>r && r.categoria)
+    .map(r=>({
+      jogador:r.jogador || "-",
+      pais:r.pais || "",
+      clube:r.clube || "",
+      competicao:r.competicao || r.escopo_nome || "",
+      temporada:r.temporada || "",
+      categoria:normalizeRecordCategory(r.categoria),
+      valor:num(r.valor),
+      unidade:r.unidade || "",
+      observacao:r.observacao || "",
+      escopo_tipo:r.escopo_tipo || "competicao",
+      escopo_nome:r.escopo_nome || r.competicao || "",
+      isProtagonist:false,
+      isBase:true
+    }));
+}
+
+function buildCareerRecordRows(){
+  const personagem = getActiveProtagonist();
+  if(!personagem) return [];
+
+  const stats = getRecordsBaseRows();
+  const grouped = aggregateRecordsByPlayer(stats);
+  const rows = [];
+
+  grouped.forEach(g=>{
+    rows.push({
+      jogador:g.jogador,
+      pais:personagem.nacionalidade || "",
+      clube:[...g.clubes || []].join(" / "),
+      competicao:[...g.competicoes || []].join(" / "),
+      temporada:"carreira",
+      categoria:"maior_artilheiro",
+      valor:num(g.gols),
+      unidade:"gols",
+      isProtagonist:true,
+      isBase:false
+    });
+
+    rows.push({
+      jogador:g.jogador,
+      pais:personagem.nacionalidade || "",
+      clube:[...g.clubes || []].join(" / "),
+      competicao:[...g.competicoes || []].join(" / "),
+      temporada:"carreira",
+      categoria:"mais_assistencias",
+      valor:num(g.assistencias),
+      unidade:"assistencias",
+      isProtagonist:true,
+      isBase:false
+    });
+
+    rows.push({
+      jogador:g.jogador,
+      pais:personagem.nacionalidade || "",
+      clube:[...g.clubes || []].join(" / "),
+      competicao:[...g.competicoes || []].join(" / "),
+      temporada:"carreira",
+      categoria:"mais_jogos",
+      valor:num(g.jogos),
+      unidade:"jogos",
+      isProtagonist:true,
+      isBase:false
+    });
+  });
+
+  buildSingleSeasonGoalRecords(stats).forEach(s=>{
+    rows.push({
+      jogador:s.jogador,
+      pais:personagem.nacionalidade || "",
+      clube:s.clube || "",
+      competicao:[...s.competicoes || []].join(" / "),
+      temporada:s.temporada || "",
+      categoria:"gols_em_uma_temporada",
+      valor:num(s.gols),
+      unidade:"gols",
+      isProtagonist:true,
+      isBase:false
+    });
+  });
+
+  return rows.filter(r=>r.valor);
+}
+
+function getRecordsScopeOptions(){
+  const base = getRecordsBaseStaticRows();
+  const stats = getRecordsBaseRows();
+
+  const clubOptions = [...new Set([
+    ...stats.map(getRecordsClubForStat),
+    ...base.filter(r=>r.escopo_tipo==="clube").map(r=>r.escopo_nome)
+  ].filter(Boolean))]
+    .map(name=>({type:"club", value:name, label:`Clube: ${name}`}));
+
+  const compOptions = [...new Set([
+    ...stats.map(getRecordsCompetitionForStat),
+    ...base.filter(r=>r.escopo_tipo==="competicao").map(r=>r.escopo_nome || r.competicao)
+  ].filter(Boolean))]
+    .map(name=>({type:"competition", value:name, label:`Competição: ${name}`}));
+
+  return [
+    {type:"all", value:"all", label:"Geral da carreira + base real"},
+    ...clubOptions,
+    ...compOptions
+  ];
+}
+
+function filterRecordRowsByScope(rows, scope){
+  if(!scope || scope.type==="all") return rows;
+
+  if(scope.type==="club"){
+    return rows.filter(r=>
+      String(r.clube || "").toLowerCase().includes(String(scope.value).toLowerCase()) ||
+      String(r.escopo_nome || "").toLowerCase() === String(scope.value).toLowerCase()
+    );
+  }
+
+  if(scope.type==="competition"){
+    return rows.filter(r=>
+      String(r.competicao || "").toLowerCase().includes(String(scope.value).toLowerCase()) ||
+      String(r.escopo_nome || "").toLowerCase() === String(scope.value).toLowerCase()
+    );
+  }
+
+  return rows;
+}
+
+function renderRecordRowsList(containerId, allRows, category, label){
+  const el = $(containerId);
+  if(!el) return;
+
+  const sorted = allRows
+    .filter(r=>r.categoria===category)
+    .sort((a,b)=>num(b.valor)-num(a.valor) || String(a.jogador).localeCompare(String(b.jogador)))
+    .slice(0,3);
+
+  if(!sorted.length){
+    el.innerHTML = `<div class="record-empty">Sem dados suficientes.</div>`;
+    return;
+  }
+
+  el.innerHTML = sorted.map((r,i)=>`
+    <article class="record-row ${r.isProtagonist ? "is-player-record" : ""}">
+      <div class="record-rank">${i+1}</div>
+      <div class="record-main">
+        <strong>${escapeHtml(r.jogador)}</strong>
+        <small>${escapeHtml(r.clube || r.competicao || r.escopo_nome || "Base real")}${r.temporada ? " • " + escapeHtml(r.temporada) : ""}</small>
+      </div>
+      <div class="record-value">
+        <strong>${num(r.valor)}</strong>
+        <small>${escapeHtml(label)}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderRecords(){
+  renderRecordsFilters();
+
+  const scope = getSelectedRecordScope();
+
+  const baseRows = getRecordsBaseStaticRows();
+  const careerRows = buildCareerRecordRows();
+  const allRows = filterRecordRowsByScope([...baseRows, ...careerRows], scope);
+
+  const scopeLabel = scope.type === "all"
+    ? "Records da carreira + base real"
+    : scope.type === "club"
+      ? `Records do clube: ${scope.value}`
+      : `Records da competição: ${scope.value}`;
+
+  setText("recordsScopeTitle", scopeLabel);
+
+  const desc = `Comparando RECORDS_BASE com os dados da carreira selecionada. Base real: ${baseRows.length} registros.`;
+  setText("recordsScopeDescription", desc);
+
+  renderRecordRowsList("recordsGoals", allRows, "maior_artilheiro", "Gols");
+  renderRecordRowsList("recordsAssists", allRows, "mais_assistencias", "Assistências");
+  renderRecordRowsList("recordsGames", allRows, "mais_jogos", "Jogos");
+  renderRecordRowsList("recordsSeasonGoals", allRows, "gols_em_uma_temporada", "Gols");
+}
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -3419,3 +3615,4 @@ if(typeof renderSeasonTitlesRows !== "undefined") window.renderSeasonTitlesRows 
 if(typeof renderRecords !== "undefined") window.renderRecords = renderRecords;
 if(typeof renderTrofeus !== "undefined") window.renderTrofeus = renderTrofeus;
 if(typeof getCareerTrophyRows !== "undefined") window.getCareerTrophyRows = getCareerTrophyRows;
+if(typeof getRecordsBaseStaticRows !== "undefined") window.getRecordsBaseStaticRows = getRecordsBaseStaticRows;
