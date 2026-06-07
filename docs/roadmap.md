@@ -1,3 +1,3 @@
-# Football Legacy V3.7.65
+# Football Legacy V3.7.69
 
-Mesmo layout da v3.7.64, preparado para Apps Script v3.5.24 global-save-clean. Sem alteração visual.
+Adiciona X separado para excluir registros de CAMPEOES_CARREIRA, SELECOES_CARREIRA, TOP11_CARREIRA e BOLA_DE_OURO_CARREIRA. A exclusão de temporada continua apagando apenas CARREIRA_TEMPORADAS e ESTATISTICAS_CARREIRA.

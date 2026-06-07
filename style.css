@@ -2159,3 +2159,69 @@ button[disabled],
     flex-direction:column;
   }
 }
+
+
+/* ===== V3.7.67 EXCLUIR TEMPORADA JOGADA ===== */
+.season-card-delete-ready-v3767{
+  position:relative!important;
+}
+
+.delete-season-x-v3767{
+  position:absolute!important;
+  top:10px!important;
+  right:10px!important;
+  width:28px!important;
+  height:28px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(248,113,113,.45)!important;
+  background:rgba(127,29,29,.55)!important;
+  color:#fecaca!important;
+  font-size:20px!important;
+  line-height:24px!important;
+  font-weight:1000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  cursor:pointer!important;
+  z-index:8!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.25)!important;
+}
+
+.delete-season-x-v3767:hover{
+  background:rgba(220,38,38,.82)!important;
+  color:#fff!important;
+  transform:scale(1.04)!important;
+}
+
+
+/* ===== V3.7.69 X SEPARADO PARA ITENS DE CARREIRA ===== */
+.career-delete-ready-v3769{
+  position:relative!important;
+}
+
+.delete-career-item-x-v3769{
+  position:absolute!important;
+  top:7px!important;
+  right:7px!important;
+  width:24px!important;
+  height:24px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(248,113,113,.42)!important;
+  background:rgba(127,29,29,.55)!important;
+  color:#fecaca!important;
+  font-size:17px!important;
+  line-height:20px!important;
+  font-weight:1000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  cursor:pointer!important;
+  z-index:12!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.25)!important;
+}
+
+.delete-career-item-x-v3769:hover{
+  background:rgba(220,38,38,.86)!important;
+  color:#fff!important;
+  transform:scale(1.05)!important;
+}

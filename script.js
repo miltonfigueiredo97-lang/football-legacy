@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.65 use global save clean');
+console.log('Football Legacy script carregado v3.7.69 separated delete buttons');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8470,21 +8470,18 @@ window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
 
 
 
-// ===== V3.7.64 CLEAN SAVE BOLA DE OURO + SELEÇÃO =====
-// Não mexe na formatação.
-// Corrige salvamento por action direta.
-// Corrige leitura das colunas do modal Bola de Ouro.
-// Corrige seleção usando action direta, evitando loop de create/update genérico.
 
-if(typeof renderSidebar !== "function"){
-  window.renderSidebar = function(){};
-}
 
-if(typeof renderEstatisticas !== "function" && typeof renderStats === "function"){
-  window.renderEstatisticas = renderStats;
-}
 
-function flKeyV3764(value){
+// ===== V3.7.66 BOLA DE OURO HEADER FIX =====
+// Correção focada:
+// - não usa valor de input file, para nunca salvar C:\fakepath;
+// - lê o modal por linha real de ranking;
+// - monta payload com nomes exatos das colunas atuais da planilha;
+// - usa action direta saveBallonCareerRankingV2;
+// - não altera formatação.
+
+function FL_normText_3766(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -8492,153 +8489,16 @@ function flKeyV3764(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function normalizeSelectionNameV3764(value){
+function FL_cleanUrl_3766(value){
   const raw = String(value || "").trim();
-  const key = flKeyV3764(raw);
-
-  const aliases = {
-    brasileiro:"Brasil", brasileira:"Brasil", brasil:"Brasil", brazil:"Brasil",
-    argentino:"Argentina", argentina:"Argentina",
-    frances:"França", francesa:"França", franca:"França", france:"França",
-    espanhol:"Espanha", espanhola:"Espanha", espanha:"Espanha", spain:"Espanha",
-    portugues:"Portugal", portuguesa:"Portugal", portugal:"Portugal",
-    ingles:"Inglaterra", inglesa:"Inglaterra", inglaterra:"Inglaterra", england:"Inglaterra",
-    alemao:"Alemanha", alema:"Alemanha", alemanha:"Alemanha", germany:"Alemanha",
-    italiano:"Itália", italiana:"Itália", italia:"Itália", italy:"Itália",
-    holandes:"Holanda", holandesa:"Holanda", holanda:"Holanda", netherlands:"Holanda",
-    uruguaio:"Uruguai", uruguaia:"Uruguai", uruguai:"Uruguai", uruguay:"Uruguai"
-  };
-
-  return aliases[key] || raw;
+  if(!raw) return "";
+  if(raw.toLowerCase().includes("fakepath")) return "";
+  if(raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  return "";
 }
 
-function getSelectionBadgeV3760(name){
-  const norm = normalizeSelectionNameV3764(name);
-  const key = flKeyV3764(norm);
-
-  const map = {
-    brasil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
-    brazil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
-    argentina:"https://r2.thesportsdb.com/images/media/team/badge/2xxo8u1678283348.png",
-    franca:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
-    france:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
-    espanha:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
-    spain:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
-    portugal:"https://r2.thesportsdb.com/images/media/team/badge/9qd9bp1678283232.png",
-    inglaterra:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
-    england:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
-    alemanha:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
-    germany:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
-    italia:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
-    italy:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
-    holanda:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
-    netherlands:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
-    uruguai:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png",
-    uruguay:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png"
-  };
-
-  return map[key] || "";
-}
-
-// ---------- API POST DIRETA ----------
-async function apiPostDirectV3764(payload){
-  const result = await apiPost(payload);
-  if(!result || !result.ok){
-    throw new Error(result?.error || "Apps Script não confirmou salvamento.");
-  }
-  return result;
-}
-
-// ---------- SELEÇÃO: ACTION DIRETA ----------
-async function saveSelectionSeasonDirectV3764(season, old, record, btn){
-  const payload = {
-    action:"saveSelectionSeason",
-    record
-  };
-
-  if(old?.id) payload.id = old.id;
-
-  const result = await apiPostDirectV3764(payload);
-
-  if(!Array.isArray(db.SELECOES_CARREIRA)) db.SELECOES_CARREIRA = [];
-
-  const savedId = result?.data?.id || old?.id || result?.id || ("local_" + Date.now());
-
-  if(old?.id){
-    const idx = db.SELECOES_CARREIRA.findIndex(r=>String(r.id)===String(old.id));
-    if(idx >= 0) db.SELECOES_CARREIRA[idx] = Object.assign({}, db.SELECOES_CARREIRA[idx], record, {id:savedId});
-    else db.SELECOES_CARREIRA.push(Object.assign({}, record, {id:savedId}));
-  }else{
-    db.SELECOES_CARREIRA.push(Object.assign({}, record, {id:savedId}));
-  }
-
-  return result;
-}
-
-// Substitui apenas o submit dentro do modal de seleção depois que ele abrir.
-const __openSelectionSeasonModalV3760_original_v3764 = typeof openSelectionSeasonModalV3760 === "function" ? openSelectionSeasonModalV3760 : null;
-if(__openSelectionSeasonModalV3760_original_v3764 && !window.__openSelectionSeasonModalWrappedV3764){
-  window.__openSelectionSeasonModalWrappedV3764 = true;
-
-  openSelectionSeasonModalV3760 = function(seasonId){
-    __openSelectionSeasonModalV3760_original_v3764(seasonId);
-
-    setTimeout(()=>{
-      try{
-        const season = getCareerSeasonRecords().find(s=>String(s.id)===String(seasonId));
-        if(!season || !form) return;
-
-        const old = typeof getSelectionRowForSeasonV3760 === "function"
-          ? (getSelectionRowForSeasonV3760(season) || {})
-          : {};
-
-        form.onsubmit = async e=>{
-          e.preventDefault();
-
-          const btn = $("saveBtn");
-          if(btn && btn.disabled) return;
-          setButtonSaving(btn);
-
-          try{
-            const data = Object.fromEntries(new FormData(form).entries());
-            const record = {
-              carreira_id: active.carreira_id || "",
-              personagem_id: active.protagonista_id || "",
-              carreira_temporada_id: season.id || "",
-              temporada: season.temporada || "",
-              selecao: normalizeSelectionNameV3764(data.selecao || ""),
-              jogos: data.jogos || "",
-              gols: data.gols || "",
-              assistencias: data.assistencias || "",
-              titulos: data.titulos || "",
-              observacao: data.observacao || ""
-            };
-
-            await saveSelectionSeasonDirectV3764(season, old, record, btn);
-
-            clearButtonSaving(btn);
-            closeModal();
-            renderAll();
-            setStatus("Seleção salva.", "ok");
-          }catch(err){
-            clearButtonSaving(btn);
-            console.error(err);
-            setStatus("Erro ao salvar seleção: " + err.message, "error");
-          }
-        };
-      }catch(err){
-        console.warn("Falha wrapper seleção v3.7.64:", err);
-      }
-    }, 80);
-  };
-
-  window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
-}
-
-// ---------- BOLA DE OURO ----------
-function normalizeBallonSeasonValueV3764(value){
+function FL_normalizeBallonSeason_3766(value){
   const raw = String(value || "").trim();
-
   let m = raw.match(/-\s*(\d{4})$/);
   if(m) return m[1];
 
@@ -8651,104 +8511,188 @@ function normalizeBallonSeasonValueV3764(value){
   return raw;
 }
 
-function getBallonSeasonFromModalV3764(){
+function FL_getBallonSeason_3766(){
   const root = form || document;
+  const candidates = [
+    root.querySelector("[name='temporada']"),
+    root.querySelector("[name='ano']"),
+    root.querySelector("#ballonSeason"),
+    root.querySelector("select")
+  ].filter(Boolean);
 
-  const value =
-    root.querySelector("[name='temporada']")?.value ||
-    root.querySelector("[name='ano']")?.value ||
-    root.querySelector("#ballonSeason")?.value ||
-    root.querySelector("select")?.value ||
-    "";
+  for(const el of candidates){
+    const v = FL_normalizeBallonSeason_3766(el.value);
+    if(v) return v;
+  }
 
-  return normalizeBallonSeasonValueV3764(value);
+  return "";
 }
 
-function getBallonWinnerImageV3764(){
+function FL_getBallonWinnerImage_3766(){
   const root = form || document;
+
+  const candidates = [
+    root.querySelector("[name='imagem_destaque_url']"),
+    root.querySelector("[name='imagem_url']"),
+    root.querySelector("#ballonWinnerImage"),
+    ...root.querySelectorAll("input[type='url']"),
+    ...root.querySelectorAll("input:not([type='file'])")
+  ].filter(Boolean);
+
+  for(const el of candidates){
+    const name = FL_normText_3766(el.name || el.id || el.placeholder || "");
+    const value = FL_cleanUrl_3766(el.value);
+    if(!value) continue;
+
+    if(
+      name.includes("imagem") ||
+      name.includes("image") ||
+      name.includes("url") ||
+      value.includes("cloudinary.com") ||
+      value.match(/\.(png|jpe?g|webp|gif)(\?|$)/i)
+    ){
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function FL_getInputsByMeaning_3766(row){
+  const inputs = [...row.querySelectorAll("input,select,textarea")]
+    .filter(i => i.type !== "file");
+
+  const byName = (patterns) => {
+    for(const input of inputs){
+      const key = FL_normText_3766([
+        input.name,
+        input.id,
+        input.dataset?.field,
+        input.placeholder,
+        input.getAttribute("aria-label")
+      ].join(" "));
+      if(patterns.some(p => key.includes(p))) return input.value || "";
+    }
+    return "";
+  };
+
+  return {
+    jogador: byName(["jogador","player","nome"]),
+    pais: byName(["pais","nacionalidade","country"]),
+    clube: byName(["clube","club","time","team"]),
+    idade: byName(["idade","age"]),
+    valor_mercado: byName(["valor","mercado","market","euro"])
+  };
+}
+
+function FL_isBallonRankingRow_3766(row){
+  const inputs = [...row.querySelectorAll("input,select,textarea")]
+    .filter(i => i.type !== "file");
+
+  if(inputs.length < 3) return false;
+
+  const txt = FL_normText_3766(row.textContent || "");
+  const joined = inputs.map(i => FL_normText_3766([
+    i.name, i.id, i.placeholder, i.dataset?.field, i.getAttribute("aria-label")
+  ].join(" "))).join(" ");
+
   return (
-    root.querySelector("[name='imagem_destaque_url']")?.value ||
-    root.querySelector("[name='imagem_url']")?.value ||
-    root.querySelector("#ballonWinnerImage")?.value ||
-    root.querySelector("input[placeholder*='URL']")?.value ||
-    ""
+    txt.includes("jogador") ||
+    joined.includes("jogador") ||
+    joined.includes("player") ||
+    inputs.length >= 5
   );
 }
 
-function getBallonRowsV3764(){
+function FL_getBallonRows_3766(){
   const root = form || document;
+
+  let rowEls = [
+    ...root.querySelectorAll("tr"),
+    ...root.querySelectorAll(".ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row,.ranking-player-row")
+  ];
+
+  rowEls = rowEls
+    .filter(FL_isBallonRankingRow_3766)
+    .filter((el, idx, arr) => !arr.some(other => other !== el && other.contains(el)));
+
   const rows = [];
 
-  // O modal atual tem campos por linha. Vamos pegar por blocos de inputs.
-  const blocks = [...root.querySelectorAll("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row")]
-    .filter(el=>el.querySelectorAll("input,select,textarea").length >= 3);
+  rowEls.forEach((rowEl, idx) => {
+    const inputs = [...rowEl.querySelectorAll("input,select,textarea")]
+      .filter(i => i.type !== "file");
 
-  if(blocks.length){
-    blocks.forEach((block,idx)=>{
-      const inputs = [...block.querySelectorAll("input,select,textarea")];
+    let mapped = FL_getInputsByMeaning_3766(rowEl);
 
-      const byName = name => block.querySelector(`[name='${name}'],[data-field='${name}']`)?.value || "";
+    // Fallback pela ordem visual do modal:
+    // jogador | pais | clube | idade | valor
+    if(!mapped.jogador && inputs[0]) mapped.jogador = inputs[0].value || "";
+    if(!mapped.pais && inputs[1]) mapped.pais = inputs[1].value || "";
+    if(!mapped.clube && inputs[2]) mapped.clube = inputs[2].value || "";
+    if(!mapped.idade && inputs[3]) mapped.idade = inputs[3].value || "";
+    if(!mapped.valor_mercado && inputs[4]) mapped.valor_mercado = inputs[4].value || "";
 
-      const jogador = byName("jogador") || byName("nome") || inputs[0]?.value || "";
-      if(!String(jogador).trim()) return;
+    if(!String(mapped.jogador || "").trim()) return;
 
-      const pais = byName("pais") || byName("país") || byName("nacionalidade") || inputs[1]?.value || "";
-      const clube = byName("clube") || byName("club") || byName("time") || inputs[2]?.value || "";
-      const idade = byName("idade") || byName("idade_na_premiacao") || inputs[3]?.value || "";
-      const valor = byName("valor_mercado") || byName("valor") || inputs[4]?.value || "";
+    rows.push({
+      posicao: idx + 1,
+      jogador: String(mapped.jogador || "").trim(),
+      pais: String(mapped.pais || "").trim(),
+      nacionalidade: String(mapped.pais || "").trim(),
+      clube: String(mapped.clube || "").trim(),
+      idade: String(mapped.idade || "").trim(),
+      idade_na_premiacao: String(mapped.idade || "").trim(),
+      valor_mercado: String(mapped.valor_mercado || "").trim(),
+      observacao: "",
+      overall: "",
+      carreira_temporada_id: ""
+    });
+  });
+
+  // Último fallback: procura inputs pelos placeholders conhecidos do print.
+  if(!rows.length){
+    const playerInputs = [...root.querySelectorAll("input,select,textarea")]
+      .filter(i => i.type !== "file")
+      .filter(i => {
+        const k = FL_normText_3766([i.name,i.id,i.placeholder,i.dataset?.field].join(" "));
+        return k.includes("jogador");
+      });
+
+    playerInputs.forEach((playerInput, idx) => {
+      const row = playerInput.closest("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row,div");
+      if(!row) return;
+
+      const inputs = [...row.querySelectorAll("input,select,textarea")].filter(i => i.type !== "file");
+      const mapped = FL_getInputsByMeaning_3766(row);
 
       rows.push({
         posicao: idx + 1,
-        jogador: String(jogador).trim(),
-        pais: String(pais).trim(),
-        nacionalidade: String(pais).trim(),
-        clube: String(clube).trim(),
-        idade: String(idade).trim(),
-        idade_na_premiacao: String(idade).trim(),
-        valor_mercado: String(valor).trim()
+        jogador: String(mapped.jogador || playerInput.value || "").trim(),
+        pais: String(mapped.pais || inputs[1]?.value || "").trim(),
+        nacionalidade: String(mapped.pais || inputs[1]?.value || "").trim(),
+        clube: String(mapped.clube || inputs[2]?.value || "").trim(),
+        idade: String(mapped.idade || inputs[3]?.value || "").trim(),
+        idade_na_premiacao: String(mapped.idade || inputs[3]?.value || "").trim(),
+        valor_mercado: String(mapped.valor_mercado || inputs[4]?.value || "").trim(),
+        observacao: "",
+        overall: "",
+        carreira_temporada_id: ""
       });
-    });
-
-    return rows.slice(0,10);
-  }
-
-  // Fallback para tabela sem classes: detecta inputs por placeholder/ordem, ignorando campos de temporada e imagem.
-  const allInputs = [...root.querySelectorAll("input,select,textarea")]
-    .filter(input=>{
-      const name = String(input.name || "").toLowerCase();
-      const placeholder = String(input.placeholder || "").toLowerCase();
-      if(name.includes("temporada") || name.includes("ano")) return false;
-      if(name.includes("imagem") || placeholder.includes("url")) return false;
-      return true;
-    });
-
-  for(let i=0; i<10; i++){
-    const base = i * 5;
-    const jogador = allInputs[base]?.value || "";
-    if(!String(jogador).trim()) continue;
-
-    rows.push({
-      posicao: i + 1,
-      jogador: String(jogador).trim(),
-      pais: String(allInputs[base+1]?.value || "").trim(),
-      nacionalidade: String(allInputs[base+1]?.value || "").trim(),
-      clube: String(allInputs[base+2]?.value || "").trim(),
-      idade: String(allInputs[base+3]?.value || "").trim(),
-      idade_na_premiacao: String(allInputs[base+3]?.value || "").trim(),
-      valor_mercado: String(allInputs[base+4]?.value || "").trim()
     });
   }
 
   return rows.slice(0,10);
 }
 
-async function saveBallonRankingCareerV3764(){
+async function FL_saveBallonRanking_3766(){
   const btn = $("saveBtn") || document.querySelector(".gold-btn") || document.querySelector("button[type='submit']");
   if(btn && btn.disabled) return;
 
-  const temporada = getBallonSeasonFromModalV3764();
-  const imagem = getBallonWinnerImageV3764();
-  const rows = getBallonRowsV3764();
+  const temporada = FL_getBallonSeason_3766();
+  const imagem = FL_getBallonWinnerImage_3766();
+  const rows = FL_getBallonRows_3766();
+
+  console.log("Bola de Ouro v3.7.66 payload:", { temporada, imagem, rows });
 
   if(!temporada){
     setStatus("Erro ao salvar Bola de Ouro: temporada vazia.", "error");
@@ -8756,43 +8700,35 @@ async function saveBallonRankingCareerV3764(){
   }
 
   if(!rows.length){
-    setStatus("Erro ao salvar Bola de Ouro: preencha pelo menos um jogador.", "error");
+    setStatus("Erro ao salvar Bola de Ouro: nenhum jogador encontrado no formulário.", "error");
     return;
   }
 
   setButtonSaving(btn);
 
   try{
-    const result = await apiPostDirectV3764({
-      action:"saveBallonCareerRanking",
+    const result = await apiPost({
+      action: "saveBallonCareerRankingV2",
+      carreira_id: active?.carreira_id || "",
       temporada,
       imagem_destaque_url: imagem,
       rows
     });
 
-    if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
-
-    db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r=>String(r.temporada) !== String(temporada));
-
-    const saved = result?.data?.rows || [];
-    if(saved.length){
-      saved.forEach(r=>db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {__source:"career"})));
-    }else{
-      rows.forEach(r=>db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {
-        temporada,
-        ano: temporada,
-        carreira_id: active?.carreira_id || "",
-        imagem_url: r.posicao === 1 ? imagem : "",
-        imagem_destaque_url: r.posicao === 1 ? imagem : "",
-        __source:"career",
-        id:"local_" + Date.now() + "_" + r.posicao
-      })));
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
     }
+
+    if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
+    db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r => String(r.temporada) !== String(temporada));
+
+    const saved = result.data?.rows || [];
+    saved.forEach(r => db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {__source:"career"})));
 
     clearButtonSaving(btn);
     closeModal();
     renderAll();
-    setStatus("Ranking Bola de Ouro salvo na planilha.", "ok");
+    setStatus("Ranking Bola de Ouro salvo corretamente na planilha.", "ok");
   }catch(err){
     clearButtonSaving(btn);
     console.error(err);
@@ -8800,10 +8736,10 @@ async function saveBallonRankingCareerV3764(){
   }
 }
 
-window.saveBallonRankingCareerV3761 = saveBallonRankingCareerV3764;
-window.saveBallonRankingCareerV3762 = saveBallonRankingCareerV3764;
-window.saveBallonRankingSoftV3763 = saveBallonRankingCareerV3764;
-window.saveBallonRankingCareerV3764 = saveBallonRankingCareerV3764;
+window.saveBallonRankingCareerV3761 = FL_saveBallonRanking_3766;
+window.saveBallonRankingCareerV3762 = FL_saveBallonRanking_3766;
+window.saveBallonRankingCareerV3764 = FL_saveBallonRanking_3766;
+window.FL_saveBallonRanking_3766 = FL_saveBallonRanking_3766;
 
 document.addEventListener("submit", function(e){
   const title = (modalTitle?.textContent || "").toLowerCase();
@@ -8813,11 +8749,343 @@ document.addEventListener("submit", function(e){
   if(isBallon){
     e.preventDefault();
     e.stopImmediatePropagation();
-    saveBallonRankingCareerV3764();
+    FL_saveBallonRanking_3766();
   }
 }, true);
 
 
-// ===== V3.7.65 GLOBAL SAVE CLEAN CLIENT =====
-// Sem alteração visual. Apenas melhora mensagem de erro de salvamento.
-window.__footballLegacySaveClean = true;
+// ===== V3.7.67 EXCLUIR TEMPORADA JOGADA =====
+// Adiciona um X discreto em cada card de Temporadas jogadas.
+// Ao confirmar, apaga a temporada e dados vinculados da planilha.
+
+async function deleteCareerSeasonFullV3767(seasonId){
+  const season = (typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : getTable("CARREIRA_TEMPORADAS"))
+    .find(s => String(s.id) === String(seasonId));
+
+  if(!season){
+    setStatus("Temporada não encontrada para excluir.", "error");
+    return;
+  }
+
+  const label = `${season.temporada || ""} - ${season.clube_nome || season.time || ""}`.trim();
+
+  const ok = confirm(
+    `Excluir esta temporada?\n\n${label}\n\nIsso apaga somente a temporada e as estatísticas dessa temporada.`
+  );
+
+  if(!ok) return;
+
+  try{
+    setStatus("Excluindo temporada...", "loading");
+
+    const result = await apiPost({
+      action: "deleteSeasonFull",
+      id: season.id,
+      carreira_temporada_id: season.id
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou a exclusão.");
+    }
+
+    // Atualiza banco local.
+    if(Array.isArray(db.CARREIRA_TEMPORADAS)){
+      db.CARREIRA_TEMPORADAS = db.CARREIRA_TEMPORADAS.filter(r => String(r.id) !== String(season.id));
+    }
+
+    // Apaga localmente apenas estatísticas da temporada.
+    // Não apaga CAMPEOES_CARREIRA, SELECOES_CARREIRA, TOP11_CARREIRA ou BOLA_DE_OURO_CARREIRA.
+    if(Array.isArray(db.ESTATISTICAS_CARREIRA)){
+      db.ESTATISTICAS_CARREIRA = db.ESTATISTICAS_CARREIRA.filter(r => String(r.carreira_temporada_id || "") !== String(season.id));
+    }
+
+    if(typeof renderAll === "function") renderAll();
+
+    setStatus("Temporada excluída da planilha.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao excluir temporada: " + err.message, "error");
+  }
+}
+
+function injectDeleteSeasonButtonsV3767(){
+  try{
+    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+    if(!seasons.length) return;
+
+    const candidates = [...document.querySelectorAll("article, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
+      .filter(card=>{
+        if(card.querySelector(".delete-season-x-v3767")) return false;
+
+        const txt = card.textContent || "";
+        const rect = card.getBoundingClientRect();
+
+        if(rect.width < 500 || rect.height < 60) return false;
+        if(!/editar/i.test(txt)) return false;
+        if(!/jogos|gols|assist/i.test(txt)) return false;
+
+        return seasons.some(s =>
+          txt.includes(String(s.temporada || "")) &&
+          txt.includes(String(s.clube_nome || s.time || ""))
+        );
+      });
+
+    const finalCards = candidates.filter(card=>!candidates.some(other=>other !== card && other.contains(card)));
+
+    finalCards.forEach(card=>{
+      const txt = card.textContent || "";
+      const season = seasons.find(s =>
+        txt.includes(String(s.temporada || "")) &&
+        txt.includes(String(s.clube_nome || s.time || ""))
+      );
+
+      if(!season) return;
+
+      card.classList.add("season-card-delete-ready-v3767");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "delete-season-x-v3767";
+      btn.title = "Excluir temporada";
+      btn.innerHTML = "×";
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        deleteCareerSeasonFullV3767(season.id);
+      });
+
+      card.appendChild(btn);
+    });
+  }catch(err){
+    console.warn("Falha ao inserir botões de excluir temporada:", err);
+  }
+}
+
+const __renderAllOriginalV3767 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3767 && !window.__renderAllDeleteSeasonWrappedV3767){
+  window.__renderAllDeleteSeasonWrappedV3767 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3767.apply(this, arguments);
+    setTimeout(injectDeleteSeasonButtonsV3767, 120);
+    setTimeout(injectDeleteSeasonButtonsV3767, 800);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(injectDeleteSeasonButtonsV3767, 250);
+}, true);
+
+window.deleteCareerSeasonFullV3767 = deleteCareerSeasonFullV3767;
+window.injectDeleteSeasonButtonsV3767 = injectDeleteSeasonButtonsV3767;
+
+
+// ===== V3.7.69 X SEPARADO PARA ITENS DE CARREIRA =====
+// Regras:
+// - Excluir temporada continua apagando só CARREIRA_TEMPORADAS + ESTATISTICAS_CARREIRA.
+// - Campeões, Seleções, TOP11 e Bola de Ouro têm X próprio.
+// - Cada X apaga só a própria tabela/ID.
+
+const CAREER_DELETE_TABLES_V3769 = [
+  "CAMPEOES_CARREIRA",
+  "SELECOES_CARREIRA",
+  "TOP11_CARREIRA",
+  "BOLA_DE_OURO_CARREIRA"
+];
+
+function careerDeleteLabelV3769(table){
+  const map = {
+    CAMPEOES_CARREIRA: "título/campeão",
+    SELECOES_CARREIRA: "registro da seleção",
+    TOP11_CARREIRA: "jogador do Top 11",
+    BOLA_DE_OURO_CARREIRA: "registro do Bola de Ouro"
+  };
+  return map[table] || "registro";
+}
+
+function recordLabelV3769(table, record){
+  if(!record) return careerDeleteLabelV3769(table);
+
+  if(table === "CAMPEOES_CARREIRA"){
+    return `${record.temporada || ""} ${record.competicao || ""} ${record.clube || ""}`.trim() || "título/campeão";
+  }
+
+  if(table === "SELECOES_CARREIRA"){
+    return `${record.temporada || ""} ${record.selecao || ""}`.trim() || "registro da seleção";
+  }
+
+  if(table === "TOP11_CARREIRA"){
+    return `${record.temporada || ""} ${record.posicao_tatica || ""} ${record.jogador || ""}`.trim() || "jogador do Top 11";
+  }
+
+  if(table === "BOLA_DE_OURO_CARREIRA"){
+    return `${record.temporada || record.ano || ""} #${record.posicao || ""} ${record.jogador || ""}`.trim() || "registro do Bola de Ouro";
+  }
+
+  return record.nome || record.jogador || record.temporada || careerDeleteLabelV3769(table);
+}
+
+async function deleteCareerItemV3769(table, id){
+  const record = (db[table] || []).find(r => String(r.id) === String(id));
+  const label = recordLabelV3769(table, record);
+
+  const ok = confirm(`Excluir ${careerDeleteLabelV3769(table)}?\n\n${label}\n\nIsso apaga somente este item da tabela ${table}.`);
+
+  if(!ok) return;
+
+  try{
+    setStatus("Excluindo registro...", "loading");
+
+    const result = await apiPost({
+      action: "deleteCareerItem",
+      table,
+      id
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou a exclusão.");
+    }
+
+    if(Array.isArray(db[table])){
+      db[table] = db[table].filter(r => String(r.id) !== String(id));
+    }
+
+    if(typeof renderAll === "function") renderAll();
+
+    setStatus("Registro excluído.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao excluir registro: " + err.message, "error");
+  }
+}
+
+function normalizeTextDeleteV3769(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function cardMatchesRecordV3769(card, table, record){
+  const txt = normalizeTextDeleteV3769(card.textContent || "");
+
+  if(table === "CAMPEOES_CARREIRA"){
+    return (
+      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
+      (!record.competicao || txt.includes(normalizeTextDeleteV3769(record.competicao))) &&
+      (!record.clube || txt.includes(normalizeTextDeleteV3769(record.clube)))
+    );
+  }
+
+  if(table === "SELECOES_CARREIRA"){
+    return (
+      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
+      (!record.selecao || txt.includes(normalizeTextDeleteV3769(record.selecao))) &&
+      (
+        txt.includes("selecao") ||
+        txt.includes("seleção") ||
+        txt.includes("jogos") ||
+        txt.includes("gols")
+      )
+    );
+  }
+
+  if(table === "TOP11_CARREIRA"){
+    return (
+      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
+      (!record.jogador || txt.includes(normalizeTextDeleteV3769(record.jogador))) &&
+      (!record.posicao_tatica || txt.includes(normalizeTextDeleteV3769(record.posicao_tatica)))
+    );
+  }
+
+  if(table === "BOLA_DE_OURO_CARREIRA"){
+    return (
+      (!record.temporada || txt.includes(normalizeTextDeleteV3769(record.temporada))) &&
+      (!record.jogador || txt.includes(normalizeTextDeleteV3769(record.jogador))) &&
+      (
+        txt.includes("bola de ouro") ||
+        txt.includes("ranking") ||
+        txt.includes(normalizeTextDeleteV3769(record.jogador))
+      )
+    );
+  }
+
+  return false;
+}
+
+function findCardsForCareerDeleteV3769(table, record){
+  const generic = [...document.querySelectorAll("article, tr, .entity-card, .content-card, .season-card, .ranking-card, .record-card, .table-row, .card, li, div")]
+    .filter(el=>{
+      if(el.querySelector(".delete-career-item-x-v3769")) return false;
+
+      const rect = el.getBoundingClientRect();
+      if(rect.width < 140 || rect.height < 28) return false;
+      if(rect.height > 500) return false;
+
+      return cardMatchesRecordV3769(el, table, record);
+    });
+
+  const filtered = generic.filter(el=>!generic.some(other=>other !== el && other.contains(el)));
+
+  return filtered.slice(0, 2);
+}
+
+function injectSeparatedDeleteButtonsV3769(){
+  try{
+    CAREER_DELETE_TABLES_V3769.forEach(table=>{
+      const rows = Array.isArray(db[table]) ? db[table] : [];
+
+      rows.forEach(record=>{
+        if(!record.id) return;
+
+        const cards = findCardsForCareerDeleteV3769(table, record);
+
+        cards.forEach(card=>{
+          if(card.querySelector(`.delete-career-item-x-v3769[data-table="${table}"][data-id="${String(record.id)}"]`)) return;
+
+          card.classList.add("career-delete-ready-v3769");
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "delete-career-item-x-v3769";
+          btn.dataset.table = table;
+          btn.dataset.id = String(record.id);
+          btn.title = `Excluir ${careerDeleteLabelV3769(table)}`;
+          btn.innerHTML = "×";
+
+          btn.addEventListener("click", function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            deleteCareerItemV3769(table, record.id);
+          });
+
+          card.appendChild(btn);
+        });
+      });
+    });
+  }catch(err){
+    console.warn("Falha ao inserir X separado:", err);
+  }
+}
+
+const __renderAllOriginalV3769 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3769 && !window.__renderAllSeparatedDeleteWrappedV3769){
+  window.__renderAllSeparatedDeleteWrappedV3769 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3769.apply(this, arguments);
+    setTimeout(injectSeparatedDeleteButtonsV3769, 150);
+    setTimeout(injectSeparatedDeleteButtonsV3769, 900);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(injectSeparatedDeleteButtonsV3769, 250);
+}, true);
+
+window.deleteCareerItemV3769 = deleteCareerItemV3769;
+window.injectSeparatedDeleteButtonsV3769 = injectSeparatedDeleteButtonsV3769;
