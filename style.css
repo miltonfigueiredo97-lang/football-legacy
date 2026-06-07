@@ -1904,3 +1904,258 @@ button[disabled],
   height:revert!important;
   flex:revert!important;
 }
+
+
+/* ===== V3.7.60 SELEÇÕES ESTRUTURAL LIMPO ===== */
+.career-metrics-area-v3760{
+  display:flex;
+  align-items:stretch;
+  gap:14px;
+  flex-wrap:wrap;
+  margin:22px 0 20px;
+}
+
+.metric-group-v3760{
+  border:1px solid rgba(251,191,36,.20);
+  background:rgba(15,23,42,.22);
+  border-radius:18px;
+  padding:10px 12px;
+}
+
+.metric-group-title-v3760{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#fbbf24;
+  font-size:12px;
+  font-weight:1000;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+
+.metric-group-title-v3760 span{
+  color:#fef3c7;
+  font-size:11px;
+  font-weight:900;
+  border:1px solid rgba(251,191,36,.24);
+  border-radius:999px;
+  padding:4px 7px;
+  text-transform:none;
+}
+
+.career-total-strip-v3760{
+  margin:0!important;
+}
+
+.club-strip-with-selection-v3760{
+  align-items:flex-start!important;
+}
+
+.selection-career-card-v3760{
+  margin-left:auto!important;
+  cursor:default!important;
+}
+
+.season-card-v3760{
+  display:grid!important;
+  grid-template-columns:minmax(285px,1.05fr) minmax(520px,1.6fr) minmax(330px,.95fr) auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  min-height:92px!important;
+  padding:15px 18px!important;
+}
+
+.season-club-side-v3760{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+.season-club-crest-v3760{
+  flex:0 0 58px;
+  width:58px;
+  height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:14px;
+  background:rgba(255,255,255,.05);
+  overflow:visible;
+}
+
+.season-club-crest-v3760 img{
+  width:52px!important;
+  height:52px!important;
+  object-fit:contain!important;
+  padding:4px;
+  box-sizing:border-box;
+}
+
+.season-age-v3760{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:5px 8px;
+  border-radius:999px;
+  background:rgba(251,191,36,.13);
+  border:1px solid rgba(251,191,36,.36);
+  color:#fbbf24;
+  font-size:11px;
+  font-weight:1000;
+  white-space:nowrap;
+}
+
+.season-club-info-v3760{
+  min-width:0;
+}
+
+.season-club-info-v3760 strong{
+  display:block;
+  color:#fbbf24;
+  font-size:14px;
+  font-weight:1000;
+}
+
+.season-club-info-v3760 h4{
+  margin:1px 0 2px;
+  color:#fff;
+  font-size:20px;
+  line-height:1.05;
+}
+
+.season-club-info-v3760 small{
+  color:#9fc4ff;
+  font-size:12px;
+  font-weight:700;
+}
+
+.season-stats-grid-v3760{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(80px,1fr));
+  gap:14px;
+  align-items:center;
+}
+
+.season-stats-grid-v3760 .season-stat small{
+  font-size:10px!important;
+  color:#93c5fd!important;
+  font-weight:1000!important;
+  text-transform:uppercase!important;
+}
+
+.season-stats-grid-v3760 .season-stat strong{
+  font-size:22px!important;
+}
+
+.season-selection-card-v3760{
+  min-height:66px;
+  padding:10px 12px;
+  border-radius:16px;
+  border:1px solid rgba(251,191,36,.24);
+  background:
+    radial-gradient(circle at left,rgba(251,191,36,.10),transparent 40%),
+    rgba(15,23,42,.50);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.season-selection-main-v3760{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+
+.season-selection-badge-v3760{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+}
+
+.season-selection-badge-v3760 img{
+  width:42px;
+  height:42px;
+  object-fit:contain;
+}
+
+.season-selection-main-v3760 strong{
+  display:block;
+  color:#fff;
+  font-size:15px;
+  font-weight:1000;
+}
+
+.season-selection-main-v3760 small{
+  display:block;
+  color:#9fc4ff;
+  font-size:12px;
+  font-weight:800;
+  margin-top:2px;
+}
+
+.season-selection-title-v3760{
+  color:#fbbf24!important;
+}
+
+.season-selection-card-v3760 button,
+.season-actions-v3760 button{
+  padding:8px 11px!important;
+  border-radius:12px!important;
+  white-space:nowrap;
+}
+
+.season-selection-card-v3760 button{
+  border:1px solid rgba(251,191,36,.32)!important;
+  background:rgba(251,191,36,.12)!important;
+  color:#fbbf24!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+}
+
+.season-actions-v3760{
+  justify-self:end;
+}
+
+.personagem-selection-field-v3760 small{
+  color:#9fb0c7;
+  font-size:12px;
+  font-weight:700;
+}
+
+@media(max-width:1250px){
+  .season-card-v3760{
+    grid-template-columns:1fr!important;
+  }
+
+  .season-stats-grid-v3760{
+    grid-template-columns:repeat(5,minmax(90px,1fr));
+  }
+
+  .season-actions-v3760{
+    justify-self:start;
+  }
+}
+
+@media(max-width:800px){
+  .career-metrics-area-v3760{
+    flex-direction:column;
+  }
+
+  .season-stats-grid-v3760{
+    grid-template-columns:repeat(2,minmax(120px,1fr));
+  }
+
+  .season-selection-card-v3760{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}

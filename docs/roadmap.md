@@ -1,3 +1,3 @@
-# Football Legacy V3.7.59
+# Football Legacy V3.7.60
 
-Hard reset estável das abas. Base antes das mudanças de seleção/projeção/idade. Remove resíduos de DOM e CSS das versões 3.7.45 a 3.7.58, impedindo que elementos antigos continuem aparecendo ao trocar de aba. Não altera Apps Script.
+Seleções implementadas de forma estrutural: renderDashboardJourney e renderPlayedSeasons foram sobrescritos com HTML estável. Corrige imagem do jogador por imagem_url/foto, remove Cartões/Nota Média, renomeia G/J/A/J para nomes completos, inclui seleção por temporada à direita e cria blocos Atual/Previsto até 38 anos no resumo.

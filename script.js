@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.59 hard reset stable tabs');
+console.log('Football Legacy script carregado v3.7.60 selecoes estrutural limpo');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -7886,3 +7886,582 @@ if(__renderAllOriginalV3759 && !window.__renderAllHardResetWrappedV3759){
 }
 
 window.flCleanInjectedGarbageV3759 = flCleanInjectedGarbageV3759;
+
+
+// ===== V3.7.60 SELEÇÕES ESTRUTURAL LIMPO =====
+// Esta versão NÃO injeta seleção por cima do layout antigo.
+// Ela sobrescreve renderDashboardJourney e renderPlayedSeasons com HTML próprio e estável.
+
+const NATIONAL_TEAM_BADGES_V3760 = {
+  brasil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
+  brazil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
+  argentina:"https://r2.thesportsdb.com/images/media/team/badge/2xxo8u1678283348.png",
+  franca:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
+  france:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
+  espanha:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
+  spain:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
+  portugal:"https://r2.thesportsdb.com/images/media/team/badge/9qd9bp1678283232.png",
+  inglaterra:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
+  england:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
+  alemanha:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
+  germany:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
+  italia:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
+  italy:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
+  holanda:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
+  netherlands:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
+  uruguai:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png",
+  uruguay:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png"
+};
+
+function flKeyV3760(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function normalizeSelectionNameV3760(value){
+  const raw = String(value || "").trim();
+  const key = flKeyV3760(raw);
+  const aliases = {
+    brasileiro:"Brasil", brasileira:"Brasil", brasil:"Brasil", brazil:"Brasil",
+    argentino:"Argentina", argentina:"Argentina",
+    frances:"França", francesa:"França", franca:"França", france:"França",
+    espanhol:"Espanha", espanhola:"Espanha", espanha:"Espanha", spain:"Espanha",
+    portugues:"Portugal", portuguesa:"Portugal", portugal:"Portugal",
+    ingles:"Inglaterra", inglesa:"Inglaterra", inglaterra:"Inglaterra", england:"Inglaterra",
+    alemao:"Alemanha", alema:"Alemanha", alemanha:"Alemanha", germany:"Alemanha",
+    italiano:"Itália", italiana:"Itália", italia:"Itália", italy:"Itália",
+    holandes:"Holanda", holandesa:"Holanda", holanda:"Holanda", netherlands:"Holanda",
+    uruguaio:"Uruguai", uruguaia:"Uruguai", uruguai:"Uruguai", uruguay:"Uruguai"
+  };
+  return aliases[key] || raw;
+}
+
+function getSelectionBadgeV3760(name){
+  const norm = normalizeSelectionNameV3760(name);
+  return NATIONAL_TEAM_BADGES_V3760[flKeyV3760(norm)] || "";
+}
+
+function getPlayerImageV3760(p){
+  if(!p) return "";
+  return (
+    p.foto ||
+    p.imagem_url ||
+    p.foto_url ||
+    p.image_url ||
+    p.avatar_url ||
+    p.avatar ||
+    p.url_imagem ||
+    ""
+  );
+}
+
+function getActivePlayerSelectionV3760(){
+  const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  if(!p) return "";
+  return normalizeSelectionNameV3760(
+    p.selecao || p.seleção || p.selecao_nacional || p.national_team || p.nacionalidade || ""
+  );
+}
+
+function getSelectionRowsV3760(){
+  const carreiraId = active?.carreira_id || "";
+  const personagemId = active?.protagonista_id || "";
+  return getTable("SELECOES_CARREIRA").filter(r =>
+    (!carreiraId || String(r.carreira_id) === String(carreiraId)) &&
+    (!personagemId || String(r.personagem_id) === String(personagemId))
+  );
+}
+
+function getSelectionRowForSeasonV3760(season){
+  if(!season) return null;
+  return getSelectionRowsV3760().find(r =>
+    String(r.carreira_temporada_id || "") === String(season.id || "") ||
+    String(r.temporada || "") === String(season.temporada || "")
+  ) || null;
+}
+
+function getSelectionTotalsV3760(){
+  return getSelectionRowsV3760().reduce((acc,r)=>{
+    acc.selecao = normalizeSelectionNameV3760(r.selecao || acc.selecao);
+    acc.jogos += Number(r.jogos || 0);
+    acc.gols += Number(r.gols || 0);
+    acc.assistencias += Number(r.assistencias || 0);
+    if(String(r.titulos || "").trim()) acc.titulos.push(String(r.titulos).trim());
+    return acc;
+  },{
+    selecao:getActivePlayerSelectionV3760(),
+    jogos:0,
+    gols:0,
+    assistencias:0,
+    titulos:[]
+  });
+}
+
+function parseBirthV3760(value){
+  const raw = String(value || "").trim();
+  if(!raw) return null;
+  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
+
+  let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
+
+  m = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3])};
+
+  const d = new Date(raw);
+  if(!Number.isNaN(d.getTime()) && d.getFullYear() > 1900){
+    return {year:d.getFullYear(), month:d.getMonth()+1, day:d.getDate()};
+  }
+  return null;
+}
+
+function getBirthValueV3760(){
+  const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  if(!p) return "";
+  return p.data_nascimento || p.idade || p.nascimento || p.aniversario || "";
+}
+
+function getSeasonStartV3760(season){
+  const raw = String(season?.data_inicio || "").trim();
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  const temp = String(season?.temporada || "");
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return {year:Number(m[1]), month:8, day:1};
+
+  m = temp.match(/(\d{4})/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function calcAgeAtSeasonV3760(season){
+  const birth = parseBirthV3760(getBirthValueV3760());
+  const start = getSeasonStartV3760(season);
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+  if(!start) return "";
+
+  let age = start.year - birth.year;
+  if(start.month < birth.month || (start.month === birth.month && start.day < birth.day)) age--;
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+function getSeasonAggregatesV3760(){
+  const rows = getCareerSeasonRecords();
+  return rows.map(season=>{
+    const stats = getSeasonStatsForRecord(season);
+    return {
+      season,
+      age: calcAgeAtSeasonV3760(season),
+      jogos: stats.reduce((a,s)=>a+num(s.jogos),0),
+      gols: stats.reduce((a,s)=>a+num(s.gols),0),
+      assistencias: stats.reduce((a,s)=>a+num(s.assistencias),0)
+    };
+  }).filter(x=>x.jogos || x.gols || x.assistencias);
+}
+
+function getCareerTotalsV3760(){
+  const rows = getSeasonAggregatesV3760();
+  return rows.reduce((acc,r)=>{
+    acc.jogos += r.jogos;
+    acc.gols += r.gols;
+    acc.assistencias += r.assistencias;
+    return acc;
+  },{jogos:0,gols:0,assistencias:0});
+}
+
+function buildProjectionV3760(){
+  const rows = getSeasonAggregatesV3760();
+  const totals = getCareerTotalsV3760();
+  const seasonCount = Math.max(1, rows.length || 1);
+
+  const avg = {
+    jogos: totals.jogos / seasonCount,
+    gols: totals.gols / seasonCount,
+    assistencias: totals.assistencias / seasonCount
+  };
+
+  let currentAge = "";
+  const ages = rows.map(r=>Number(r.age)).filter(Number.isFinite);
+  if(ages.length) currentAge = Math.max(...ages);
+
+  if(currentAge === ""){
+    const birth = parseBirthV3760(getBirthValueV3760());
+    if(birth?.ageFixed) currentAge = birth.ageFixed;
+    else currentAge = 17 + Math.max(0, seasonCount - 1);
+  }
+
+  const seasonsLeft = Math.max(0, 38 - Number(currentAge));
+
+  const future = {
+    jogos: avg.jogos * seasonsLeft,
+    gols: avg.gols * seasonsLeft,
+    assistencias: avg.assistencias * seasonsLeft
+  };
+
+  return {
+    currentAge,
+    seasonsLeft,
+    totals,
+    avg,
+    future,
+    final:{
+      jogos: totals.jogos + future.jogos,
+      gols: totals.gols + future.gols,
+      assistencias: totals.assistencias + future.assistencias
+    }
+  };
+}
+
+function applyPlayerCardOverlay(protagonist){
+  const shell = findPlayerCardShell ? findPlayerCardShell() : null;
+  if(!shell) return;
+
+  const name = protagonist?.nome || "Football Legacy";
+  const meta = protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "SELECIONE UM PROTAGONISTA";
+  const photo = getPlayerImageV3760(protagonist);
+
+  shell.classList.add("player-card-shell-fixed");
+  shell.innerHTML = `
+    <div class="player-card-onepiece ${photo ? "has-photo" : ""}">
+      ${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(name)}">` : `<div class="player-card-fl">FL</div>`}
+      <div class="player-card-shade"></div>
+      <div class="player-card-overlay-name">
+        <strong id="mainCharacter">${escapeHtml(name)}</strong>
+        <span id="mainCharacterSub">${escapeHtml(meta)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderMetricGroupV3760(title, data, extra=""){
+  return `
+    <div class="metric-group-v3760">
+      <div class="metric-group-title-v3760">${escapeHtml(title)}${extra ? `<span>${escapeHtml(extra)}</span>` : ""}</div>
+      <div class="career-total-strip career-total-strip-v3760">
+        <div><strong>${Math.round(data.jogos)}</strong><span>Jogos</span></div>
+        <div><strong>${Math.round(data.gols)}</strong><span>Gols</span></div>
+        <div><strong>${Math.round(data.assistencias)}</strong><span>Assistências</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDashboardJourney(){
+  const user = getActiveUser();
+  const career = getActiveCareer();
+  const protagonist = getActiveProtagonist();
+  const stats = getProtagonistStats();
+  const season = getCurrentSeason(stats);
+  const journey = buildClubJourney();
+  const totals = getCareerTotalsV3760();
+  const projection = buildProjectionV3760();
+  const selectionTotals = getSelectionTotalsV3760();
+  const selectionBadge = getSelectionBadgeV3760(selectionTotals.selecao);
+
+  setText("careerNameSide", career ? career.nome : "Football Legacy");
+  setText("careerMetaSide", user ? user.nome : "Google Sheets");
+
+  setText("currentSeason", season || "Banco conectado");
+  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
+  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
+
+  applyPlayerCardOverlay(protagonist);
+
+  const meta = document.querySelector(".hero-meta");
+  if(meta){
+    meta.classList.add("club-journey-hero");
+    meta.innerHTML = `
+      <div class="career-metrics-area-v3760">
+        ${renderMetricGroupV3760("Atual", totals)}
+        ${renderMetricGroupV3760("Previsto até 38 anos", projection.final, `${projection.currentAge} anos • ${projection.seasonsLeft} temp.`)}
+      </div>
+
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+      </div>
+      <div class="club-journey-strip clean-club-strip club-strip-with-selection-v3760">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap clean-club-crest">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-full-stats">
+              <span><b>${c.jogos}</b> Jogos</span>
+              <span><b>${c.gols}</b> Gols</span>
+              <span><b>${c.assistencias}</b> Assistências</span>
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+
+        <div class="club-journey-item clean-club-item selection-career-card-v3760" title="${escapeAttr(selectionTotals.selecao || "Seleção")}">
+          <span class="club-crest-wrap clean-club-crest">
+            ${selectionBadge ? `<img src="${escapeAttr(selectionBadge)}" onerror="this.parentElement.innerHTML='<b>🌎</b>'">` : `<b>🌎</b>`}
+          </span>
+          <strong>${escapeHtml(selectionTotals.selecao || "Seleção")}</strong>
+          <small>Seleção</small>
+          <span class="club-full-stats">
+            <span><b>${selectionTotals.jogos}</b> Jogos</span>
+            <span><b>${selectionTotals.gols}</b> Gols</span>
+            <span><b>${selectionTotals.assistencias}</b> Assistências</span>
+          </span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function renderSelectionCellV3760(season){
+  const row = getSelectionRowForSeasonV3760(season);
+  const selecao = normalizeSelectionNameV3760(row?.selecao || getActivePlayerSelectionV3760());
+  const badge = getSelectionBadgeV3760(selecao);
+
+  return `
+    <div class="season-selection-card-v3760">
+      <div class="season-selection-main-v3760">
+        <span class="season-selection-badge-v3760">
+          ${badge ? `<img src="${escapeAttr(badge)}" onerror="this.parentElement.innerHTML='🌎'">` : `🌎`}
+        </span>
+        <div>
+          <strong>${escapeHtml(selecao || "Seleção")}</strong>
+          <small>${row ? `${Number(row.jogos||0)} jogos • ${Number(row.gols||0)} gols • ${Number(row.assistencias||0)} assist.` : "Sem dados"}</small>
+          ${row?.titulos ? `<small class="season-selection-title-v3760">${escapeHtml(row.titulos)}</small>` : ""}
+        </div>
+      </div>
+      <button onclick="openSelectionSeasonModalV3760('${escapeAttr(season.id)}')">Editar seleção</button>
+    </div>
+  `;
+}
+
+function renderPlayedSeasons(){
+  const container = $("playedSeasonsCards") || $("playedSeasonsTable");
+  if(!container) return;
+
+  const rows = getCareerSeasonRecords()
+    .sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada) || String(b.data_inicio||"").localeCompare(String(a.data_inicio||"")));
+
+  if(!rows.length){
+    container.innerHTML = `<div class="season-empty">Nenhuma temporada cadastrada ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(r=>{
+    const stats = getSeasonStatsForRecord(r);
+    const jogos = stats.reduce((acc,s)=>acc+num(s.jogos),0);
+    const gols = stats.reduce((acc,s)=>acc+num(s.gols),0);
+    const assistencias = stats.reduce((acc,s)=>acc+num(s.assistencias),0);
+    const avgGoals = jogos ? (gols/jogos).toFixed(2) : "0.00";
+    const avgAssists = jogos ? (assistencias/jogos).toFixed(2) : "0.00";
+    const age = calcAgeAtSeasonV3760(r);
+    const periodo = (r.data_inicio || r.data_fim) ? `${r.data_inicio || "?"} até ${r.data_fim || "?"}` : "";
+
+    return `
+      <article class="season-card season-card-v3760">
+        <div class="season-club-side-v3760">
+          <div class="season-club-crest season-club-crest-v3760">
+            ${r.escudo ? `<img src="${escapeAttr(r.escudo)}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
+          </div>
+          ${age !== "" ? `<span class="season-age-v3760">${age} anos</span>` : ""}
+          <div class="season-club-info-v3760">
+            <strong>${escapeHtml(r.temporada || "-")}</strong>
+            <h4>${escapeHtml(r.clube_nome || r.time || "-")}</h4>
+            ${periodo ? `<small>${escapeHtml(periodo)}</small>` : ""}
+          </div>
+        </div>
+
+        <div class="season-stats-grid-v3760">
+          <div class="season-stat"><small>Jogos</small><strong>${jogos}</strong></div>
+          <div class="season-stat"><small>Gols</small><strong>${gols}</strong></div>
+          <div class="season-stat"><small>Assistências</small><strong>${assistencias}</strong></div>
+          <div class="season-stat"><small>Gols por jogo</small><strong>${avgGoals}</strong></div>
+          <div class="season-stat"><small>Assistências por jogo</small><strong>${avgAssists}</strong></div>
+        </div>
+
+        ${renderSelectionCellV3760(r)}
+
+        <div class="season-actions season-actions-v3760">
+          <button onclick="editSeasonRecord('${escapeAttr(r.id)}')">Editar temporada</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function openSelectionSeasonModalV3760(seasonId){
+  const season = getCareerSeasonRecords().find(s=>String(s.id)===String(seasonId));
+  if(!season){
+    alert("Temporada não encontrada.");
+    return;
+  }
+
+  const old = getSelectionRowForSeasonV3760(season) || {};
+  const selecao = normalizeSelectionNameV3760(old.selecao || getActivePlayerSelectionV3760());
+  const badge = getSelectionBadgeV3760(selecao);
+
+  modalTitle.textContent = `Editar seleção • ${season.temporada}`;
+  modalBox.classList.add("wide");
+  form.className = "selection-season-form-v3760";
+
+  form.innerHTML = `
+    <div class="selection-season-modal-v3760">
+      <div class="selected-team active">
+        ${badge ? `<img src="${escapeAttr(badge)}" onerror="this.style.display='none'">` : ""}
+        <div>
+          <strong>${escapeHtml(selecao || "Seleção")}</strong>
+          <small>${escapeHtml(season.temporada || "")}</small>
+        </div>
+      </div>
+
+      <div class="season-flow-grid">
+        <div class="form-field">
+          <label>Seleção</label>
+          <input name="selecao" value="${escapeAttr(selecao)}" placeholder="Ex: Brasil">
+        </div>
+        <div class="form-field">
+          <label>Jogos</label>
+          <input name="jogos" type="number" value="${escapeAttr(old.jogos || "")}">
+        </div>
+        <div class="form-field">
+          <label>Gols</label>
+          <input name="gols" type="number" value="${escapeAttr(old.gols || "")}">
+        </div>
+        <div class="form-field">
+          <label>Assistências</label>
+          <input name="assistencias" type="number" value="${escapeAttr(old.assistencias || "")}">
+        </div>
+      </div>
+
+      <div class="form-field full">
+        <label>Títulos pela seleção nessa temporada</label>
+        <input name="titulos" value="${escapeAttr(old.titulos || "")}" placeholder="Ex: Copa América, Copa do Mundo">
+      </div>
+
+      <div class="form-field full">
+        <label>Observação</label>
+        <input name="observacao" value="${escapeAttr(old.observacao || "")}">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+        <button class="gold-btn" id="saveBtn">Salvar seleção</button>
+      </div>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const record = {
+        carreira_id: active.carreira_id || "",
+        personagem_id: active.protagonista_id || "",
+        carreira_temporada_id: season.id || "",
+        temporada: season.temporada || "",
+        selecao: normalizeSelectionNameV3760(data.selecao || selecao),
+        jogos: data.jogos || "",
+        gols: data.gols || "",
+        assistencias: data.assistencias || "",
+        titulos: data.titulos || "",
+        observacao: data.observacao || ""
+      };
+
+      const payload = old.id
+        ? {action:"update", table:"SELECOES_CARREIRA", id:old.id, record}
+        : {action:"create", table:"SELECOES_CARREIRA", record};
+
+      const result = await apiPost(payload);
+      if(!result.ok) throw new Error(result.error || "Erro ao salvar seleção.");
+
+      if(!Array.isArray(db.SELECOES_CARREIRA)) db.SELECOES_CARREIRA = [];
+
+      if(old.id){
+        const idx = db.SELECOES_CARREIRA.findIndex(r=>String(r.id)===String(old.id));
+        if(idx >= 0) db.SELECOES_CARREIRA[idx] = Object.assign({}, db.SELECOES_CARREIRA[idx], record);
+      }else{
+        db.SELECOES_CARREIRA.push(Object.assign({}, record, result?.data || {}, {id:result?.data?.id || result?.id || ("local_"+Date.now())}));
+      }
+
+      clearButtonSaving(btn);
+      closeModal();
+      renderAll();
+      setStatus("Seleção salva.", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar seleção: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+function injectSelectionFieldOnPersonagemFormV3760(){
+  try{
+    if(!form || !modal?.classList?.contains("active")) return;
+    const names = [...form.querySelectorAll("input,select,textarea")]
+      .map(i=>String(i.name || "").toLowerCase());
+
+    const isPersonagem = names.includes("carreira_id") && names.includes("nome") && names.includes("posicao") && names.includes("nacionalidade");
+    if(!isPersonagem || form.querySelector("[name='selecao']")) return;
+
+    const id = form.querySelector("[name='id']")?.value || "";
+    const p = id ? getTable("PERSONAGENS").find(x=>String(x.id)===String(id)) : getActiveProtagonist();
+    const value = normalizeSelectionNameV3760(p?.selecao || p?.selecao_nacional || p?.nacionalidade || "");
+
+    const html = `
+      <div class="form-field personagem-selection-field-v3760">
+        <label>Seleção</label>
+        <input name="selecao" value="${escapeAttr(value)}" placeholder="Ex: Brasil, Argentina, Portugal">
+        <small>A seleção será usada no Resumo e nas estatísticas por temporada.</small>
+      </div>
+    `;
+    const nac = form.querySelector("[name='nacionalidade']");
+    const field = nac?.closest(".form-field");
+    if(field) field.insertAdjacentHTML("afterend", html);
+    else form.insertAdjacentHTML("beforeend", html);
+  }catch(err){
+    console.warn("Falha campo seleção:", err);
+  }
+}
+
+const __apiPostOriginalV3760 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3760 && !window.__apiPostSelectionWrappedV3760){
+  window.__apiPostSelectionWrappedV3760 = true;
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const input = form?.querySelector("[name='selecao']");
+        if(input){
+          payload.record.selecao = normalizeSelectionNameV3760(input.value || "");
+          payload.record.selecao_nacional = payload.record.selecao;
+        }
+      }
+    }catch(err){}
+    return await __apiPostOriginalV3760(payload);
+  };
+}
+
+const __openFormOriginalV3760 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3760 && !window.__openFormSelectionWrappedV3760){
+  window.__openFormSelectionWrappedV3760 = true;
+  openForm = function(){
+    const result = __openFormOriginalV3760.apply(this, arguments);
+    setTimeout(injectSelectionFieldOnPersonagemFormV3760, 120);
+    setTimeout(injectSelectionFieldOnPersonagemFormV3760, 450);
+    return result;
+  };
+}
+
+window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
