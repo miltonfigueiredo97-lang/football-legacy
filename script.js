@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.37 season edit stats key fix');
+console.log('Football Legacy script carregado v3.7.38 season read dom rows');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -6948,4 +6948,257 @@ function buildSeasonFullPayloadV3736(data, existing=null){
 window.getSelectedSeasonCompetitionsV3736 = getSelectedSeasonCompetitionsV3736;
 window.getSelectedSeasonCompetitions = getSelectedSeasonCompetitions;
 window.buildSeasonFullPayloadV3736 = buildSeasonFullPayloadV3736;
+
+
+
+// ===== V3.7.38 TEMPORADA: LER LINHAS VISUAIS DO MODAL =====
+// Corrige Coppa Italia / Supercoppa Italiana / qualquer competição que aparece no modal
+// mas não salva ou volta em branco. Agora o payload lê a linha visual, não o name do input.
+
+function normalizeCompetitionLabelV3738(name){
+  const raw = String(name || "").trim();
+
+  const key = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+
+  const aliases = {
+    "copa_italia":"Coppa Italia",
+    "coppa_italia":"Coppa Italia",
+    "supercopa_italiana":"Supercoppa Italiana",
+    "supercoppa_italiana":"Supercoppa Italiana",
+    "supercopa_da_uefa":"Supercopa da UEFA",
+    "uefa_super_cup":"Supercopa da UEFA",
+    "supercopa_uefa":"Supercopa da UEFA",
+    "intercontinental_de_clubes":"Intercontinental de Clubes",
+    "intercontinental_cup":"Intercontinental de Clubes",
+    "mundial_de_clubes":"Mundial de Clubes",
+    "fifa_club_world_cup":"Mundial de Clubes"
+  };
+
+  return aliases[key] || raw;
+}
+
+function compKeyV3738(name){
+  return String(normalizeCompetitionLabelV3738(name) || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+}
+
+function sameCompetitionV3738(a,b){
+  return compKeyV3738(a) === compKeyV3738(b);
+}
+
+function getSelectedSeasonCompetitionsV3736(){
+  const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
+
+  const values = checks.map(ch=>{
+    let value = ch.dataset?.competition || ch.value || ch.name || "";
+    if(!value || value === "on" || value === "true"){
+      const label = ch.closest("label");
+      if(label){
+        value = (label.innerText || label.textContent || "").replace(/\s+/g," ").trim();
+      }
+    }
+    return normalizeCompetitionLabelV3738(value);
+  }).filter(Boolean);
+
+  // Também inclui o que já está renderizado nas linhas visuais.
+  document.querySelectorAll("#seasonStatsRows .season-stats-row, #seasonStatsRows .season-stat-row").forEach(row=>{
+    const title = row.querySelector("strong")?.textContent?.trim();
+    if(title) values.push(normalizeCompetitionLabelV3738(title));
+  });
+
+  return [...new Set(values)];
+}
+
+function getExistingStatForCompV3738(stats, comp){
+  return (stats || []).find(s=>{
+    const name = s.competicao || compName(s.competicao_id) || "";
+    return sameCompetitionV3738(name, comp);
+  }) || {};
+}
+
+function renderSeasonStatsRows(existingStats=null){
+  const wrap = $("seasonStatsRows");
+  if(!wrap) return;
+
+  const comps = getSelectedSeasonCompetitionsV3736();
+  selectedCompetitionsForSeason = comps;
+
+  if(existingStats) window.__editingSeasonStats = existingStats;
+  const stats = existingStats || window.__editingSeasonStats || [];
+
+  if(!comps.length){
+    wrap.innerHTML = `<div class="entity-card"><small>Selecione pelo menos uma competição.</small></div>`;
+    if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+    return;
+  }
+
+  wrap.innerHTML = comps.map(comp=>{
+    const label = normalizeCompetitionLabelV3738(comp);
+    const old = getExistingStatForCompV3738(stats, label);
+    const key = compKeyV3738(label);
+
+    return `
+      <div class="season-stats-row" data-competition="${escapeAttr(label)}">
+        <strong>${escapeHtml(label)}</strong>
+        <input data-field="jogos" name="jogos_${key}" type="number" placeholder="Jogos" value="${escapeAttr(old.jogos || "")}">
+        <input data-field="gols" name="gols_${key}" type="number" placeholder="Gols" value="${escapeAttr(old.gols || "")}">
+        <input data-field="assistencias" name="assistencias_${key}" type="number" placeholder="Assist." value="${escapeAttr(old.assistencias || "")}">
+        <input data-field="cartoes" name="cartoes_${key}" type="number" placeholder="Cartões" value="${escapeAttr(old.cartoes || "")}">
+        <input data-field="nota_geral" name="media_geral_${key}" type="number" step="0.1" placeholder="Nota" value="${escapeAttr(old.nota_geral || old.media_geral || "")}">
+      </div>
+    `;
+  }).join("");
+
+  if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+}
+
+function readSeasonStatsRowsFromDomV3738(){
+  const rows = [...document.querySelectorAll("#seasonStatsRows .season-stats-row, #seasonStatsRows .season-stat-row")];
+
+  return rows.map(row=>{
+    const comp =
+      row.dataset?.competition ||
+      row.querySelector("strong")?.textContent?.trim() ||
+      "";
+
+    const inputs = [...row.querySelectorAll("input")];
+
+    const byField = {};
+    inputs.forEach((input, index)=>{
+      const field = input.dataset?.field;
+      if(field) byField[field] = input.value;
+      else {
+        // fallback por ordem visual
+        if(index === 0) byField.jogos = input.value;
+        if(index === 1) byField.gols = input.value;
+        if(index === 2) byField.assistencias = input.value;
+        if(index === 3) byField.cartoes = input.value;
+        if(index === 4) byField.nota_geral = input.value;
+      }
+    });
+
+    return {
+      competicao: normalizeCompetitionLabelV3738(comp),
+      jogos: byField.jogos || "",
+      gols: byField.gols || "",
+      assistencias: byField.assistencias || "",
+      cartoes: byField.cartoes || "",
+      nota_geral: byField.nota_geral || ""
+    };
+  }).filter(s=>s.competicao);
+}
+
+function readSeasonTitlesRowsFromDomV3738(){
+  const rows = [...document.querySelectorAll("#seasonTitlesRows .season-title-row, #seasonTitlesRows .title-row, #seasonTitlesRows > div")];
+
+  return rows.map(row=>{
+    const comp =
+      row.dataset?.competition ||
+      row.querySelector("strong")?.textContent?.trim() ||
+      row.querySelector("b")?.textContent?.trim() ||
+      "";
+
+    if(!comp) return null;
+
+    const inputs = [...row.querySelectorAll("input")];
+    const checkbox = inputs.find(i=>i.type === "checkbox");
+    const textInputs = inputs.filter(i=>i.type !== "checkbox");
+
+    return {
+      competicao: normalizeCompetitionLabelV3738(comp),
+      ganhou: checkbox ? checkbox.checked : false,
+      campeao: textInputs[0]?.value || "",
+      artilheiro: textInputs[1]?.value || "",
+      lider_assistencias: textInputs[2]?.value || "",
+      melhor_jogador: textInputs[3]?.value || ""
+    };
+  }).filter(Boolean);
+}
+
+function buildSeasonFullPayloadV3736(data, existing=null){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+  if(!temporada) throw new Error("Informe o início no time ou a temporada.");
+
+  const stats = readSeasonStatsRowsFromDomV3738();
+  const comps = [...new Set([
+    ...getSelectedSeasonCompetitionsV3736(),
+    ...stats.map(s=>s.competicao)
+  ].map(normalizeCompetitionLabelV3738).filter(Boolean))];
+
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  const statMap = new Map();
+  stats.forEach(s=>statMap.set(compKeyV3738(s.competicao), s));
+
+  const finalStats = comps.map(comp=>{
+    const saved = statMap.get(compKeyV3738(comp)) || {};
+    return {
+      competicao: normalizeCompetitionLabelV3738(comp),
+      jogos: saved.jogos || "",
+      gols: saved.gols || "",
+      assistencias: saved.assistencias || "",
+      cartoes: saved.cartoes || "",
+      nota_geral: saved.nota_geral || ""
+    };
+  });
+
+  let titles = readSeasonTitlesRowsFromDomV3738();
+
+  // Garante que toda competição exista também em titles, mesmo vazio.
+  const titleKeys = new Set(titles.map(t=>compKeyV3738(t.competicao)));
+  comps.forEach(comp=>{
+    if(!titleKeys.has(compKeyV3738(comp))){
+      titles.push({
+        competicao: normalizeCompetitionLabelV3738(comp),
+        ganhou:false,
+        campeao:"",
+        artilheiro:"",
+        lider_assistencias:"",
+        melhor_jogador:""
+      });
+    }
+  });
+
+  console.log("V3.7.38 saveSeason comps:", comps);
+  console.log("V3.7.38 saveSeason stats DOM:", finalStats);
+
+  return {
+    action: "saveSeasonFull",
+    existingSeasonId: existing?.id || "",
+    carreira_id: active.carreira_id,
+    personagem_id: active.protagonista_id,
+    temporada,
+    status: data.status || existing?.status || "em andamento",
+    data_inicio: data.data_inicio || "",
+    data_fim: data.data_fim || "",
+    team: {
+      name: selectedSeasonTeam.name || "",
+      country: selectedSeasonTeam.country || "",
+      badge: selectedSeasonTeam.badge || "",
+      league: selectedSeasonTeam.league || ""
+    },
+    competitions: comps,
+    stats: finalStats,
+    titles
+  };
+}
+
+window.renderSeasonStatsRows = renderSeasonStatsRows;
+window.getSelectedSeasonCompetitionsV3736 = getSelectedSeasonCompetitionsV3736;
+window.getSelectedSeasonCompetitions = getSelectedSeasonCompetitionsV3736;
+window.buildSeasonFullPayloadV3736 = buildSeasonFullPayloadV3736;
+window.readSeasonStatsRowsFromDomV3738 = readSeasonStatsRowsFromDomV3738;
 
