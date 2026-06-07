@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.84 hard page isolation');
+console.log('Football Legacy script carregado v3.7.85 fix br badge ballon icons');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -12192,3 +12192,458 @@ setTimeout(FL_periodicIsolationV3784, 2500);
 
 window.FL_forceOnlyActivePageV3784 = FL_forceOnlyActivePageV3784;
 window.FL_renderActivePageV3784 = FL_renderActivePageV3784;
+
+
+// ===== V3.7.85 CORRIGE ESCUDO BR ESPALHADO + MELHORES COM ÍCONES =====
+// Correções:
+// 1) Remove a injeção ampla que colocou escudo do Brasil em tudo.
+// 2) Mantém escudo de seleção apenas quando o componente pede explicitamente.
+// 3) Modal "Os melhores" ganha bandeira/escudo por jogador, clube e país.
+
+const FL_CLUB_BADGE_CACHE_V3785 = {};
+
+function FL_normV3785(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_escapeV3785(value){
+  return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3785(value){
+  return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+// ---------- Escudo seleção: não espalhar ----------
+function FL_removeScatteredBrazilBadgesV3785(){
+  document.querySelectorAll(".selection-badge-fixed-v3783").forEach(el => el.remove());
+}
+
+// Neutraliza função antiga que espalhava o CBF em cards errados.
+window.FL_fixBrazilSelectionBadgesV3783 = function(){
+  FL_removeScatteredBrazilBadgesV3785();
+
+  // Só atualiza nós explicitamente marcados como seleção.
+  document.querySelectorAll("[data-national-team-v3780], [data-national-team-v3783], [data-selection-badge]").forEach(async node=>{
+    const name = node.dataset.nationalTeamV3780 || node.dataset.nationalTeamV3783 || node.dataset.selectionBadge || "Brasil";
+    const img = typeof FL_fetchNationalBadgeV3783 === "function"
+      ? await FL_fetchNationalBadgeV3783(name)
+      : FL_selectionBadgeUrlV3785(name);
+
+    if(node.isConnected && img){
+      node.innerHTML = `<img src="${FL_escapeAttrV3785(img)}" onerror="this.parentElement.innerHTML='${FL_countryEmojiV3785(name)}'">`;
+    }
+  });
+};
+
+function FL_selectionBadgeUrlV3785(name){
+  const k = FL_normV3785(name);
+  const commons = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=180`;
+
+  const map = {
+    brasil: commons("Brazilian Football Confederation logo.svg"),
+    brazil: commons("Brazilian Football Confederation logo.svg"),
+    brasileira: commons("Brazilian Football Confederation logo.svg"),
+    brasileiro: commons("Brazilian Football Confederation logo.svg"),
+    argentina: commons("Argentina_national_football_team_logo.svg"),
+    franca: commons("France_national_football_team_logo.svg"),
+    france: commons("France_national_football_team_logo.svg"),
+    espanha: commons("Spain_national_football_team_logo.svg"),
+    spain: commons("Spain_national_football_team_logo.svg"),
+    portugal: commons("Portuguese_Football_Federation.svg"),
+    inglaterra: commons("England_national_football_team_crest.svg"),
+    england: commons("England_national_football_team_crest.svg"),
+    alemanha: commons("DFBEagle.svg"),
+    germany: commons("DFBEagle.svg"),
+    italia: commons("Italy_national_football_team_logo.svg"),
+    italy: commons("Italy_national_football_team_logo.svg"),
+    holanda: commons("Netherlands_national_football_team_logo.svg"),
+    netherlands: commons("Netherlands_national_football_team_logo.svg"),
+    uruguai: commons("Uruguay_football_association_logo.svg"),
+    uruguay: commons("Uruguay_football_association_logo.svg")
+  };
+
+  if(map[k]) return map[k];
+
+  const code = FL_countryCodeV3785(name);
+  return code && !code.includes("-") ? `https://flagcdn.com/w160/${code}.png` : "";
+}
+
+window.getSelectionBadgeV3760 = FL_selectionBadgeUrlV3785;
+window.FL_badgeFallbackV3780 = FL_selectionBadgeUrlV3785;
+
+// ---------- País/bandeira ----------
+function FL_countryCodeV3785(name){
+  const k = FL_normV3785(name);
+  const map = {
+    brasil:"br", brazil:"br", brasileiro:"br", brasileira:"br",
+    argentina:"ar", argentino:"ar", argentina:"ar",
+    franca:"fr", france:"fr", frances:"fr", francesa:"fr",
+    espanha:"es", spain:"es", espanhol:"es", espanhola:"es",
+    portugal:"pt", portugues:"pt", portuguesa:"pt",
+    inglaterra:"gb-eng", england:"gb-eng", ingles:"gb-eng", inglesa:"gb-eng",
+    alemanha:"de", germany:"de", alemao:"de", alema:"de",
+    italia:"it", italy:"it", italiano:"it", italiana:"it",
+    holanda:"nl", netherlands:"nl", holandes:"nl", holandesa:"nl",
+    uruguai:"uy", uruguay:"uy", uruguaio:"uy", uruguaia:"uy",
+    belgica:"be", belgium:"be", belga:"be",
+    croacia:"hr", croatia:"hr", croata:"hr",
+    mexico:"mx", mexicano:"mx", mexicana:"mx",
+    estadosunidos:"us", usa:"us", americano:"us", estadunidense:"us",
+    japao:"jp", japan:"jp", japones:"jp", japonesa:"jp",
+    colombia:"co", colombiano:"co", colombiana:"co",
+    chile:"cl", chileno:"cl", chilena:"cl",
+    paraguai:"py", paraguaio:"py", paraguaia:"py",
+    equador:"ec", ecuador:"ec",
+    peru:"pe", peruano:"pe", peruana:"pe",
+    marrocos:"ma", morocco:"ma",
+    senegal:"sn",
+    nigeria:"ng",
+    egito:"eg", egypt:"eg",
+    camaroes:"cm", cameroon:"cm",
+    coreiadosul:"kr", southkorea:"kr",
+    australia:"au",
+    canada:"ca"
+  };
+  return map[k] || "";
+}
+
+function FL_countryEmojiV3785(name){
+  const code = FL_countryCodeV3785(name);
+  if(!code || code.includes("-")) return "🌐";
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+function FL_countryFlagUrlV3785(name){
+  const code = FL_countryCodeV3785(name);
+  return code && !code.includes("-") ? `https://flagcdn.com/w80/${code}.png` : "";
+}
+
+// ---------- Clubes: TheSportsDB + fallback ----------
+function FL_clubBadgeFallbackV3785(name){
+  const k = FL_normV3785(name);
+  const wiki = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=180`;
+
+  const map = {
+    juventus: wiki("Juventus_FC_2017_logo.svg"),
+    juventusfc: wiki("Juventus_FC_2017_logo.svg"),
+    juve: wiki("Juventus_FC_2017_logo.svg"),
+    juventusturin: wiki("Juventus_FC_2017_logo.svg"),
+
+    realmadrid: wiki("Real_Madrid_CF.svg"),
+    madrid: wiki("Real_Madrid_CF.svg"),
+    barcelona: wiki("FC_Barcelona_(crest).svg"),
+    fcbarcelona: wiki("FC_Barcelona_(crest).svg"),
+
+    acmilan: wiki("AC_Milan.svg"),
+    milan: wiki("AC_Milan.svg"),
+    intermilan: wiki("FC_Internazionale_Milano_2021.svg"),
+    inter: wiki("FC_Internazionale_Milano_2021.svg"),
+
+    manchestercity: wiki("Manchester_City_FC_badge.svg"),
+    mancity: wiki("Manchester_City_FC_badge.svg"),
+    manchesterunited: wiki("Manchester_United_FC_crest.svg"),
+    manutd: wiki("Manchester_United_FC_crest.svg"),
+
+    arsenal: wiki("Arsenal_FC.svg"),
+    chelsea: wiki("Chelsea_FC.svg"),
+    liverpool: wiki("Liverpool_FC.svg"),
+    tottenham: wiki("Tottenham_Hotspur.svg"),
+
+    psg: wiki("Paris_Saint-Germain_F.C..svg"),
+    parissaintgermain: wiki("Paris_Saint-Germain_F.C..svg"),
+
+    bayern: wiki("FC_Bayern_München_logo_(2024).svg"),
+    bayernmunich: wiki("FC_Bayern_München_logo_(2024).svg"),
+    borussiadortmund: wiki("Borussia_Dortmund_logo.svg"),
+    dortmund: wiki("Borussia_Dortmund_logo.svg"),
+
+    corinthians: wiki("Sport_Club_Corinthians_Paulista_crest.svg"),
+    flamengo: wiki("Flamengo_braz_logo.svg"),
+    palmeiras: wiki("Palmeiras_logo.svg"),
+    saopaulo: wiki("São_Paulo_FC.svg"),
+    santos: wiki("Santos_Logo.png"),
+    gremio: wiki("Grêmio_FBPA.svg"),
+    internacional: wiki("SC_Internacional.svg"),
+
+    newcastle: wiki("Newcastle_United_Logo.svg"),
+    newcastleunited: wiki("Newcastle_United_Logo.svg")
+  };
+
+  return map[k] || "";
+}
+
+async function FL_fetchClubBadgeV3785(name){
+  const clean = String(name || "").trim();
+  const key = FL_normV3785(clean);
+  if(!key) return "";
+
+  if(FL_CLUB_BADGE_CACHE_V3785[key] !== undefined) return FL_CLUB_BADGE_CACHE_V3785[key];
+
+  const fallback = FL_clubBadgeFallbackV3785(clean);
+
+  try{
+    const variants = [
+      clean,
+      `${clean} FC`,
+      clean.replace(/\bFC\b/ig,"").trim()
+    ].filter(Boolean);
+
+    for(const q of [...new Set(variants)]){
+      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(q)}`;
+      const res = await fetch(url, {cache:"force-cache"});
+      const data = await res.json();
+      const teams = data?.teams || [];
+
+      const found = teams.find(t => FL_normV3785(t.strSport).includes("soccer")) || teams[0];
+
+      if(found?.strBadge){
+        FL_CLUB_BADGE_CACHE_V3785[key] = found.strBadge;
+        return found.strBadge;
+      }
+    }
+  }catch(err){
+    console.warn("Falha buscando escudo clube:", clean, err);
+  }
+
+  FL_CLUB_BADGE_CACHE_V3785[key] = fallback;
+  return fallback;
+}
+
+// ---------- Modal Melhores melhorado ----------
+function FL_ballonRowsAllV3785(){
+  const career = (getTable("BOLA_DE_OURO_CARREIRA") || []).map(r=>Object.assign({__source:"career"}, r));
+  const base = (getTable("BOLA_DE_OURO_BASE") || getTable("BOLA_DE_OURO") || []).map(r=>Object.assign({__source:"real"}, r));
+
+  const map = new Map();
+
+  [...base, ...career].forEach(r=>{
+    const key = r.id && r.__source
+      ? `${r.__source}:${r.id}`
+      : `${r.__source || ""}|${r.temporada || r.ano || ""}|${r.posicao || ""}|${FL_normV3785(r.jogador || "")}|${FL_normV3785(r.clube || "")}`;
+
+    map.set(key,r);
+  });
+
+  return [...map.values()].filter(r=>r.jogador || r.clube || r.pais || r.nacionalidade);
+}
+
+function FL_groupBallonBestV3785(mode){
+  const rows = FL_ballonRowsAllV3785();
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const pos = Number(r.posicao || 0);
+    if(!pos) return;
+
+    let include = false;
+    let key = "";
+    let label = "";
+    let sub = "";
+
+    const country = r.pais || r.nacionalidade || "";
+    const club = r.clube || "";
+
+    if(mode === "player"){
+      include = pos === 1;
+      key = FL_normV3785(r.jogador);
+      label = r.jogador || "-";
+      sub = "Bolas de Ouro";
+    }else if(mode === "second"){
+      include = pos === 2;
+      key = FL_normV3785(r.jogador);
+      label = r.jogador || "-";
+      sub = "2º lugares";
+    }else if(mode === "third"){
+      include = pos === 3;
+      key = FL_normV3785(r.jogador);
+      label = r.jogador || "-";
+      sub = "3º lugares";
+    }else if(mode === "club"){
+      include = pos === 1;
+      key = FL_normV3785(club || "Sem clube");
+      label = club || "Sem clube";
+      sub = "Bolas de Ouro por time";
+    }else if(mode === "country"){
+      include = pos === 1;
+      key = FL_normV3785(country || "Sem país");
+      label = country || "Sem país";
+      sub = "Bolas de Ouro por país";
+    }else if(mode === "appearances"){
+      include = true;
+      key = FL_normV3785(r.jogador);
+      label = r.jogador || "-";
+      sub = "Aparições no Top 10";
+    }
+
+    if(!include || !key) return;
+
+    if(!map.has(key)){
+      map.set(key,{
+        label,
+        sub,
+        count:0,
+        details:[],
+        career:0,
+        real:0,
+        wins:0,
+        seconds:0,
+        thirds:0,
+        country,
+        club,
+        mode
+      });
+    }
+
+    const item = map.get(key);
+    item.count++;
+
+    if(!item.country && country) item.country = country;
+    if(!item.club && club) item.club = club;
+
+    if(r.__source === "career") item.career++;
+    else item.real++;
+
+    if(pos === 1) item.wins++;
+    if(pos === 2) item.seconds++;
+    if(pos === 3) item.thirds++;
+
+    item.details.push(`${r.temporada || r.ano || "-"} #${pos}`);
+  });
+
+  return [...map.values()].sort((a,b)=>
+    b.count - a.count ||
+    b.wins - a.wins ||
+    b.seconds - a.seconds ||
+    a.label.localeCompare(b.label)
+  );
+}
+
+function FL_iconHtmlBallonV3785(row, mode){
+  const country = row.country || row.label || "";
+  const club = row.club || row.label || "";
+
+  if(mode === "club"){
+    return `<span class="fl-ballon-icon-v3785 club" data-club-badge-v3785="${FL_escapeAttrV3785(club)}">${FL_escapeV3785((club || "?").slice(0,2).toUpperCase())}</span>`;
+  }
+
+  const flag = FL_countryFlagUrlV3785(mode === "country" ? row.label : country);
+  const emoji = FL_countryEmojiV3785(mode === "country" ? row.label : country);
+
+  return `<span class="fl-ballon-icon-v3785 flag">${flag ? `<img src="${FL_escapeAttrV3785(flag)}" onerror="this.parentElement.innerHTML='${emoji}'">` : emoji}</span>`;
+}
+
+function FL_modeLabelBallonV3785(mode){
+  const labels = {
+    player:"Por jogador",
+    second:"Mais vezes 2º lugar",
+    third:"Mais vezes 3º lugar",
+    club:"Por time",
+    country:"Por país",
+    appearances:"Mais vezes em qualquer posição"
+  };
+  return labels[mode] || "Melhores";
+}
+
+function FL_renderBallonBestModalV3785(){
+  let modal = document.getElementById("fl-ballon-best-modal-v3783");
+  if(!modal){
+    modal = document.createElement("div");
+    modal.id = "fl-ballon-best-modal-v3783";
+    modal.className = "fl-ballon-best-modal-v3783";
+    document.body.appendChild(modal);
+  }
+
+  const modes = [
+    ["player","Por jogador"],
+    ["second","Mais 2º lugar"],
+    ["third","Mais 3º lugar"],
+    ["club","Por time"],
+    ["country","Por país"],
+    ["appearances","Qualquer posição"]
+  ];
+
+  const activeMode = window.FL_BALLON_BEST_MODE_V3783 || "player";
+  const rows = FL_groupBallonBestV3785(activeMode).slice(0,30);
+
+  modal.innerHTML = `
+    <div class="fl-ballon-best-backdrop-v3783" onclick="FL_closeBallonBestModalV3783()"></div>
+    <div class="fl-ballon-best-panel-v3783 fl-ballon-best-panel-v3785">
+      <button class="fl-ballon-best-close-v3783" onclick="FL_closeBallonBestModalV3783()">×</button>
+      <div class="fl-ballon-best-title-v3783">
+        <div>
+          <h2>Os melhores da Bola de Ouro</h2>
+          <small>${FL_escapeV3785(FL_modeLabelBallonV3785(activeMode))}</small>
+        </div>
+      </div>
+
+      <div class="fl-ballon-best-tabs-v3783">
+        ${modes.map(([id,label])=>`
+          <button class="${id===activeMode ? "active" : ""}" onclick="window.FL_BALLON_BEST_MODE_V3783='${id}'; FL_renderBallonBestModalV3785();">${label}</button>
+        `).join("")}
+      </div>
+
+      <div class="fl-ballon-best-list-v3783">
+        ${rows.map((r,idx)=>`
+          <article class="fl-ballon-best-row-v3783 fl-ballon-best-row-v3785">
+            <span class="rank">${idx+1}</span>
+            ${FL_iconHtmlBallonV3785(r, activeMode)}
+            <div class="info">
+              <strong>${FL_escapeV3785(r.label)}</strong>
+              <small>${FL_escapeV3785(r.sub)} ${r.club && activeMode !== "club" ? `• ${FL_escapeV3785(r.club)}` : ""} ${r.country && activeMode !== "country" ? `• ${FL_escapeV3785(r.country)}` : ""}</small>
+              <em>${FL_escapeV3785(r.details.slice(0,8).join(" • "))}${r.details.length>8 ? "..." : ""}</em>
+            </div>
+            <b>${r.count}x</b>
+          </article>
+        `).join("") || `<div class="fl-empty-v3783">Sem dados para esta visualização.</div>`}
+      </div>
+    </div>
+  `;
+
+  FL_enrichBallonClubBadgesV3785();
+}
+
+async function FL_enrichBallonClubBadgesV3785(){
+  const nodes = [...document.querySelectorAll("[data-club-badge-v3785]")];
+
+  for(const node of nodes){
+    const club = node.dataset.clubBadgeV3785 || "";
+    const badge = await FL_fetchClubBadgeV3785(club);
+    if(!node.isConnected) continue;
+
+    if(badge){
+      node.innerHTML = `<img src="${FL_escapeAttrV3785(badge)}" onerror="this.parentElement.innerHTML='${FL_escapeV3785((club || '?').slice(0,2).toUpperCase())}'">`;
+    }
+  }
+}
+
+// Substitui modal antigo.
+window.FL_renderBallonBestModalV3783 = FL_renderBallonBestModalV3785;
+window.FL_renderBallonBestModalV3785 = FL_renderBallonBestModalV3785;
+
+// Pós-render.
+const __renderAllOriginalV3785 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3785 && !window.__renderAllV3785Wrapped){
+  window.__renderAllV3785Wrapped = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3785.apply(this, arguments);
+    setTimeout(()=>{
+      FL_removeScatteredBrazilBadgesV3785();
+      if(typeof FL_bindBestButtonV3783 === "function") FL_bindBestButtonV3783();
+    }, 250);
+    return result;
+  };
+}
+
+document.addEventListener("click", ()=>{
+  setTimeout(FL_removeScatteredBrazilBadgesV3785, 200);
+}, true);
+
+setTimeout(FL_removeScatteredBrazilBadgesV3785, 600);
+setTimeout(FL_removeScatteredBrazilBadgesV3785, 1600);
+
+window.FL_removeScatteredBrazilBadgesV3785 = FL_removeScatteredBrazilBadgesV3785;

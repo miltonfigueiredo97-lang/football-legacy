@@ -1,3 +1,3 @@
-# Football Legacy V3.7.84
+# Football Legacy V3.7.85
 
-Corrige vazamento de conteúdo entre abas. Implementa isolamento forte: ao trocar de aba, todas as páginas são escondidas e só a página ativa fica visível. Blocos dinâmicos de Estatísticas, Top 11 e Bola de Ouro são removidos quando fora da aba correta.
+Corrige escudo do Brasil espalhado removendo a injeção ampla. Mantém escudo de seleção apenas em componentes explícitos. Melhora modal Os melhores da Bola de Ouro com bandeiras para jogadores/países e escudos de clubes via TheSportsDB + fallback manual.
