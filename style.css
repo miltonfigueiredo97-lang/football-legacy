@@ -2674,3 +2674,158 @@ body[data-current-page="museu"] #museu{
   color:#93c5fd;
   font-weight:800;
 }
+
+
+/* ===== V3.7.82 TROFÉUS GANHOS + ESTATÍSTICAS LIGAS ===== */
+.trophy-card-v3782{
+  overflow:hidden;
+}
+
+.trophy-img-v3782{
+  height:92px;
+  border-radius:16px;
+  background:radial-gradient(circle at center,rgba(251,191,36,.16),rgba(15,23,42,.55));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:10px 0 12px;
+  color:#fbbf24;
+  font-size:42px;
+}
+
+.trophy-img-v3782 img{
+  max-width:88px;
+  max-height:82px;
+  object-fit:contain;
+  filter:drop-shadow(0 10px 16px rgba(0,0,0,.35));
+}
+
+.trophy-type-v3782{
+  display:inline-flex;
+  width:max-content;
+  padding:4px 8px;
+  border-radius:999px;
+  background:rgba(251,191,36,.12);
+  border:1px solid rgba(251,191,36,.25);
+  color:#fbbf24;
+  font-size:10px;
+  font-weight:1000;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+
+.stats-old-hidden-v3782{
+  display:none!important;
+}
+
+.stats-major-leagues-v3782{
+  border:1px solid rgba(148,163,184,.16);
+  background:rgba(15,23,42,.38);
+  border-radius:22px;
+  padding:18px;
+  margin-bottom:18px;
+}
+
+.stats-leagues-head-v3782{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:16px;
+}
+
+.stats-leagues-head-v3782 h2{
+  margin:0;
+  color:#fff;
+  font-size:24px;
+}
+
+.stats-leagues-head-v3782 small{
+  color:#93c5fd;
+  font-weight:800;
+}
+
+.stats-leagues-grid-v3782{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:14px;
+}
+
+.league-winners-card-v3782{
+  display:flex;
+  gap:14px;
+  border:1px solid rgba(148,163,184,.16);
+  background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(2,6,23,.22));
+  border-radius:18px;
+  padding:14px;
+  min-height:160px;
+}
+
+.league-icon-v3782{
+  width:82px;
+  min-width:82px;
+  height:82px;
+  border-radius:18px;
+  background:radial-gradient(circle at center,rgba(251,191,36,.14),rgba(15,23,42,.7));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fbbf24;
+  font-size:34px;
+  overflow:hidden;
+}
+
+.league-icon-v3782 img{
+  max-width:72px;
+  max-height:72px;
+  object-fit:contain;
+  filter:drop-shadow(0 8px 15px rgba(0,0,0,.35));
+}
+
+.league-info-v3782{
+  flex:1;
+  min-width:0;
+}
+
+.league-info-v3782 h3{
+  margin:0 0 10px;
+  color:#fbbf24;
+  font-size:18px;
+}
+
+.league-info-v3782 ol{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.league-info-v3782 li{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  color:#fff;
+  font-weight:900;
+  border-bottom:1px solid rgba(148,163,184,.10);
+  padding-bottom:6px;
+}
+
+.league-info-v3782 li span{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.league-info-v3782 li b{
+  color:#fbbf24;
+  font-size:18px;
+}
+
+.league-info-v3782 p{
+  color:#9fb0c7;
+  font-weight:800;
+  margin:0;
+}

@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.81 top11 drag players');
+console.log('Football Legacy script carregado v3.7.82 trofeus ganhos estatisticas ligas');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -11365,3 +11365,275 @@ window.FL_renderTop11MapV3781 = FL_renderTop11MapV3781;
 window.FL_toggleTop11EditV3781 = FL_toggleTop11EditV3781;
 window.FL_saveTop11PositionsV3781 = FL_saveTop11PositionsV3781;
 window.FL_applyTop11MapV3781 = FL_applyTop11MapV3781;
+
+
+// ===== V3.7.82 TROFÉUS SÓ GANHOS + ESTATÍSTICAS POR LIGAS =====
+// Corrige:
+// - Aba Troféus só mostra títulos que o protagonista realmente ganhou.
+// - Campeões de outros times não entram mais no Hall.
+// - Aba Estatísticas vira painel de maiores ligas/torneios com Top 5 vencedores.
+
+function FL_normV3782(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_escapeV3782(value){
+  return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3782(value){
+  return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+function FL_activeCareerIdV3782(){
+  return active?.carreira_id || "";
+}
+
+function FL_careerSeasonsV3782(){
+  const carreiraId = FL_activeCareerIdV3782();
+  return (getTable("CARREIRA_TEMPORADAS") || []).filter(s =>
+    !carreiraId || String(s.carreira_id || "") === String(carreiraId)
+  );
+}
+
+function FL_seasonByIdV3782(){
+  const map = new Map();
+  FL_careerSeasonsV3782().forEach(s => map.set(String(s.id || ""), s));
+  return map;
+}
+
+function FL_isTruthyWonV3782(value){
+  const v = FL_normV3782(value);
+  return ["sim","true","1","yes","y","ganhei","venci","campeao","campeao"].includes(v);
+}
+
+function FL_isWonChampionRecordV3782(record){
+  const seasonMap = FL_seasonByIdV3782();
+  const season = seasonMap.get(String(record.carreira_temporada_id || ""));
+
+  // 1) Se existe flag/status explícito, respeita.
+  if(
+    FL_isTruthyWonV3782(record.ganhei) ||
+    FL_isTruthyWonV3782(record.venci) ||
+    FL_isTruthyWonV3782(record.conquistado) ||
+    FL_isTruthyWonV3782(record.status)
+  ){
+    return true;
+  }
+
+  // 2) Se tem temporada vinculada, só é meu título se o campeão é o clube daquela temporada.
+  if(season){
+    const winner = FL_normV3782(record.clube || record.campeao || record.time_campeao || "");
+    const myClub = FL_normV3782(season.clube_nome || season.clube || season.time || "");
+    if(winner && myClub && winner === myClub) return true;
+  }
+
+  return false;
+}
+
+function FL_trophyImageV3782(name){
+  const n = FL_normV3782(name);
+  const file = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=260`;
+
+  if(n.includes("copa") && n.includes("mundo")) return file("FIFA_World_Cup_Trophy.jpg");
+  if(n.includes("champions")) return file("UEFA_Champions_League_trophy.jpg");
+  if(n.includes("europa") && n.includes("league")) return file("UEFA_Europa_League_Trophy.jpg");
+  if(n.includes("conference")) return file("UEFA_Europa_Conference_League_Trophy.jpg");
+  if(n.includes("libertadores")) return file("Copa_Libertadores_trophy.jpg");
+  if(n.includes("eurocopa") || n === "euro") return file("UEFA_Euro_Trophy.jpg");
+  if(n.includes("copa") && n.includes("america")) return file("Copa_Am%C3%A9rica_trophy.jpg");
+  if(n.includes("nations")) return file("UEFA_Nations_League_Trophy.jpg");
+  if(n.includes("premier")) return file("Premier_League_Trophy.jpg");
+  if(n.includes("la") && n.includes("liga")) return file("LaLiga_trophy.jpg");
+  if(n.includes("serie") && n.includes("a")) return file("Scudetto.svg");
+  if(n.includes("bundesliga")) return file("Bundesliga_logo_(2017).svg");
+  if(n.includes("ligue") && n.includes("1")) return file("Ligue_1_Uber_Eats_trophy.svg");
+  if(n.includes("super")) return file("Association_football_trophy.jpg");
+  return file("Association_football_trophy.jpg");
+}
+
+function FL_wonTitleRowsV3782(){
+  const carreiraId = FL_activeCareerIdV3782();
+
+  const clubTitles = (getTable("CAMPEOES_CARREIRA") || [])
+    .filter(t => !carreiraId || String(t.carreira_id || "") === String(carreiraId))
+    .filter(FL_isWonChampionRecordV3782)
+    .map(t => ({
+      id:`club-${t.id || `${t.temporada}-${t.competicao}`}`,
+      tipo:"clube",
+      temporada:t.temporada || "",
+      competicao:t.competicao || (typeof compName === "function" ? compName(t.competicao_id) : "") || "",
+      vencedor:t.clube || t.campeao || "",
+      extra:[t.artilheiro && `Artilheiro: ${t.artilheiro}`, t.lider_assistencias && `Assist.: ${t.lider_assistencias}`, t.melhor_jogador && `Melhor: ${t.melhor_jogador}`].filter(Boolean).join(" • ")
+    }));
+
+  // Títulos de seleção só entram se foram marcados no registro da seleção.
+  const selectionRows = typeof FL_selectionRowsV3780 === "function"
+    ? FL_selectionRowsV3780()
+    : (getTable("SELECOES_CARREIRA") || []);
+
+  const selectionTitles = [];
+  selectionRows.forEach(r=>{
+    String(r.titulos || "")
+      .split(/[;,|]/)
+      .map(x=>x.trim())
+      .filter(Boolean)
+      .forEach((title,idx)=>{
+        selectionTitles.push({
+          id:`sel-${r.id || r.carreira_temporada_id || r.temporada}-${idx}`,
+          tipo:"seleção",
+          temporada:r.temporada || "",
+          competicao:title,
+          vencedor:r.selecao || "",
+          extra:`${num(r.jogos)} jogos • ${num(r.gols)} gols • ${num(r.assistencias)} assist.`
+        });
+      });
+  });
+
+  return [...clubTitles, ...selectionTitles]
+    .filter(t=>t.competicao || t.vencedor)
+    .sort((a,b)=>{
+      if(typeof compareSeasonsDesc === "function") return compareSeasonsDesc(a.temporada,b.temporada);
+      return String(b.temporada || "").localeCompare(String(a.temporada || ""));
+    });
+}
+
+function renderTrofeus(){
+  const el = $("trophy-grid");
+  if(!el) return;
+
+  const rows = FL_wonTitleRowsV3782();
+
+  el.innerHTML = rows.map(t=>`
+    <article class="trophy-card trophy-card-v3782">
+      <div class="trophy-img-v3782">
+        <img src="${FL_escapeAttrV3782(FL_trophyImageV3782(t.competicao))}" onerror="this.parentElement.innerHTML='🏆'">
+      </div>
+      <div class="trophy-type-v3782">${FL_escapeV3782(t.tipo)}</div>
+      <h3>${FL_escapeV3782(t.competicao || "Título")}</h3>
+      <strong>${FL_escapeV3782(t.vencedor || "-")}</strong>
+      <span>${FL_escapeV3782(t.temporada || "-")}</span>
+      ${t.extra ? `<small>${FL_escapeV3782(t.extra)}</small>` : ""}
+    </article>
+  `).join("") || emptyCard("Nenhum título ganho cadastrado. Marque “Ganhei” nos campeonatos ou cadastre títulos da seleção.");
+}
+
+window.renderTrofeus = renderTrofeus;
+
+// ---------- Estatísticas: maiores ligas e Top 5 vencedores ----------
+const FL_MAJOR_COMPETITIONS_V3782 = [
+  {name:"Champions League", aliases:["champions league","uefa champions league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Champions_League_trophy.jpg?width=220"},
+  {name:"Premier League", aliases:["premier league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Premier_League_Trophy.jpg?width=220"},
+  {name:"La Liga", aliases:["la liga","spanish la liga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/LaLiga_trophy.jpg?width=220"},
+  {name:"Serie A Italiana", aliases:["serie a italiana","italian serie a","serie a"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Scudetto.svg?width=220"},
+  {name:"Bundesliga", aliases:["bundesliga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Bundesliga_logo_(2017).svg?width=220"},
+  {name:"Ligue 1", aliases:["ligue 1"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Ligue_1_Uber_Eats_trophy.svg?width=220"},
+  {name:"Europa League", aliases:["europa league","uefa europa league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_League_Trophy.jpg?width=220"},
+  {name:"Conference League", aliases:["conference league","uefa conference league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_Conference_League_Trophy.jpg?width=220"},
+  {name:"Copa do Mundo", aliases:["copa do mundo","world cup"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_World_Cup_Trophy.jpg?width=220"},
+  {name:"Copa América", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"}
+];
+
+function FL_matchMajorCompV3782(comp){
+  const c = FL_normV3782(comp);
+  return FL_MAJOR_COMPETITIONS_V3782.find(item =>
+    item.aliases.some(a => c.includes(FL_normV3782(a)) || FL_normV3782(a).includes(c))
+  );
+}
+
+function FL_championsRowsV3782(){
+  const carreiraId = FL_activeCareerIdV3782();
+  return (getTable("CAMPEOES_CARREIRA") || []).filter(r =>
+    !carreiraId || String(r.carreira_id || "") === String(carreiraId)
+  );
+}
+
+function FL_topWinnersByCompetitionV3782(major){
+  const map = new Map();
+
+  FL_championsRowsV3782().forEach(r=>{
+    const comp = r.competicao || (typeof compName === "function" ? compName(r.competicao_id) : "") || "";
+    const match = FL_matchMajorCompV3782(comp);
+
+    if(!match || match.name !== major.name) return;
+
+    const winner = String(r.clube || r.campeao || r.time_campeao || "").trim();
+    if(!winner) return;
+
+    const key = FL_normV3782(winner);
+    if(!map.has(key)){
+      map.set(key,{name:winner,count:0,seasons:[]});
+    }
+
+    const item = map.get(key);
+    item.count++;
+    if(r.temporada) item.seasons.push(r.temporada);
+  });
+
+  return [...map.values()]
+    .sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name))
+    .slice(0,5);
+}
+
+function FL_renderEstatisticasMajorLeaguesV3782(){
+  const page = $("estatisticas");
+  if(!page) return;
+
+  let host = $("stats-major-leagues-v3782");
+  if(!host){
+    host = document.createElement("section");
+    host.id = "stats-major-leagues-v3782";
+    host.className = "stats-major-leagues-v3782";
+    const old = page.querySelector(".content-card, .section-card, .stats-table") || page;
+    old.insertAdjacentElement("beforebegin", host);
+  }
+
+  host.innerHTML = `
+    <div class="stats-leagues-head-v3782">
+      <div>
+        <h2>Grandes competições</h2>
+        <small>Top 5 maiores vencedores conforme você alimenta os campeões das temporadas.</small>
+      </div>
+    </div>
+    <div class="stats-leagues-grid-v3782">
+      ${FL_MAJOR_COMPETITIONS_V3782.map(comp=>{
+        const winners = FL_topWinnersByCompetitionV3782(comp);
+        return `
+          <article class="league-winners-card-v3782">
+            <div class="league-icon-v3782">
+              <img src="${FL_escapeAttrV3782(comp.icon)}" onerror="this.parentElement.innerHTML='🏆'">
+            </div>
+            <div class="league-info-v3782">
+              <h3>${FL_escapeV3782(comp.name)}</h3>
+              ${winners.length ? `
+                <ol>
+                  ${winners.map(w=>`
+                    <li>
+                      <span>${FL_escapeV3782(w.name)}</span>
+                      <b>${w.count}</b>
+                    </li>
+                  `).join("")}
+                </ol>
+              ` : `<p>Sem campeões cadastrados ainda.</p>`}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  // Esconde a tabela antiga para não duplicar sentido.
+  const oldTable = page.querySelector(".stats-table, table");
+  if(oldTable) oldTable.closest(".content-card, .section-card")?.classList.add("stats-old-hidden-v3782");
+}
+
+function renderEstatisticas(){
+  FL_renderEstatisticasMajorLeaguesV3782();
+}
+
+window.renderEstatisticas = renderEstatisticas;
+window.renderStats = renderEstatisticas;
