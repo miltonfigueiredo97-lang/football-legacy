@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.3 proxy');
+console.log('Football Legacy script carregado v3.4 ui restore');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -514,7 +514,58 @@ function flagFrom(v){
   return map[k]||"🌐";
 }
 
+
+// ===== V3.4 UI RESTORE =====
+// Estas referências precisam existir antes de openForm/navegação.
+const modal = $("modal");
+const modalBox = $("modalBox") || document.querySelector(".modal-box");
+const form = $("dynamic-form");
+const modalTitle = $("modal-title");
+
+function closeModal(){
+  if(modal) modal.classList.remove("active");
+  if(modalBox) modalBox.classList.remove("wide");
+  if(form) form.innerHTML = "";
+}
+
+function navigate(pageId){
+  if(!pageId) return;
+
+  document.querySelectorAll(".page").forEach(page=>{
+    page.classList.remove("active");
+  });
+
+  document.querySelectorAll(".menu-item").forEach(item=>{
+    item.classList.remove("active");
+  });
+
+  const page = $(pageId);
+  if(page) page.classList.add("active");
+
+  const item = document.querySelector(`.menu-item[data-page="${pageId}"]`);
+  if(item) item.classList.add("active");
+
+  if(typeof pageTitles !== "undefined"){
+    setText("page-title", pageTitles[pageId] || "Football Legacy");
+  }
+}
+
+if($("close-modal")){
+  $("close-modal").onclick = closeModal;
+}
+
+if(modal){
+  modal.onclick = e => {
+    if(e.target === modal) closeModal();
+  };
+}
+
+
 function openForm(kind,id=null){
+  if(!modal || !form || !modalTitle){
+    alert("Modal do dashboard não encontrado no HTML.");
+    return;
+  }
   const schema=schemas[kind], table=tableMap[kind]; if(!schema||!table)return alert("Formulário não configurado: "+kind);
   const current=id?(getTable(table).find(x=>String(x.id)===String(id))||{}):{};
   modalTitle.textContent=id?`Editar ${kind}`:`Novo ${kind}`;
@@ -803,3 +854,7 @@ async function removeRecord(kind,id){
   }
 }
 
+
+if(typeof closeModal !== "undefined") window.closeModal = closeModal;
+if(typeof navigate !== "undefined") window.navigate = navigate;
+console.log('Funções UI restauradas v3.4');

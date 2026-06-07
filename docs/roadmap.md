@@ -1,3 +1,3 @@
-# Football Legacy V3.3
+# Football Legacy V3.4
 
-Troca a chamada direta ao Apps Script por um proxy serverless do Vercel em `/api/football-legacy`. Isso evita problemas de CORS, JSONP e redirect no navegador.
+Correção cirúrgica em cima da V3.3: restaura variáveis do modal e função navigate, que causavam botões e abas sem funcionar apesar dos dados carregarem.
