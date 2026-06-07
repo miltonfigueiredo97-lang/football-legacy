@@ -1,3 +1,3 @@
-# Football Legacy V3.7.89
+# Football Legacy V3.7.91
 
-Top 11 passa a ler TOP11_BASE como base histórica fixa e TOP11_CARREIRA como Top 11 editável da carreira. Adiciona alternância Top 11 Carreira / Top 11 Base.
+Corrige posicionamento do Top 11 no campo horizontal: goleiro na esquerda, defesa à frente, meio no centro e ataque na direita. A TOP11_BASE ignora x/y antigos e usa mapeamento horizontal por posicao_origem.
