@@ -1,3 +1,3 @@
-# Football Legacy V3.7.95
+# Football Legacy V3.7.96
 
-Adiciona suporte à coluna criado em TOP11_CARREIRA. Se criado=SIM, o dashboard não busca foto na API e usa apenas foto_url; se foto_url estiver vazia, mostra iniciais. Modal +Top11 ganha campos Criado/API e Foto URL manual.
+Força o render novo do Top 11 e bloqueia o render antigo que voltava para o campo verde vazio. Intercepta renderPageById('top11'), clique na sidebar e limpa X perdido.
