@@ -2221,3 +2221,153 @@ button[disabled],
     max-width:100%!important;
   }
 }
+
+
+/* ===== V3.7.55 PREVISÃO GARANTIDA ===== */
+.summary-stats-row-v3755{
+  display:flex!important;
+  align-items:stretch!important;
+  gap:14px!important;
+  flex-wrap:wrap!important;
+  max-width:980px!important;
+}
+
+.career-projection-v3755{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:1 1 430px!important;
+  min-width:430px!important;
+  max-width:560px!important;
+  margin:0!important;
+  padding:13px 14px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(251,191,36,.30)!important;
+  background:
+    radial-gradient(circle at top left,rgba(251,191,36,.18),transparent 36%),
+    linear-gradient(135deg,rgba(35,29,18,.96),rgba(15,23,42,.92))!important;
+  box-shadow:0 14px 38px rgba(0,0,0,.20)!important;
+}
+
+.projection-head-v3755{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
+}
+
+.projection-head-v3755 strong{
+  color:#fbbf24!important;
+  font-size:15px!important;
+  font-weight:1000!important;
+}
+
+.projection-head-v3755 span{
+  padding:5px 8px!important;
+  border-radius:999px!important;
+  background:rgba(251,191,36,.10)!important;
+  border:1px solid rgba(251,191,36,.25)!important;
+  color:#fef3c7!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+
+.projection-grid-v3755{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+
+.projection-grid-v3755 > div{
+  padding:9px!important;
+  border-radius:14px!important;
+  background:rgba(15,23,42,.64)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+}
+
+.projection-grid-v3755 small{
+  display:block!important;
+  color:#93c5fd!important;
+  font-size:10px!important;
+  font-weight:1000!important;
+  text-transform:uppercase!important;
+}
+
+.projection-grid-v3755 b{
+  display:block!important;
+  margin-top:3px!important;
+  color:#fff!important;
+  font-size:23px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+}
+
+.projection-grid-v3755 em{
+  display:block!important;
+  margin-top:5px!important;
+  color:#fbbf24!important;
+  font-size:11px!important;
+  font-style:normal!important;
+  font-weight:900!important;
+}
+
+@media(max-width:1050px){
+  .career-projection-v3755{
+    min-width:100%!important;
+    max-width:100%!important;
+  }
+}
+
+
+/* ===== V3.7.56 SELEÇÕES NA CARREIRA ===== */
+.season-row-with-selection-v3756{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(330px,.85fr)!important;
+  gap:18px!important;
+  align-items:center!important;
+}
+.season-row-with-selection-v3756 .hide-season-unused-v3756{display:none!important;}
+
+.selection-season-cell-v3756{
+  min-height:74px;
+  padding:12px 14px;
+  border-radius:18px;
+  border:1px solid rgba(251,191,36,.20);
+  background:radial-gradient(circle at left,rgba(251,191,36,.12),transparent 38%),rgba(15,23,42,.46);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.selection-season-main-v3756{display:flex;align-items:center;gap:12px;min-width:0;}
+.selection-season-main-v3756 img,.selection-placeholder-v3756{
+  width:46px;height:46px;flex:0 0 46px;object-fit:contain;display:flex;align-items:center;justify-content:center;font-size:24px;
+}
+.selection-season-main-v3756 strong{display:block;color:#fff;font-size:15px;font-weight:1000;}
+.selection-season-main-v3756 small{display:block;color:#9fc4ff;font-size:12px;font-weight:800;margin-top:2px;}
+.selection-season-main-v3756 .selection-title-v3756{color:#fbbf24;}
+.season-edit-selection-btn-v3756{
+  padding:9px 12px;border-radius:12px;border:1px solid rgba(251,191,36,.30);background:rgba(251,191,36,.12);
+  color:#fbbf24;font-size:12px;font-weight:1000;cursor:pointer;white-space:nowrap;
+}
+.season-edit-selection-btn-v3756:hover{background:rgba(251,191,36,.22);}
+
+.career-selection-card-v3756{
+  margin-left:auto;min-width:150px;text-align:center;padding:10px 12px;border-radius:18px;
+  border:1px solid rgba(251,191,36,.22);background:rgba(15,23,42,.30);
+}
+.career-selection-card-v3756 img,.career-selection-card-v3756 .selection-placeholder-v3756{
+  width:70px;height:70px;margin:0 auto 8px;object-fit:contain;
+}
+.career-selection-card-v3756 strong{display:block;color:#fff;font-size:15px;font-weight:1000;}
+.career-selection-card-v3756 small{display:block;color:#93c5fd;font-size:12px;margin-bottom:6px;font-weight:800;}
+.career-selection-card-v3756 div{color:#fff;font-size:12px;line-height:1.35;}
+.career-selection-card-v3756 b{color:#fbbf24;}
+.personagem-selection-field-v3756 small{color:#9fb0c7;font-size:12px;font-weight:700;}
+
+@media(max-width:1050px){
+  .season-row-with-selection-v3756{grid-template-columns:1fr!important;}
+  .selection-season-cell-v3756{margin-top:8px;}
+}

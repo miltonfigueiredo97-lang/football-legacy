@@ -1,3 +1,3 @@
-# Football Legacy V3.7.54
+# Football Legacy V3.7.56
 
-Força o bloco de previsão até 38 anos a aparecer dentro do card principal do Resumo, junto dos cards de Jogos/Gols/Assistências. Corrige o caso em que a previsão não aparecia por falha de detecção do container.
+Adiciona seleções na carreira: campo Seleção no editar personagem, botão Editar seleção em cada temporada, nova área de seleção por temporada e card da seleção na faixa de Clubes da carreira.
