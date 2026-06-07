@@ -1,3 +1,3 @@
-# Football Legacy V3.6.6
+# Football Legacy V3.7
 
-Ajusta visual dos títulos no editor de temporada, adiciona competições principais globais ao formulário de títulos/campeões, e deixa os clubes do resumo com escudo maior solto e estatísticas com nomes completos.
+Adiciona aba Records com Top 3 de maiores artilheiros, líderes de assistência, jogadores com mais jogos e maior goleador em uma única temporada. Inclui filtros por carreira geral, competições principais e clubes usados na carreira.

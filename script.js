@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6.6 titles and club visual');
+console.log('Football Legacy script carregado v3.7 records tab');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -240,6 +240,8 @@ function renderPageById(pageId, force=false){
   }else if(page === "bolaouro"){
     // Bola de Ouro é a página mais pesada; só renderiza quando abrir.
     try{ renderBolaOuro(); }catch(err){ console.error("Erro em renderBolaOuro", err); }
+  }else if(page === "records"){
+    try{ renderRecords(); }catch(err){ console.error("Erro em renderRecords", err); }
   }else if(page === "clubes"){
     try{ renderClubes(); }catch(err){ console.error("Erro em renderClubes", err); }
   }else if(page === "museu"){
@@ -2283,6 +2285,8 @@ function renderPageById(pageId, force=false){
     try{ renderTop11(); }catch(err){ console.error("Erro em renderTop11", err); }
   }else if(page === "bolaouro"){
     try{ renderBolaOuro(); }catch(err){ console.error("Erro em renderBolaOuro", err); }
+  }else if(page === "records"){
+    try{ renderRecords(); }catch(err){ console.error("Erro em renderRecords", err); }
   }else if(page === "clubes"){
     try{ renderClubes(); }catch(err){ console.error("Erro em renderClubes", err); }
   }else if(page === "museu"){
@@ -2793,6 +2797,286 @@ function renderDashboardJourney(){
   }
 }
 
+
+// ===== V3.7 RECORDS TAB =====
+const MAIN_RECORD_COMPETITIONS = [
+  "Champions League",
+  "Europa League",
+  "Conference League",
+  "Libertadores",
+  "Sul-Americana",
+  "Mundial de Clubes",
+  "Intercontinental de Clubes",
+  "Copa do Mundo",
+  "Eurocopa",
+  "Copa América",
+  "Premier League",
+  "La Liga",
+  "Serie A Italiana",
+  "Serie A",
+  "Bundesliga",
+  "Ligue 1",
+  "Brasileirão",
+  "Brazilian Serie A",
+  "Liga Portuguesa",
+  "Eredivisie"
+];
+
+function getRecordsBaseRows(){
+  const personagem = getActiveProtagonist();
+  if(!personagem) return [];
+
+  const carreira = getActiveCareer();
+
+  const careerStats = getTable("ESTATISTICAS_CARREIRA")
+    .filter(s=>String(s.personagem_id)===String(personagem.id) && (!carreira || String(s.carreira_id)===String(carreira.id)))
+    .map(s=>Object.assign({__source:"career"}, s));
+
+  const legacyStats = getTable("ESTATISTICAS")
+    .filter(s=>String(s.personagem_id)===String(personagem.id))
+    .map(s=>Object.assign({__source:"legacy"}, s));
+
+  return [...careerStats, ...legacyStats];
+}
+
+function getRecordsSeasonForStat(stat){
+  if(stat.temporada) return stat.temporada;
+
+  const season = getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(stat.carreira_temporada_id));
+  return season ? season.temporada : "";
+}
+
+function getRecordsClubForStat(stat){
+  if(stat.clube_nome) return stat.clube_nome;
+
+  const season = getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(stat.carreira_temporada_id));
+  return season ? season.clube_nome : "";
+}
+
+function getRecordsCompetitionForStat(stat){
+  return stat.competicao || compName(stat.competicao_id) || "";
+}
+
+function getRecordsScopeOptions(){
+  const stats = getRecordsBaseRows();
+
+  const clubOptions = [...new Set(stats.map(getRecordsClubForStat).filter(Boolean))]
+    .map(name=>({type:"club", value:name, label:`Clube: ${name}`}));
+
+  const playedCompOptions = [...new Set(stats.map(getRecordsCompetitionForStat).filter(Boolean))]
+    .map(name=>({type:"competition", value:name, label:`Competição: ${name}`}));
+
+  const mainCompOptions = MAIN_RECORD_COMPETITIONS
+    .filter(c=>!playedCompOptions.some(o=>String(o.value).toLowerCase()===String(c).toLowerCase()))
+    .map(name=>({type:"competition", value:name, label:`Competição: ${name}`}));
+
+  return [
+    {type:"all", value:"all", label:"Geral da carreira"},
+    ...clubOptions,
+    ...playedCompOptions,
+    ...mainCompOptions
+  ];
+}
+
+function renderRecordsFilters(){
+  const select = $("recordsScopeSelect");
+  if(!select) return;
+
+  const options = getRecordsScopeOptions();
+  const current = localStorage.getItem("fl_records_scope") || "all";
+
+  select.innerHTML = options.map(o=>`
+    <option value="${escapeAttr(o.type + "|" + o.value)}" ${current===o.type+"|"+o.value || (current==="all" && o.value==="all") ? "selected" : ""}>
+      ${escapeHtml(o.label)}
+    </option>
+  `).join("");
+
+  if(!select.value && options.length) select.value = "all|all";
+
+  select.onchange = ()=>{
+    localStorage.setItem("fl_records_scope", select.value);
+    renderRecords();
+  };
+}
+
+function getSelectedRecordScope(){
+  const select = $("recordsScopeSelect");
+  const value = select?.value || localStorage.getItem("fl_records_scope") || "all|all";
+  const [type, ...rest] = String(value).split("|");
+  return {type:type || "all", value:rest.join("|") || "all"};
+}
+
+function filterRecordsStatsByScope(stats, scope){
+  if(!scope || scope.type === "all") return stats;
+
+  if(scope.type === "club"){
+    return stats.filter(s=>String(getRecordsClubForStat(s)).toLowerCase()===String(scope.value).toLowerCase());
+  }
+
+  if(scope.type === "competition"){
+    return stats.filter(s=>String(getRecordsCompetitionForStat(s)).toLowerCase()===String(scope.value).toLowerCase());
+  }
+
+  return stats;
+}
+
+function aggregateRecordsByPlayer(stats){
+  const personagem = getActiveProtagonist();
+  const name = personagem ? personagem.nome : "Protagonista";
+  const map = new Map();
+
+  stats.forEach(s=>{
+    const player = name;
+    if(!map.has(player)){
+      map.set(player,{
+        jogador:player,
+        jogos:0,
+        gols:0,
+        assistencias:0,
+        cartoes:0,
+        temporadas:new Set(),
+        clubes:new Set(),
+        competicoes:new Set(),
+        isProtagonist:true
+      });
+    }
+
+    const item = map.get(player);
+    item.jogos += num(s.jogos);
+    item.gols += num(s.gols);
+    item.assistencias += num(s.assistencias);
+    item.cartoes += num(s.cartoes);
+
+    const season = getRecordsSeasonForStat(s);
+    const club = getRecordsClubForStat(s);
+    const comp = getRecordsCompetitionForStat(s);
+
+    if(season) item.temporadas.add(season);
+    if(club) item.clubes.add(club);
+    if(comp) item.competicoes.add(comp);
+  });
+
+  return [...map.values()];
+}
+
+function buildSingleSeasonGoalRecords(stats){
+  const personagem = getActiveProtagonist();
+  const name = personagem ? personagem.nome : "Protagonista";
+  const map = new Map();
+
+  stats.forEach(s=>{
+    const season = getRecordsSeasonForStat(s) || "-";
+    const club = getRecordsClubForStat(s) || "-";
+    const comp = getRecordsCompetitionForStat(s) || "-";
+    const key = `${name}|${season}|${club}`;
+
+    if(!map.has(key)){
+      map.set(key,{
+        jogador:name,
+        temporada:season,
+        clube:club,
+        gols:0,
+        jogos:0,
+        assistencias:0,
+        competicoes:new Set(),
+        isProtagonist:true
+      });
+    }
+
+    const item = map.get(key);
+    item.gols += num(s.gols);
+    item.jogos += num(s.jogos);
+    item.assistencias += num(s.assistencias);
+    item.competicoes.add(comp);
+  });
+
+  return [...map.values()]
+    .sort((a,b)=>b.gols-a.gols || b.assistencias-a.assistencias || b.jogos-a.jogos)
+    .slice(0,3);
+}
+
+function renderRecordList(containerId, rows, metric, label){
+  const el = $(containerId);
+  if(!el) return;
+
+  const sorted = rows
+    .slice()
+    .sort((a,b)=>num(b[metric])-num(a[metric]) || String(a.jogador).localeCompare(String(b.jogador)))
+    .slice(0,3);
+
+  if(!sorted.length || sorted.every(r=>!num(r[metric]))){
+    el.innerHTML = `<div class="record-empty">Sem dados suficientes.</div>`;
+    return;
+  }
+
+  el.innerHTML = sorted.map((r,i)=>`
+    <article class="record-row ${r.isProtagonist ? "is-player-record" : ""}">
+      <div class="record-rank">${i+1}</div>
+      <div class="record-main">
+        <strong>${escapeHtml(r.jogador)}</strong>
+        <small>${[...r.clubes || []].slice(0,3).join(" • ") || [...r.competicoes || []].slice(0,3).join(" • ") || "Carreira"}</small>
+      </div>
+      <div class="record-value">
+        <strong>${num(r[metric])}</strong>
+        <small>${label}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderSingleSeasonGoalRecords(rows){
+  const el = $("recordsSeasonGoals");
+  if(!el) return;
+
+  if(!rows.length || rows.every(r=>!num(r.gols))){
+    el.innerHTML = `<div class="record-empty">Sem dados suficientes.</div>`;
+    return;
+  }
+
+  el.innerHTML = rows.map((r,i)=>`
+    <article class="record-row ${r.isProtagonist ? "is-player-record" : ""}">
+      <div class="record-rank">${i+1}</div>
+      <div class="record-main">
+        <strong>${escapeHtml(r.jogador)}</strong>
+        <small>${escapeHtml(r.temporada)} • ${escapeHtml(r.clube)}</small>
+      </div>
+      <div class="record-value">
+        <strong>${num(r.gols)}</strong>
+        <small>Gols</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderRecords(){
+  renderRecordsFilters();
+
+  const scope = getSelectedRecordScope();
+  const allStats = getRecordsBaseRows();
+  const filtered = filterRecordsStatsByScope(allStats, scope);
+  const grouped = aggregateRecordsByPlayer(filtered);
+  const seasonGoals = buildSingleSeasonGoalRecords(filtered);
+
+  const scopeLabel = scope.type === "all"
+    ? "Records da carreira"
+    : scope.type === "club"
+      ? `Records do clube: ${scope.value}`
+      : `Records da competição: ${scope.value}`;
+
+  setText("recordsScopeTitle", scopeLabel);
+
+  const desc = scope.type === "all"
+    ? "Ranking baseado nos dados cadastrados para a carreira selecionada."
+    : "Ranking baseado no filtro selecionado e nos dados da carreira atual.";
+
+  setText("recordsScopeDescription", desc);
+
+  renderRecordList("recordsGoals", grouped, "gols", "Gols");
+  renderRecordList("recordsAssists", grouped, "assistencias", "Assistências");
+  renderRecordList("recordsGames", grouped, "jogos", "Jogos");
+  renderSingleSeasonGoalRecords(seasonGoals);
+}
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -2934,3 +3218,4 @@ if(typeof closeClubJourney !== "undefined") window.closeClubJourney = closeClubJ
 if(typeof renderDashboardJourney !== "undefined") window.renderDashboardJourney = renderDashboardJourney;
 if(typeof saveSeasonTitlesFlow !== "undefined") window.saveSeasonTitlesFlow = saveSeasonTitlesFlow;
 if(typeof renderSeasonTitlesRows !== "undefined") window.renderSeasonTitlesRows = renderSeasonTitlesRows;
+if(typeof renderRecords !== "undefined") window.renderRecords = renderRecords;

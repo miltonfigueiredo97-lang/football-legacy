@@ -1049,3 +1049,137 @@ button.saving::before,
     grid-column:1/-1;
   }
 }
+
+
+/* ===== V3.7 RECORDS TAB ===== */
+.records-filter-row{
+  display:flex;
+  align-items:end;
+  gap:12px;
+}
+
+.records-filter-row label{
+  display:grid;
+  gap:5px;
+  color:#9fb0c7;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:900;
+}
+
+.records-filter-row select{
+  min-width:260px;
+}
+
+.records-hero{
+  margin:18px 0;
+  padding:26px;
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(251,191,36,.16), transparent 30%),
+    linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.62));
+  border:1px solid rgba(255,255,255,.10);
+}
+
+.records-hero h3{
+  margin:6px 0 4px;
+  font-size:34px;
+}
+
+.records-hero p{
+  margin:0;
+  color:#9fb0c7;
+}
+
+.records-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+
+.record-card{
+  border-radius:24px;
+  background:rgba(15,23,42,.82);
+  border:1px solid rgba(255,255,255,.09);
+  padding:18px;
+}
+
+.record-card h3{
+  margin:0 0 14px;
+  color:#fff;
+}
+
+.record-list{
+  display:grid;
+  gap:10px;
+}
+
+.record-row{
+  display:grid;
+  grid-template-columns:44px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:18px;
+  background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));
+  border:1px solid rgba(255,255,255,.07);
+}
+
+.record-row.is-player-record{
+  border-color:rgba(251,191,36,.36);
+  background:linear-gradient(145deg,rgba(251,191,36,.12),rgba(255,255,255,.035));
+}
+
+.record-rank{
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:rgba(251,191,36,.16);
+  color:#fbbf24;
+  font-weight:1000;
+}
+
+.record-main strong{
+  display:block;
+  color:#fff;
+}
+
+.record-main small{
+  display:block;
+  color:#9fb0c7;
+  margin-top:3px;
+  font-size:12px;
+}
+
+.record-value{
+  text-align:right;
+}
+
+.record-value strong{
+  display:block;
+  color:#fbbf24;
+  font-size:26px;
+}
+
+.record-value small{
+  color:#9fb0c7;
+  font-weight:800;
+  font-size:11px;
+  text-transform:uppercase;
+}
+
+.record-empty{
+  color:#9fb0c7;
+  padding:18px;
+  border-radius:16px;
+  background:rgba(255,255,255,.04);
+}
+
+@media(max-width:1000px){
+  .records-grid{
+    grid-template-columns:1fr;
+  }
+}

@@ -21,6 +21,10 @@
         <button class="menu-item" data-page="trofeus">🏆 <span>Troféus</span></button>
         <button class="menu-item" data-page="top11">⚽ <span>Top 11</span></button>
         <button class="menu-item" data-page="bolaouro">⭐ <span>Bola de Ouro</span></button>
+        <button class="menu-item" data-page="records">
+          <span>📜</span>
+          <strong>Records</strong>
+        </button>
         <button class="menu-item" data-page="clubes">🏟 <span>Clubes</span></button>
         <button class="menu-item" data-page="museu">🖼 <span>Museu</span></button>
       </nav>
@@ -106,6 +110,52 @@
             <div class="ballon-table" id="ballon-ranking-list"></div>
           </div>
           <div class="ballon-empty-bg"><strong>Imagem do vencedor</strong><span>Cadastre a imagem no 1º colocado</span></div>
+        </div>
+      </section>
+
+      
+      <section class="page" id="records">
+        <div class="page-head">
+          <div>
+            <h2>Records</h2>
+            <p>Maiores marcas históricas da carreira, clubes e competições.</p>
+          </div>
+          <div class="records-filter-row">
+            <label>
+              <span>Filtro</span>
+              <select id="recordsScopeSelect"></select>
+            </label>
+          </div>
+        </div>
+
+        <div class="records-hero">
+          <div>
+            <span class="eyebrow">Hall de marcas</span>
+            <h3 id="recordsScopeTitle">Records da carreira</h3>
+            <p id="recordsScopeDescription">Top 3 de jogos, gols, assistências e marcas por temporada.</p>
+          </div>
+        </div>
+
+        <div class="records-grid">
+          <section class="record-card">
+            <h3>Maiores artilheiros</h3>
+            <div id="recordsGoals" class="record-list"></div>
+          </section>
+
+          <section class="record-card">
+            <h3>Líderes de assistência</h3>
+            <div id="recordsAssists" class="record-list"></div>
+          </section>
+
+          <section class="record-card">
+            <h3>Mais jogos</h3>
+            <div id="recordsGames" class="record-list"></div>
+          </section>
+
+          <section class="record-card">
+            <h3>Maior goleador em uma temporada</h3>
+            <div id="recordsSeasonGoals" class="record-list"></div>
+          </section>
         </div>
       </section>
 
