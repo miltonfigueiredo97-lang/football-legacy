@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6.3 lazy render resumo first');
+console.log('Football Legacy script carregado v3.6.4 resumo club journey');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -2004,6 +2004,258 @@ function renderPlayedSeasons(){
   }).join("");
 }
 
+
+// ===== V3.6.4 RESUMO: JORNADA POR CLUBES =====
+function getActivePlayerSeasonRows(){
+  const p = getActiveProtagonist();
+  if(!p) return [];
+
+  return getCareerSeasonRecords()
+    .sort((a,b)=>{
+      const ai = String(a.data_inicio || "");
+      const bi = String(b.data_inicio || "");
+      if(ai && bi) return ai.localeCompare(bi);
+      return compareSeasonsAsc(a.temporada,b.temporada);
+    });
+}
+
+function compareSeasonsAsc(a,b){
+  const ay = Number(String(a||"").match(/\d{4}/)?.[0] || 0);
+  const by = Number(String(b||"").match(/\d{4}/)?.[0] || 0);
+  return ay - by;
+}
+
+function buildClubJourney(){
+  const rows = getActivePlayerSeasonRows();
+  const groups = [];
+  const map = new Map();
+
+  rows.forEach(row=>{
+    const key = String(row.clube_id || row.clube_nome || "").trim() || "sem_clube";
+    const stats = getSeasonStatsForRecord(row);
+    const jogos = stats.reduce((a,s)=>a+num(s.jogos),0);
+    const gols = stats.reduce((a,s)=>a+num(s.gols),0);
+    const assistencias = stats.reduce((a,s)=>a+num(s.assistencias),0);
+    const cartoes = stats.reduce((a,s)=>a+num(s.cartoes),0);
+
+    if(!map.has(key)){
+      const obj = {
+        key,
+        clube_id: row.clube_id || "",
+        clube_nome: row.clube_nome || "Sem clube",
+        escudo: row.escudo || "",
+        firstSeason: row.temporada || "",
+        lastSeason: row.temporada || "",
+        jogos:0,
+        gols:0,
+        assistencias:0,
+        cartoes:0,
+        rows:[]
+      };
+      map.set(key,obj);
+      groups.push(obj);
+    }
+
+    const g = map.get(key);
+    g.lastSeason = row.temporada || g.lastSeason;
+    g.jogos += jogos;
+    g.gols += gols;
+    g.assistencias += assistencias;
+    g.cartoes += cartoes;
+    g.rows.push({season:row,stats,jogos,gols,assistencias,cartoes});
+  });
+
+  return groups;
+}
+
+function renderHero(){
+  const p = getActiveProtagonist();
+  const season = getCurrentSeason();
+  const currentStats = getCurrentSeasonStats();
+  const journey = buildClubJourney();
+
+  setText("heroName", p ? p.nome : "Protagonista");
+  setText("heroSubtitle", p ? "Resumo da carreira do jogador selecionado." : "Selecione um protagonista.");
+
+  const img = $("protagonistImage");
+  if(img){
+    if(p && p.foto){
+      img.src = p.foto;
+      img.style.display = "block";
+    }else{
+      img.removeAttribute("src");
+      img.style.display = "none";
+    }
+  }
+
+  setText("protagonistCardName", p ? p.nome : "Football Legacy");
+  setText("protagonistCardMeta", p ? `${p.posicao || "-"} • ${p.nacionalidade || "-"}` : "SELECIONE UM PROTAGONISTA");
+  setText("heroSeasonPill", season || "-");
+
+  const cards = $("summaryCards") || $("heroStats") || document.querySelector(".hero-stats") || document.querySelector(".summary-cards");
+
+  if(cards){
+    cards.innerHTML = `
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+        <small>Clique no escudo para ver o detalhe</small>
+      </div>
+      <div class="club-journey-strip">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-mini-stats">
+              <b>${c.jogos}</b> J
+              <b>${c.gols}</b> G
+              <b>${c.assistencias}</b> A
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+      </div>
+    `;
+  }
+}
+
+function renderPlayedSeasons(){
+  const container = $("playedSeasonsCards") || $("playedSeasonsTable");
+  if(!container) return;
+
+  const rows = getCareerSeasonRecords()
+    .sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada) || String(b.data_inicio||"").localeCompare(String(a.data_inicio||"")));
+
+  if(!rows.length){
+    container.innerHTML = `<div class="season-empty">Nenhuma temporada cadastrada ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(r=>{
+    const stats = getSeasonStatsForRecord(r);
+    const jogos = stats.reduce((acc,s)=>acc+num(s.jogos),0);
+    const gols = stats.reduce((acc,s)=>acc+num(s.gols),0);
+    const assistencias = stats.reduce((acc,s)=>acc+num(s.assistencias),0);
+    const cartoes = stats.reduce((acc,s)=>acc+num(s.cartoes),0);
+    const notas = stats.map(s=>num(s.nota_geral || s.media_geral)).filter(Boolean);
+    const avgGoals = jogos ? (gols/jogos).toFixed(2) : "0.00";
+    const avgAssists = jogos ? (assistencias/jogos).toFixed(2) : "0.00";
+    const avgRating = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : "-";
+    const periodo = (r.data_inicio || r.data_fim) ? `${r.data_inicio || "?"} até ${r.data_fim || "?"}` : "Período não definido";
+
+    return `
+      <article class="season-card clean-season-card">
+        <div class="season-card-main">
+          <div class="season-club-crest">
+            ${r.escudo ? `<img src="${escapeAttr(r.escudo)}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
+          </div>
+          <div>
+            <strong>${escapeHtml(r.temporada || "-")}</strong>
+            <h4>${escapeHtml(r.clube_nome || "-")}</h4>
+            <small>${escapeHtml(periodo)}</small>
+          </div>
+        </div>
+
+        <div class="season-stat"><small>Jogos</small><strong>${jogos}</strong></div>
+        <div class="season-stat"><small>Gols</small><strong>${gols}</strong></div>
+        <div class="season-stat"><small>Assist.</small><strong>${assistencias}</strong></div>
+        <div class="season-stat"><small>G/J</small><strong>${avgGoals}</strong></div>
+        <div class="season-stat"><small>A/J</small><strong>${avgAssists}</strong></div>
+        <div class="season-stat"><small>Cartões</small><strong>${cartoes}</strong></div>
+        <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
+        <div class="season-actions"><button onclick="editSeasonRecord('${r.id}')">Editar</button></div>
+      </article>
+    `;
+  }).join("");
+}
+
+function openClubJourney(key){
+  const journey = buildClubJourney();
+  const club = journey.find(c=>String(c.key)===String(key));
+
+  if(!club) return;
+
+  const modal = $("clubJourneyModal");
+  const title = $("clubJourneyTitle");
+  const content = $("clubJourneyContent");
+
+  if(!modal || !title || !content) return;
+
+  title.textContent = club.clube_nome;
+
+  const byCompetition = new Map();
+
+  club.rows.forEach(item=>{
+    item.stats.forEach(s=>{
+      const comp = s.competicao || compName(s.competicao_id) || "Competição";
+      if(!byCompetition.has(comp)){
+        byCompetition.set(comp,{jogos:0,gols:0,assistencias:0,cartoes:0,temporadas:[]});
+      }
+      const c = byCompetition.get(comp);
+      c.jogos += num(s.jogos);
+      c.gols += num(s.gols);
+      c.assistencias += num(s.assistencias);
+      c.cartoes += num(s.cartoes);
+      c.temporadas.push(item.season.temporada);
+    });
+  });
+
+  content.innerHTML = `
+    <div class="club-detail-hero">
+      <div class="club-detail-crest">
+        ${club.escudo ? `<img src="${escapeAttr(club.escudo)}">` : `<span>⚽</span>`}
+      </div>
+      <div>
+        <h2>${escapeHtml(club.clube_nome)}</h2>
+        <p>${escapeHtml(club.firstSeason)}${club.lastSeason && club.lastSeason!==club.firstSeason ? " até " + escapeHtml(club.lastSeason) : ""}</p>
+      </div>
+      <div class="club-detail-totals">
+        <div><strong>${club.jogos}</strong><small>Jogos</small></div>
+        <div><strong>${club.gols}</strong><small>Gols</small></div>
+        <div><strong>${club.assistencias}</strong><small>Assist.</small></div>
+      </div>
+    </div>
+
+    <h4 class="club-detail-section-title">Temporadas nesse clube</h4>
+    <div class="club-detail-season-list">
+      ${club.rows.map(item=>`
+        <div class="club-detail-season-row">
+          <strong>${escapeHtml(item.season.temporada || "-")}</strong>
+          <span>${escapeHtml((item.season.data_inicio || "?") + " até " + (item.season.data_fim || "?"))}</span>
+          <b>${item.jogos} J</b>
+          <b>${item.gols} G</b>
+          <b>${item.assistencias} A</b>
+        </div>
+      `).join("")}
+    </div>
+
+    <h4 class="club-detail-section-title">Por competição</h4>
+    <div class="club-detail-comp-list">
+      ${[...byCompetition.entries()].map(([comp,s])=>`
+        <div class="club-detail-comp-row">
+          <strong>${escapeHtml(comp)}</strong>
+          <span>${[...new Set(s.temporadas)].join(" • ")}</span>
+          <b>${s.jogos} J</b>
+          <b>${s.gols} G</b>
+          <b>${s.assistencias} A</b>
+          <b>${s.cartoes} C</b>
+        </div>
+      `).join("") || `<div class="season-empty">Sem estatísticas por competição.</div>`}
+    </div>
+  `;
+
+  modal.classList.add("active");
+}
+
+function closeClubJourney(){
+  const modal = $("clubJourneyModal");
+  if(modal) modal.classList.remove("active");
+}
+
+if($("closeClubJourney")) $("closeClubJourney").onclick = closeClubJourney;
+if($("clubJourneyModal")) $("clubJourneyModal").onclick = e => { if(e.target === $("clubJourneyModal")) closeClubJourney(); };
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -2140,3 +2392,5 @@ if(typeof searchTeamsForSeason !== "undefined") window.searchTeamsForSeason = se
 if(typeof selectSeasonTeam !== "undefined") window.selectSeasonTeam = selectSeasonTeam;
 if(typeof renderSeasonStatsRows !== "undefined") window.renderSeasonStatsRows = renderSeasonStatsRows;
 if(typeof openSeasonFlow !== "undefined") window.openSeasonFlow = openSeasonFlow;
+if(typeof openClubJourney !== "undefined") window.openClubJourney = openClubJourney;
+if(typeof closeClubJourney !== "undefined") window.closeClubJourney = closeClubJourney;
