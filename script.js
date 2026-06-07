@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.32 ballon modal css only');
+console.log('Football Legacy script carregado v3.7.33 fix season save recursion only');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -5791,5 +5791,270 @@ window.addEventListener("error", function(e){
 
 window.addEventListener("unhandledrejection", function(e){
   console.error("Football Legacy promise error:", e.reason);
+});
+
+
+
+// ===== V3.7.33 FIX TEMPORADA: SEM RECURSÃO E SEM SALVAR INFINITO =====
+// Não mexe em Bola de Ouro, carregamento geral ou Apps Script.
+// Corrige o fluxo de Adicionar/Editar Temporada.
+
+function renderSeasonStatsRows(existingStats=null){
+  const wrap = $("seasonStatsRows");
+  if(!wrap) return;
+
+  const comps = getSelectedSeasonCompetitions();
+  selectedCompetitionsForSeason = comps;
+
+  if(!comps.length){
+    wrap.innerHTML = `<div class="entity-card"><small>Selecione pelo menos uma competição.</small></div>`;
+    if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+    return;
+  }
+
+  const stats = existingStats || window.__editingSeasonStats || [];
+
+  wrap.innerHTML = comps.map(comp=>{
+    const old = stats.find(s=>
+      String(s.competicao || compName(s.competicao_id) || "").toLowerCase() === String(comp).toLowerCase()
+    ) || {};
+
+    const key = escapeName(comp);
+
+    return `
+      <div class="season-stats-row">
+        <strong>${escapeHtml(comp)}</strong>
+        <input name="jogos_${key}" type="number" placeholder="Jogos" value="${escapeAttr(old.jogos || "")}">
+        <input name="gols_${key}" type="number" placeholder="Gols" value="${escapeAttr(old.gols || "")}">
+        <input name="assistencias_${key}" type="number" placeholder="Assist." value="${escapeAttr(old.assistencias || "")}">
+        <input name="cartoes_${key}" type="number" placeholder="Cartões" value="${escapeAttr(old.cartoes || "")}">
+        <input name="media_geral_${key}" type="number" step="0.1" placeholder="Nota" value="${escapeAttr(old.nota_geral || old.media_geral || "")}">
+      </div>
+    `;
+  }).join("");
+
+  // Atualiza títulos sem monkey patch/sem recursão.
+  if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
+}
+
+function renderCompetitionSuggestions(team, existingComps=[]){
+  const wrap = $("seasonCompetitionChecks");
+  if(!wrap) return;
+
+  const suggested = typeof competitionSuggestions === "function" ? competitionSuggestions(team) : [];
+  const comps = [...new Set([...suggested, ...existingComps].filter(Boolean))];
+
+  wrap.innerHTML = comps.map((c,i)=>{
+    const checked = existingComps.length ? existingComps.includes(c) : i===0;
+    return `
+      <label class="comp-check">
+        <input type="checkbox" value="${escapeAttr(c)}" ${checked ? "checked" : ""} onchange="renderSeasonStatsRows()">
+        ${escapeHtml(c)}
+      </label>
+    `;
+  }).join("");
+
+  renderSeasonStatsRows(window.__editingSeasonStats || null);
+}
+
+function unlockSeasonSaveButton(btn){
+  try{
+    if(!btn) btn = $("saveBtn");
+    if(!btn) return;
+
+    if(typeof clearButtonSaving === "function"){
+      clearButtonSaving(btn);
+    }else{
+      btn.disabled = false;
+      if(btn.dataset.originalText) btn.textContent = btn.dataset.originalText;
+      else btn.textContent = "Salvar";
+    }
+  }catch(err){}
+}
+
+function refreshAfterSeasonSaveInBackground(){
+  setTimeout(async ()=>{
+    try{
+      await loadData();
+    }catch(err){
+      console.warn("Temporada salva, mas atualização automática falhou:", err);
+      setStatus("Temporada salva na planilha. Clique em Atualizar se ainda não aparecer.", "warn");
+    }
+  }, 100);
+}
+
+function openSeasonFlow(existingId=null){
+  const carreira = getActiveCareer();
+  const protagonista = getActiveProtagonist();
+
+  if(!carreira){
+    alert("Selecione ou crie uma carreira antes.");
+    return;
+  }
+
+  if(!protagonista){
+    alert("Selecione ou crie um protagonista antes.");
+    return;
+  }
+
+  const existing = existingId
+    ? getCareerSeasonRecords().find(t=>String(t.id)===String(existingId))
+    : null;
+
+  window.__editingSeasonRecord = existing || null;
+
+  selectedSeasonTeam = existing ? {
+    name: existing.clube_nome || "",
+    league: existing.liga || "",
+    country: "",
+    badge: existing.escudo || "",
+    api_id: ""
+  } : null;
+
+  selectedCompetitionsForSeason = existing ? getCompetitionsFromSeasonRecord(existing) : [];
+  window.__editingSeasonStats = existing ? getSeasonStatsForRecord(existing) : [];
+
+  modalTitle.textContent = existing ? "Editar temporada" : "Nova temporada";
+  modalBox.classList.add("wide");
+  form.className = "season-flow-form";
+
+  const defaultSeason = existing?.temporada || (active.temporada || "");
+  const defaultInicio = existing?.data_inicio || "";
+  const defaultFim = existing?.data_fim || "";
+
+  form.innerHTML = `
+    <div class="season-flow">
+      <div class="season-flow-grid">
+        <div class="form-field">
+          <label>Início no time</label>
+          <input name="data_inicio" type="month" value="${escapeAttr(defaultInicio)}">
+        </div>
+        <div class="form-field">
+          <label>Fim no time</label>
+          <input name="data_fim" type="month" value="${escapeAttr(defaultFim)}">
+        </div>
+        <div class="form-field">
+          <label>Temporada reconhecida</label>
+          <input name="temporada" placeholder="Ex: 2025/2026" value="${escapeAttr(defaultSeason)}">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select name="status">
+            <option value="em andamento" ${existing?.status==="em andamento"?"selected":""}>Em andamento</option>
+            <option value="finalizada" ${existing?.status==="finalizada"?"selected":""}>Finalizada</option>
+            <option value="transferido" ${existing?.status==="transferido"?"selected":""}>Transferido</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="team-search-row">
+        <div class="form-field">
+          <label>Selecionar time pela API</label>
+          <input id="seasonTeamSearch" placeholder="Ex: Newcastle, Milan, Real Madrid" value="${escapeAttr(existing?.clube_nome || "")}">
+        </div>
+        <button type="button" class="upload-btn" onclick="searchTeamsForSeason()">Buscar time</button>
+      </div>
+
+      <div class="selected-team ${selectedSeasonTeam ? "active" : ""}" id="selectedTeamBox">
+        ${selectedSeasonTeam ? `
+          <img src="${selectedSeasonTeam.badge || ""}" onerror="this.style.display='none'">
+          <div>
+            <strong>${escapeHtml(selectedSeasonTeam.name || "-")}</strong>
+            <small>${escapeHtml(selectedSeasonTeam.league || "-")}</small>
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="team-results" id="seasonTeamResults"></div>
+
+      <div class="form-field">
+        <label>Competições jogadas nesse clube/período</label>
+        <div class="competition-checks" id="seasonCompetitionChecks">
+          <small>Busque e selecione um time para listar competições.</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Relatório por competição</label>
+        <div class="season-stats-grid" id="seasonStatsRows">
+          <small>As competições selecionadas aparecerão aqui.</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Títulos e campeões gerais</label>
+        <div class="season-titles-grid" id="seasonTitlesRows">
+          <small>Marque títulos ganhos e preencha campeão, artilheiro, líder de assistência e melhor jogador.</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar temporada"}</button>
+      </div>
+    </div>
+  `;
+
+  const inicio = form.querySelector("[name='data_inicio']");
+  const temp = form.querySelector("[name='temporada']");
+
+  if(inicio && temp){
+    inicio.addEventListener("change", ()=>{
+      temp.value = monthYearToSeason(inicio.value);
+    });
+  }
+
+  if(selectedSeasonTeam){
+    renderCompetitionSuggestions(selectedSeasonTeam, selectedCompetitionsForSeason);
+    renderSeasonTitlesRows(existing);
+  }
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+
+      await saveSeasonFlow(data, btn, existing);
+
+      // Fecha e libera agora. Não espera reload completo.
+      unlockSeasonSaveButton(btn);
+      closeModal();
+      setStatus("Temporada salva na planilha. Atualizando em segundo plano...", "ok");
+
+      // Títulos/campeões em segundo plano para não prender o botão.
+      setTimeout(async ()=>{
+        try{
+          await saveSeasonTitlesFlow(data, existing);
+        }catch(err){
+          console.warn("Temporada salva, mas títulos/campeões falharam:", err);
+        }
+
+        refreshAfterSeasonSaveInBackground();
+      }, 50);
+
+    }catch(err){
+      unlockSeasonSaveButton(btn);
+      console.error(err);
+      setStatus("Erro ao salvar temporada: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+window.openSeasonFlow = openSeasonFlow;
+window.renderSeasonStatsRows = renderSeasonStatsRows;
+window.renderCompetitionSuggestions = renderCompetitionSuggestions;
+
+window.addEventListener("error", function(){
+  setTimeout(()=>unlockSeasonSaveButton(), 100);
+});
+
+window.addEventListener("unhandledrejection", function(){
+  setTimeout(()=>unlockSeasonSaveButton(), 100);
 });
 

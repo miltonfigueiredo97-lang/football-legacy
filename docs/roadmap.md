@@ -1,3 +1,3 @@
-# Football Legacy V3.7.32
+# Football Legacy V3.7.33
 
-Correção apenas de CSS do modal Novo ranking Bola de Ouro. Não altera carregamento, salvamento, Apps Script, funções de temporada ou renderização. Corrige inputs brancos e alinhamento visual.
+Correção pontual do formulário de temporada. Remove recursão causada por monkey patch em renderSeasonStatsRows. Ao salvar temporada, fecha o modal imediatamente após salvar os dados principais, salva títulos em segundo plano e atualiza o dashboard em segundo plano. Não altera Bola de Ouro, Apps Script ou carregamento geral.

@@ -1790,3 +1790,19 @@ button.saving::before,
     grid-template-columns:42px 1fr 1fr!important;
   }
 }
+
+
+/* ===== V3.7.33 TEMPORADA SAVE FIX ===== */
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
+}
+
+button[disabled],
+.gold-btn[disabled]{
+  opacity:.7;
+  cursor:wait!important;
+}
