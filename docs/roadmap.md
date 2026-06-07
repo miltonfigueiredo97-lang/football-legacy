@@ -1,3 +1,3 @@
-# Football Legacy V3.7.56
+# Football Legacy V3.7.57
 
-Adiciona seleções na carreira: campo Seleção no editar personagem, botão Editar seleção em cada temporada, nova área de seleção por temporada e card da seleção na faixa de Clubes da carreira.
+Correção visual: linhas de temporadas horizontais e compactas com seleção à direita; remove Cartões/Nota Média; corrige bloco de previsão no resumo para não esticar cards; remove imagem duplicada.

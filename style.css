@@ -2371,3 +2371,193 @@ button[disabled],
   .season-row-with-selection-v3756{grid-template-columns:1fr!important;}
   .selection-season-cell-v3756{margin-top:8px;}
 }
+
+
+/* ===== V3.7.57 FIX LAYOUT SELEÇÕES + RESUMO ===== */
+.summary-metrics-row-v3757{
+  display:flex!important;
+  align-items:stretch!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+  max-width:980px!important;
+}
+
+.summary-metrics-row-v3757 > div:not(.career-projection-v3757){
+  width:150px!important;
+  min-width:130px!important;
+  max-width:170px!important;
+  height:92px!important;
+  flex:0 0 150px!important;
+}
+
+.career-projection-v3757{
+  flex:1 1 420px!important;
+  max-width:560px!important;
+  min-width:380px!important;
+  height:92px!important;
+  padding:10px 12px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(251,191,36,.28)!important;
+  background:linear-gradient(135deg,rgba(35,29,18,.88),rgba(15,23,42,.82))!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+}
+
+.proj-title-v3757{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin-bottom:8px!important;
+}
+
+.proj-title-v3757 strong{
+  color:#fbbf24!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+}
+
+.proj-title-v3757 span{
+  color:#fef3c7!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  border:1px solid rgba(251,191,36,.26)!important;
+  border-radius:999px!important;
+  padding:4px 7px!important;
+  white-space:nowrap!important;
+}
+
+.proj-values-v3757{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:8px!important;
+}
+
+.proj-values-v3757 > div{
+  background:rgba(15,23,42,.62)!important;
+  border:1px solid rgba(255,255,255,.07)!important;
+  border-radius:12px!important;
+  padding:7px 8px!important;
+}
+
+.proj-values-v3757 small{
+  display:block!important;
+  color:#93c5fd!important;
+  font-size:9px!important;
+  font-weight:1000!important;
+  text-transform:uppercase!important;
+}
+
+.proj-values-v3757 b{
+  display:inline-block!important;
+  color:#fff!important;
+  font-size:18px!important;
+  line-height:1!important;
+  margin-right:5px!important;
+}
+
+.proj-values-v3757 em{
+  color:#fbbf24!important;
+  font-size:10px!important;
+  font-style:normal!important;
+  font-weight:900!important;
+}
+
+.season-row-pretty-v3757{
+  display:grid!important;
+  grid-template-columns:minmax(285px,1fr) repeat(5,minmax(82px,.34fr)) minmax(310px,.8fr) auto!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-height:88px!important;
+  padding:14px 16px!important;
+}
+
+.season-row-pretty-v3757 .hide-season-unused-v3757,
+.season-row-pretty-v3757 .hide-season-unused-v3756{
+  display:none!important;
+}
+
+.season-emblem-wrap-v3757{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+
+.season-emblem-v3757{
+  width:52px!important;
+  height:52px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  padding:5px!important;
+  border-radius:12px!important;
+  background:rgba(255,255,255,.04)!important;
+  box-sizing:border-box!important;
+}
+
+.season-age-pill-v3757{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  position:static!important;
+  transform:none!important;
+  margin-left:8px!important;
+  padding:5px 8px!important;
+  border-radius:999px!important;
+  background:rgba(251,191,36,.13)!important;
+  border:1px solid rgba(251,191,36,.34)!important;
+  color:#fbbf24!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+  white-space:nowrap!important;
+}
+
+.selection-season-compact-v3757,
+.selection-season-cell-v3756{
+  min-height:62px!important;
+  padding:9px 11px!important;
+  border-radius:16px!important;
+  max-width:420px!important;
+}
+
+.selection-season-cell-v3756 img,
+.selection-placeholder-v3756{
+  width:40px!important;
+  height:40px!important;
+  flex:0 0 40px!important;
+}
+
+.season-edit-selection-btn-v3756{
+  padding:8px 10px!important;
+  font-size:11px!important;
+}
+
+.career-selection-card-v3756{
+  margin-left:auto!important;
+  max-width:150px!important;
+  flex:0 0 150px!important;
+}
+
+@media(max-width:1200px){
+  .season-row-pretty-v3757{
+    grid-template-columns:1fr!important;
+  }
+  .selection-season-cell-v3756{
+    max-width:none!important;
+    width:100%!important;
+  }
+  .career-projection-v3757{
+    min-width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+  }
+}
+
+@media(max-width:850px){
+  .summary-metrics-row-v3757 > div:not(.career-projection-v3757){
+    flex:1 1 120px!important;
+  }
+}

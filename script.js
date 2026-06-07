@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.56 selecoes carreira');
+console.log('Football Legacy script carregado v3.7.57 fix layout selecoes resumo');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -9425,3 +9425,153 @@ setInterval(()=>{ if(document.visibilityState === "visible") applySelectionsCare
 window.openSelectionSeasonModalV3756 = openSelectionSeasonModalV3756;
 window.applySelectionsCareerV3756 = applySelectionsCareerV3756;
 
+
+
+// ===== V3.7.57 FIX LAYOUT SELEÇÕES + RESUMO =====
+// Corrige somente visual. Não altera Apps Script nem salvamento.
+
+function fl5757CleanOldProjection(){
+  document.querySelectorAll(".career-projection-v3752,.career-projection-v3755").forEach(el=>el.remove());
+}
+
+function fl5757ProjectionData(){
+  try{
+    if(typeof flBuildProjectionGuaranteedV3755 === "function"){
+      const p = flBuildProjectionGuaranteedV3755();
+      if(p) return p;
+    }
+  }catch(e){}
+  return null;
+}
+
+function fl5757FindMetricCards(){
+  return [...document.querySelectorAll("div,article,section")]
+    .filter(el=>{
+      const t=(el.textContent||"").toLowerCase();
+      const r=el.getBoundingClientRect();
+      return r.width>=80 && r.width<=210 && r.height>=60 && r.height<=150 &&
+        (t.includes("jogos") || t.includes("gols") || t.includes("assist"));
+    });
+}
+
+function fl5757InjectProjection(){
+  const p = fl5757ProjectionData();
+  if(!p) return;
+
+  const cards = fl5757FindMetricCards();
+  if(cards.length < 3) return;
+
+  let row = cards[0].parentElement;
+  for(let i=0;i<4 && row;i++){
+    if(cards.slice(0,3).every(c=>row.contains(c))) break;
+    row = row.parentElement;
+  }
+  if(!row) return;
+
+  row.classList.add("summary-metrics-row-v3757");
+
+  let box = row.querySelector(".career-projection-v3757");
+  if(!box){
+    box=document.createElement("div");
+    box.className="career-projection-v3757";
+    row.appendChild(box);
+  }
+
+  box.innerHTML = `
+    <div class="proj-title-v3757">
+      <strong>Previsão até 38 anos</strong>
+      <span>${p.currentAge} anos • ${p.seasonsLeft} temp.</span>
+    </div>
+    <div class="proj-values-v3757">
+      <div><small>Jogos</small><b>${Math.round(p.final.jogos)}</b><em>+${Math.round(p.future.jogos)}</em></div>
+      <div><small>Gols</small><b>${Math.round(p.final.gols)}</b><em>+${Math.round(p.future.gols)}</em></div>
+      <div><small>Assist.</small><b>${Math.round(p.final.assistencias)}</b><em>+${Math.round(p.future.assistencias)}</em></div>
+    </div>
+  `;
+}
+
+function fl5757FixHeroImages(){
+  const heroes = [...document.querySelectorAll("section,article,div")]
+    .filter(el=>{
+      const t=el.textContent||"";
+      const r=el.getBoundingClientRect();
+      return t.includes("MILTON FIGUEIREDO") && t.includes("Clubes da carreira") && r.width>800;
+    });
+  const hero=heroes[0];
+  if(!hero) return;
+
+  const imgs=[...hero.querySelectorAll("img")]
+    .filter(img=>{
+      const r=img.getBoundingClientRect();
+      return r.width>130 && r.height>160;
+    });
+  if(imgs.length>1){
+    imgs.slice(0,-1).forEach(img=>{
+      const box=img.closest(".player-photo-box-v3751,.profile-card,.player-card,.protagonist-card") || img.parentElement;
+      if(box) box.remove(); else img.remove();
+    });
+  }
+}
+
+function fl5757FixSeasonRows(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+  if(!seasons.length) return;
+
+  const cards=[...document.querySelectorAll("article,.entity-card,.season-card,.played-season-card,.career-season-card,.season-row-card,.temporada-card,div")]
+    .filter(card=>{
+      const t=card.textContent||"";
+      const r=card.getBoundingClientRect();
+      if(r.width<700 || r.height<65) return false;
+      if(!/editar/i.test(t) || !/jogos|gols|assist/i.test(t)) return false;
+      return seasons.some(s=>t.includes(String(s.temporada||"")) && t.includes(String(s.clube_nome||"")));
+    });
+
+  const finalCards=cards.filter(c=>!cards.some(o=>o!==c && c.contains(o)===false && o.contains(c)));
+
+  finalCards.forEach(card=>{
+    card.classList.add("season-row-pretty-v3757");
+
+    [...card.querySelectorAll("*")].forEach(el=>{
+      const t=(el.textContent||"").trim().toLowerCase();
+      if(["cartões","cartoes","nota média","nota media"].includes(t)){
+        const block=el.closest("div");
+        if(block) block.classList.add("hide-season-unused-v3757");
+      }
+    });
+
+    const age=card.querySelector(".season-age-badge-v3751,.season-age-badge-v3750,.season-age-badge-v3747,.season-age-badge-v3746,.season-age-badge-v3745");
+    if(age) age.className="season-age-pill-v3757";
+
+    const img=card.querySelector("img");
+    if(img){
+      img.classList.add("season-emblem-v3757");
+      if(img.parentElement) img.parentElement.classList.add("season-emblem-wrap-v3757");
+    }
+
+    const sel=card.querySelector(".selection-season-cell-v3756");
+    if(sel) sel.classList.add("selection-season-compact-v3757");
+  });
+}
+
+function fl5757Apply(){
+  fl5757CleanOldProjection();
+  fl5757InjectProjection();
+  fl5757FixHeroImages();
+  fl5757FixSeasonRows();
+}
+
+const __renderAll5757 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAll5757 && !window.__renderAll5757Wrapped){
+  window.__renderAll5757Wrapped=true;
+  renderAll=function(){
+    const r=__renderAll5757.apply(this,arguments);
+    setTimeout(fl5757Apply,120);
+    setTimeout(fl5757Apply,800);
+    setTimeout(fl5757Apply,1800);
+    return r;
+  };
+}
+
+document.addEventListener("click",()=>setTimeout(fl5757Apply,250),true);
+setInterval(()=>{if(document.visibilityState==="visible") fl5757Apply();},3000);
+window.fl5757Apply=fl5757Apply;
