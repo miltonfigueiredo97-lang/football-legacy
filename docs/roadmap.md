@@ -1,3 +1,3 @@
-# Football Legacy V3.2
+# Football Legacy V3.3
 
-Carregamento do Sheets via JSONP para contornar fetch/CORS/redirect do Apps Script. Mantém fallback fetch.
+Troca a chamada direta ao Apps Script por um proxy serverless do Vercel em `/api/football-legacy`. Isso evita problemas de CORS, JSONP e redirect no navegador.

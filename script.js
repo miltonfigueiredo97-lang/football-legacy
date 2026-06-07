@@ -1,5 +1,5 @@
-console.log('Football Legacy script carregado v3.1');
-const API_URL = window.FOOTBALL_LEGACY_API || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
+console.log('Football Legacy script carregado v3.3 proxy');
+const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
 
@@ -110,37 +110,23 @@ async function loadData(){
   try{
     setStatus("Carregando dados do Google Sheets...");
 
-    const baseUrl = API_URL || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
-    const url = baseUrl + "?action=all";
+    const url = API_URL + "?action=all&cache=" + Date.now();
 
-    console.log("Football Legacy API JSONP:", url);
+    console.log("Football Legacy API via Vercel proxy:", url);
 
-    let json;
+    const res = await fetch(url, {
+      method: "GET",
+      cache: "no-store"
+    });
 
-    try{
-      json = await jsonpRequest(url);
-    }catch(jsonpErr){
-      console.warn("JSONP falhou, tentando fetch:", jsonpErr);
-
-      const fetchUrl = url + "&cache=" + Date.now();
-      const res = await fetch(fetchUrl, { method:"GET", cache:"no-store", redirect:"follow" });
-
-      if(!res.ok){
-        throw new Error("HTTP " + res.status + " ao chamar Apps Script");
-      }
-
-      const text = await res.text();
-
-      try{
-        json = JSON.parse(text);
-      }catch(parseErr){
-        console.error("Resposta não JSON:", text);
-        throw new Error("Apps Script não retornou JSON válido");
-      }
+    if(!res.ok){
+      throw new Error("HTTP " + res.status + " ao chamar proxy Vercel");
     }
 
+    const json = await res.json();
+
     if(!json.ok){
-      throw new Error(json.error || "Apps Script retornou ok:false");
+      throw new Error(json.error || "Proxy/Apps Script retornou ok:false");
     }
 
     db = json.data || {};
@@ -157,9 +143,19 @@ async function loadData(){
 }
 
 async function apiPost(payload){
-  const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
-  const text=await res.text();
-  try{return JSON.parse(text)}catch(e){console.error(text);throw new Error("Resposta inválida da API")}
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify(payload)
+  });
+
+  if(!res.ok){
+    throw new Error("HTTP " + res.status + " ao salvar via proxy Vercel");
+  }
+
+  return await res.json();
 }
 
 function renderAll(){
