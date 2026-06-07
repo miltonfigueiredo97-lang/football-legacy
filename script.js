@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6 season stints');
+console.log('Football Legacy script carregado v3.6.1 save buttons');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -238,6 +238,25 @@ function setPlayerPhoto(p){
   if(url){img.src=url}else{img.removeAttribute("src");img.classList.remove("visible");fallback.classList.remove("hidden");fallback.textContent=initials(p?p.nome:"FL")}
 }
 
+
+
+function setButtonSaving(btn, label="Salvando..."){
+  if(!btn) return;
+  btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
+  btn.disabled = true;
+  btn.classList.add("saving");
+  btn.textContent = label;
+}
+
+function clearButtonSaving(btn){
+  if(!btn) return;
+  btn.disabled = false;
+  btn.classList.remove("saving");
+  if(btn.dataset.originalText){
+    btn.textContent = btn.dataset.originalText;
+    delete btn.dataset.originalText;
+  }
+}
 
 // ===== V3.6 SEASON STINTS / PASSAGENS POR TIME =====
 function monthYearToSeason(value){
@@ -677,26 +696,90 @@ if(modal){
 }
 
 
+
+// ===== V3.6.1 OVERRIDE: GENERIC FORM SAVE FIX =====
 function openForm(kind,id=null){
   if(!modal || !form || !modalTitle){
     alert("Modal do dashboard não encontrado no HTML.");
     return;
   }
-  const schema=schemas[kind], table=tableMap[kind]; if(!schema||!table)return alert("Formulário não configurado: "+kind);
-  const current=id?(getTable(table).find(x=>String(x.id)===String(id))||{}):{};
-  modalTitle.textContent=id?`Editar ${kind}`:`Novo ${kind}`;
-  form.className="form-grid";
-  form.innerHTML=schema.map(([key,label,type,options])=>{
-    let value=current[key]??"";
-    if(!id){if(key==="carreira_id")value=active.carreira_id||""; if(key==="personagem_id")value=active.protagonista_id||""; if(key==="temporada")value=getCurrentSeason()||""}
-    if(type==="select")return `<div class="form-field"><label>${label}</label><select name="${key}">${options.map(o=>`<option value="${o}" ${String(o)===String(value)?"selected":""}>${o}</option>`).join("")}</select></div>`;
-    if(type==="textarea")return `<div class="form-field"><label>${label}</label><textarea name="${key}">${value}</textarea></div>`;
-    if(type==="fileurl")return `<div class="form-field"><label>${label}</label><div class="file-row"><input name="${key}" value="${value}" placeholder="URL"><button type="button" class="upload-btn" onclick="triggerUpload('${key}')">Importar</button></div><input type="file" id="file_${key}" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'${key}')"></div>`;
-    return `<div class="form-field"><label>${label}</label><input name="${key}" type="${type}" value="${value}"></div>`;
-  }).join("")+`<div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar</button></div>`;
-  form.onsubmit=async e=>{e.preventDefault();const btn=$("saveBtn");btn.disabled=true;btn.textContent="Salvando...";try{let record=applyDefaults(kind,Object.fromEntries(new FormData(form).entries()));const payload=id?{action:"update",table,id,record}:{action:"create",table,record};const res=await apiPost(payload);if(!res.ok)throw new Error(res.error||"Erro ao salvar");closeModal();await loadData()}catch(err){btn.disabled=false;btn.textContent="Salvar";setStatus("Erro ao salvar: "+err.message,"error")}};
+
+  const schema = schemas[kind];
+  const table = tableMap[kind];
+
+  if(!schema || !table){
+    alert("Formulário não configurado: " + kind);
+    return;
+  }
+
+  modalTitle.textContent = id ? "Editar registro" : "Novo registro";
+  modalBox.classList.remove("wide");
+  form.className = "form-grid";
+
+  const existing = id ? getTable(table).find(x=>String(x.id)===String(id)) : null;
+
+  form.innerHTML = schema.map(([field,label,type])=>{
+    const value = existing ? (existing[field] ?? "") : "";
+    if(type==="textarea"){
+      return `<div class="form-field full"><label>${escapeHtml(label)}</label><textarea name="${escapeAttr(field)}">${escapeHtml(value)}</textarea></div>`;
+    }
+    if(type==="select"){
+      return `<div class="form-field"><label>${escapeHtml(label)}</label><select name="${escapeAttr(field)}"></select></div>`;
+    }
+    if(type==="fileurl"){
+      return `<div class="form-field full">
+        <label>${escapeHtml(label)}</label>
+        <div class="file-row">
+          <input name="${escapeAttr(field)}" value="${escapeAttr(value)}" placeholder="URL gerada automaticamente">
+          <button type="button" class="upload-btn" onclick="triggerUpload('${escapeAttr(field)}')">Importar</button>
+        </div>
+        <input type="file" id="file_${escapeAttr(field)}" accept="image/png,image/jpeg,image/webp,video/mp4" style="display:none" onchange="uploadToCloudinary(event,'${escapeAttr(field)}')">
+      </div>`;
+    }
+    return `<div class="form-field">
+      <label>${escapeHtml(label)}</label>
+      <input name="${escapeAttr(field)}" type="${type||"text"}" value="${escapeAttr(value)}">
+    </div>`;
+  }).join("") + `
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Salvar</button>
+    </div>`;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const record = Object.fromEntries(new FormData(form).entries());
+
+      const payload = existing
+        ? {action:"update", table, id:existing.id, record}
+        : {action:"create", table, record};
+
+      const res = await apiPost(payload);
+
+      if(!res.ok){
+        throw new Error(res.error || "Erro ao salvar.");
+      }
+
+      closeModal();
+      await loadData();
+      setStatus("Registro salvo com sucesso.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao salvar: " + err.message, "error");
+      console.error(err);
+    }
+  };
+
   modal.classList.add("active");
 }
+
 
 function openQuickCareerForm(){
   modalTitle.textContent="Criar carreira";form.className="form-grid";
@@ -762,8 +845,7 @@ function openBallonBatchForm(){
     e.preventDefault();
     const btn=$("saveBtn");
     if(btn.disabled) return;
-    btn.disabled=true;
-    btn.textContent="Salvando...";
+    setButtonSaving(btn);
 
     try{
       const data=Object.fromEntries(new FormData(form).entries());
@@ -1111,8 +1193,7 @@ function openBallonBatchForm(){
     e.preventDefault();
     const btn=$("saveBtn");
     if(btn.disabled) return;
-    btn.disabled=true;
-    btn.textContent="Salvando...";
+    setButtonSaving(btn);
 
     try{
       const data=Object.fromEntries(new FormData(form).entries());
@@ -1154,8 +1235,7 @@ function openBallonBatchForm(){
       closeModal();
       await loadData();
     }catch(err){
-      btn.disabled=false;
-      btn.textContent="Salvar Ranking da Carreira";
+      clearButtonSaving(btn);
       setStatus("Erro ao salvar ranking: "+err.message,"error");
       console.error(err);
     }
@@ -1298,8 +1378,7 @@ function openSeasonFlow(existingId=null){
 
     const btn = $("saveBtn");
     if(btn.disabled) return;
-    btn.disabled = true;
-    btn.textContent = "Salvando...";
+    setButtonSaving(btn);
 
     try{
       const data = Object.fromEntries(new FormData(form).entries());
@@ -1375,8 +1454,7 @@ function openSeasonFlow(existingId=null){
       await loadData();
       setStatus("Passagem da temporada salva com sucesso.","ok");
     }catch(err){
-      btn.disabled = false;
-      btn.textContent = "Salvar passagem";
+      clearButtonSaving(btn);
       setStatus("Erro ao salvar passagem: " + err.message, "error");
       console.error(err);
     }
@@ -1519,3 +1597,5 @@ console.log('Funções UI restauradas v3.4');
 if(typeof openBestBallonModal !== "undefined") window.openBestBallonModal = openBestBallonModal;
 if(typeof closeBestBallonModal !== "undefined") window.closeBestBallonModal = closeBestBallonModal;
 if(typeof editSeasonRecord !== "undefined") window.editSeasonRecord = editSeasonRecord;
+if(typeof setButtonSaving !== "undefined") window.setButtonSaving = setButtonSaving;
+if(typeof clearButtonSaving !== "undefined") window.clearButtonSaving = clearButtonSaving;

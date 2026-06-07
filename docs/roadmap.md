@@ -1,3 +1,3 @@
-# Football Legacy V3.6
+# Football Legacy V3.6.1
 
-Corrige o fluxo de criar temporada: agora vira uma passagem por time/período, com início/fim em mês, cálculo automático da temporada, seleção de clube, competições jogadas e estatísticas por competição. Cards de temporadas jogadas agora têm botão Editar.
+Corrige feedback visual dos botões de salvar, trava clique duplo, adiciona spinner, corrige formulário genérico de edição/salvamento e mantém suporte a edição da BOLA_DE_OURO_BASE. Também define padrão de imagem da Bola de Ouro: 1080x1350 px.

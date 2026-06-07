@@ -439,3 +439,60 @@
     grid-column:1/-1;
   }
 }
+
+
+/* ===== V3.6.1 SAVE BUTTON FEEDBACK ===== */
+button[disabled],
+button.saving,
+.gold-btn[disabled],
+.ghost-btn[disabled]{
+  opacity:.62!important;
+  cursor:not-allowed!important;
+  pointer-events:none!important;
+  filter:saturate(.7);
+}
+
+button.saving,
+.gold-btn.saving{
+  position:relative;
+  padding-left:38px!important;
+}
+
+button.saving::before,
+.gold-btn.saving::before{
+  content:"";
+  position:absolute;
+  left:14px;
+  top:50%;
+  width:14px;
+  height:14px;
+  margin-top:-7px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.45);
+  border-top-color:#fff;
+  animation:flSpin .8s linear infinite;
+}
+
+@keyframes flSpin{
+  to{transform:rotate(360deg);}
+}
+
+.form-actions{
+  position:sticky;
+  bottom:-1px;
+  background:linear-gradient(180deg,rgba(15,23,42,0),rgba(15,23,42,.95) 35%);
+  padding-top:14px;
+}
+
+.ballon-actions button.saving{
+  min-width:76px;
+}
+
+.ballon-poster{
+  background-size:cover!important;
+  background-position:center right!important;
+}
+
+.ballon-poster.has-image::after{
+  background:linear-gradient(90deg,rgba(4,14,48,.88) 0%,rgba(4,14,48,.58) 42%,rgba(4,14,48,.12) 70%,rgba(4,14,48,0) 100%)!important;
+}
