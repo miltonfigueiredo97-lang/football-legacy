@@ -2277,3 +2277,28 @@ button[disabled],
   color:#fff!important;
   transform:scale(1.04)!important;
 }
+
+
+/* ===== V3.7.79 NAVEGAÇÃO ESTÁVEL POR ABA ATUAL ===== */
+.page{
+  display:none;
+}
+
+.page.active{
+  display:block!important;
+}
+
+body:not([data-current-page="dashboard"]):not([data-current-page="resumo"]) #dashboard{
+  display:none!important;
+}
+
+body[data-current-page="bolaouro"] #bolaouro,
+body[data-current-page="personagens"] #personagens,
+body[data-current-page="estatisticas"] #estatisticas,
+body[data-current-page="trofeus"] #trofeus,
+body[data-current-page="top11"] #top11,
+body[data-current-page="records"] #records,
+body[data-current-page="clubes"] #clubes,
+body[data-current-page="museu"] #museu{
+  display:block!important;
+}

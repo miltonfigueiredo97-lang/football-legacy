@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.78 ballon save column index');
+console.log('Football Legacy script carregado v3.7.79 stable navigation current page');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -10332,3 +10332,155 @@ document.addEventListener("submit", function(e){
   e.stopImmediatePropagation();
   FL_saveBallonRankingV3778();
 }, true);
+
+
+// ===== V3.7.79 NAVEGAÇÃO ESTÁVEL POR ABA ATUAL =====
+// Corrige bug de trocar de aba e aparecer só o card/imagem do jogador.
+// Causa: renderAll antigo renderizava o Resumo mesmo quando a aba ativa era Bola de Ouro.
+// Agora renderAll renderiza a aba atual.
+
+function FL_getCurrentPageV3779(){
+  try{
+    if(typeof currentPageId !== "undefined" && currentPageId) return currentPageId;
+
+    const activeMenu = document.querySelector(".menu-item.active[data-page]");
+    if(activeMenu?.dataset?.page) return activeMenu.dataset.page;
+
+    const activePage = document.querySelector(".page.active");
+    if(activePage?.id) return activePage.id;
+
+    return "dashboard";
+  }catch(err){
+    return "dashboard";
+  }
+}
+
+function FL_setActivePageV3779(pageId){
+  const page = pageId || "dashboard";
+
+  try{
+    currentPageId = page;
+  }catch(err){}
+
+  document.body.dataset.currentPage = page;
+
+  document.querySelectorAll(".page").forEach(el=>{
+    el.classList.remove("active");
+    el.style.display = "none";
+  });
+
+  const target = document.getElementById(page);
+  if(target){
+    target.classList.add("active");
+    target.style.display = "block";
+  }
+
+  document.querySelectorAll(".menu-item").forEach(item=>{
+    item.classList.toggle("active", item.dataset.page === page);
+  });
+
+  if(typeof pageTitles !== "undefined"){
+    try{
+      setText("page-title", pageTitles[page] || "Football Legacy");
+    }catch(err){}
+  }
+}
+
+function FL_afterPageRenderV3779(pageId){
+  const page = pageId || FL_getCurrentPageV3779();
+
+  document.body.dataset.currentPage = page;
+
+  // Garante que dashboard nunca fique visível por engano fora do Resumo.
+  const dashboard = document.getElementById("dashboard");
+  if(dashboard && page !== "dashboard" && page !== "resumo"){
+    dashboard.classList.remove("active");
+    dashboard.style.display = "none";
+  }
+
+  const target = document.getElementById(page);
+  if(target){
+    target.classList.add("active");
+    target.style.display = "block";
+  }
+
+  // Mantém apenas o X correto da temporada, se a função existir.
+  try{
+    if(typeof removeScatteredCareerDeleteXV3772 === "function") removeScatteredCareerDeleteXV3772();
+    if(typeof injectDeleteSeasonButtonsV3772 === "function") injectDeleteSeasonButtonsV3772();
+  }catch(err){}
+
+  // Reanexa lógica do Bola de Ouro sem forçar preenchimento infinito.
+  try{
+    if(typeof FL_attachBallonNoOverwriteV3777 === "function") FL_attachBallonNoOverwriteV3777();
+    if(typeof FL_attachBallonStableSelectorV3776 === "function") FL_attachBallonStableSelectorV3776();
+  }catch(err){}
+}
+
+// Sobrescreve navegação final de forma segura.
+window.navigate = function(pageId){
+  if(!pageId) return;
+
+  FL_setActivePageV3779(pageId);
+
+  setTimeout(()=>{
+    try{
+      if(typeof renderPageById === "function"){
+        renderPageById(pageId, true);
+      }
+    }catch(err){
+      console.error("Erro ao renderizar aba " + pageId, err);
+    }
+
+    FL_afterPageRenderV3779(pageId);
+  }, 0);
+};
+
+// Sobrescreve renderAll para não renderizar sempre o dashboard.
+window.renderAll = function(){
+  try{
+    if(typeof renderedPages !== "undefined") renderedPages = {};
+  }catch(err){}
+
+  const page = FL_getCurrentPageV3779() || "dashboard";
+
+  try{
+    if(typeof renderGlobalSelectorsOnly === "function"){
+      renderGlobalSelectorsOnly();
+    }
+  }catch(err){
+    console.error("Erro em renderGlobalSelectorsOnly", err);
+  }
+
+  FL_setActivePageV3779(page);
+
+  try{
+    if(typeof renderPageById === "function"){
+      renderPageById(page, true);
+    }
+  }catch(err){
+    console.error("Erro em renderPageById final v3.7.79", err);
+  }
+
+  FL_afterPageRenderV3779(page);
+};
+
+// Captura cliques no menu lateral para garantir a página correta.
+document.addEventListener("click", function(e){
+  const menu = e.target.closest(".menu-item[data-page]");
+  if(menu?.dataset?.page){
+    e.preventDefault();
+    e.stopPropagation();
+    window.navigate(menu.dataset.page);
+  }
+}, true);
+
+// Reforço após carregamento inicial.
+setTimeout(()=>{
+  const page = FL_getCurrentPageV3779() || "dashboard";
+  FL_setActivePageV3779(page);
+  FL_afterPageRenderV3779(page);
+}, 600);
+
+window.FL_setActivePageV3779 = FL_setActivePageV3779;
+window.FL_afterPageRenderV3779 = FL_afterPageRenderV3779;

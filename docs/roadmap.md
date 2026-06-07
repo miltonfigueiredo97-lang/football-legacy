@@ -1,3 +1,3 @@
-# Football Legacy V3.7.78
+# Football Legacy V3.7.79
 
-Corrige salvamento do Bola de Ouro: o payload agora é montado por índice de coluna, evitando repetir a primeira linha em todas as posições. Sem alteração visual e sem mudança no Apps Script.
+Correção de navegação: renderAll agora renderiza a aba atual em vez de forçar o Resumo. Corrige bug de aparecer só o card/imagem do jogador ao trocar para Bola de Ouro ou outras abas. Mantém correção do Bola de Ouro v3.7.78.
