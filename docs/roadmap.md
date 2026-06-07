@@ -1,3 +1,3 @@
-# Football Legacy V3.5.1
+# Football Legacy V3.5.2
 
-Hotfix: adiciona escapeAttr e escapeHtml. Corrige erro `escapeAttr is not defined` que quebrava a aba Bola de Ouro depois de carregar os dados globais.
+Troca texto/código de país por bandeiras usando FlagCDN. Ex.: Spain/ESP/Espanha vira bandeira da Espanha. Mantém fallback para 🌐 quando o país não estiver mapeado.

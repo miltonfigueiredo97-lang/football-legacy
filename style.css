@@ -331,3 +331,34 @@
     text-align:left;
   }
 }
+
+
+/* ===== V3.5.2 COUNTRY FLAGS ===== */
+.country-flag{
+  width:22px;
+  height:16px;
+  object-fit:cover;
+  border-radius:3px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.25);
+  vertical-align:-3px;
+  display:inline-block;
+}
+
+.flag-dot{
+  width:28px!important;
+  height:28px!important;
+  border-radius:50%!important;
+  overflow:hidden;
+  display:inline-grid!important;
+  place-items:center!important;
+  background:rgba(255,255,255,.12)!important;
+  margin-right:8px!important;
+  vertical-align:middle;
+}
+
+.flag-dot .country-flag{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  box-shadow:none;
+}

@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.5.1 ballon escape fix');
+console.log('Football Legacy script carregado v3.5.2 country flags');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -496,42 +496,77 @@ function renderPrimaryButton(){
 
 function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
 function flagFrom(v){
-  const raw=String(v||"").trim();
-  if(!raw)return"🌐";
-  if(raw.length<=4&&/[\uD83C][\uDDE6-\uDDFF]/.test(raw))return raw;
+  const raw = String(v || "").trim();
+  if(!raw) return "🌐";
 
-  const k=raw.toLowerCase()
+  // Se já vier emoji, usa emoji.
+  if(raw.length <= 4 && /[\uD83C][\uDDE6-\uDDFF]/.test(raw)) return raw;
+
+  const key = raw.toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
-    .replace(/\s+/g,"");
+    .replace(/[.]/g,"")
+    .replace(/\s+/g,"")
+    .replace(/-/g,"");
 
-  const map={
-    br:"🇧🇷",bra:"🇧🇷",brasil:"🇧🇷",brazil:"🇧🇷",brasileiro:"🇧🇷",
-    fr:"🇫🇷",fra:"🇫🇷",franca:"🇫🇷",france:"🇫🇷",frances:"🇫🇷",
-    es:"🇪🇸",esp:"🇪🇸",espanha:"🇪🇸",spain:"🇪🇸",espanhol:"🇪🇸",
-    pt:"🇵🇹",por:"🇵🇹",portugal:"🇵🇹",portugues:"🇵🇹",
-    en:"🏴",eng:"🏴",inglaterra:"🏴",england:"🏴",ingles:"🏴",
-    it:"🇮🇹",ita:"🇮🇹",italia:"🇮🇹",italy:"🇮🇹",italiano:"🇮🇹",
-    de:"🇩🇪",ger:"🇩🇪",alemanha:"🇩🇪",germany:"🇩🇪",alemao:"🇩🇪",
-    ar:"🇦🇷",arg:"🇦🇷",argentina:"🇦🇷",argentino:"🇦🇷",
-    nl:"🇳🇱",holanda:"🇳🇱",netherlands:"🇳🇱",
-    eg:"🇪🇬",egito:"🇪🇬",egypt:"🇪🇬",
-    ma:"🇲🇦",marrocos:"🇲🇦",morocco:"🇲🇦",
-    be:"🇧🇪",belgica:"🇧🇪",belgium:"🇧🇪",
-    uy:"🇺🇾",uruguai:"🇺🇾",uruguay:"🇺🇾",
-    no:"🇳🇴",noruega:"🇳🇴",norway:"🇳🇴",
-    se:"🇸🇪",suecia:"🇸🇪",sweden:"🇸🇪",
-    hr:"🇭🇷",croacia:"🇭🇷",croatia:"🇭🇷",
-    rs:"🇷🇸",servia:"🇷🇸",serbia:"🇷🇸",
-    ch:"🇨🇭",suica:"🇨🇭",switzerland:"🇨🇭",
-    dk:"🇩🇰",dinamarca:"🇩🇰",denmark:"🇩🇰",
-    pl:"🇵🇱",polonia:"🇵🇱",poland:"🇵🇱",
-    sn:"🇸🇳",senegal:"🇸🇳",
-    ci:"🇨🇮",costadomarfim:"🇨🇮",ivorycoast:"🇨🇮",
-    ca:"🇨🇦",canada:"🇨🇦",
-    us:"🇺🇸",usa:"🇺🇸",eua:"🇺🇸",estadosunidos:"🇺🇸"
+  const map = {
+    // Americas
+    br:"br", bra:"br", brasil:"br", brazil:"br", brasileiro:"br", brasileira:"br",
+    ar:"ar", arg:"ar", argentina:"ar", argentino:"ar",
+    uy:"uy", uru:"uy", uruguai:"uy", uruguay:"uy",
+    cl:"cl", chile:"cl",
+    co:"co", colombia:"co",
+    us:"us", usa:"us", eua:"us", estadosunidos:"us", unitedstates:"us",
+    ca:"ca", canada:"ca",
+
+    // Europe
+    es:"es", esp:"es", espanha:"es", spain:"es", espanhol:"es", espanhola:"es",
+    fr:"fr", fra:"fr", franca:"fr", france:"fr", frances:"fr", francesa:"fr",
+    pt:"pt", por:"pt", portugal:"pt", portugues:"pt", portuguesa:"pt",
+    it:"it", ita:"it", italia:"it", italy:"it", italiano:"it", italiana:"it",
+    de:"de", ger:"de", alemanha:"de", germany:"de", alemao:"de", alema:"de",
+    nl:"nl", holanda:"nl", netherlands:"nl", dutch:"nl", neerlandes:"nl",
+    be:"be", belgica:"be", belgium:"be",
+    gb:"gb", uk:"gb", unitedkingdom:"gb", inglaterra:"gb", england:"gb", ingles:"gb",
+    scotland:"gb", escocia:"gb", northernireland:"gb", irlandadonorte:"gb", wales:"gb", gales:"gb",
+    ie:"ie", ireland:"ie", irlanda:"ie",
+    dk:"dk", denmark:"dk", dinamarca:"dk",
+    no:"no", norway:"no", noruega:"no",
+    se:"se", sweden:"se", suecia:"se",
+    hr:"hr", croatia:"hr", croacia:"hr",
+    rs:"rs", serbia:"rs", servia:"rs",
+    ch:"ch", switzerland:"ch", suica:"ch",
+    at:"at", austria:"at",
+    hu:"hu", hungary:"hu", hungria:"hu",
+    bg:"bg", bulgaria:"bg",
+    cz:"cz", czechrepublic:"cz", tcheca:"cz", republicatcheca:"cz",
+    sk:"sk", slovakia:"sk", eslovaquia:"sk",
+    pl:"pl", poland:"pl", polonia:"pl",
+    ro:"ro", romania:"ro",
+    ua:"ua", ukraine:"ua", ucrania:"ua",
+    ru:"ru", russia:"ru", sovietunion:"ru", uniaosovietica:"ru",
+    liberia:"lr", lr:"lr",
+
+    // Africa
+    eg:"eg", egypt:"eg", egito:"eg",
+    ma:"ma", morocco:"ma", marrocos:"ma",
+    cm:"cm", cameroon:"cm", camaroes:"cm",
+    sn:"sn", senegal:"sn",
+    ci:"ci", ivorycoast:"ci", costadomarfim:"ci",
+    dz:"dz", algeria:"dz", argelia:"dz",
+    ng:"ng", nigeria:"ng",
+
+    // Asia/Oceania
+    jp:"jp", japan:"jp", japao:"jp",
+    kr:"kr", southkorea:"kr", coreiadosul:"kr",
+    au:"au", australia:"au"
   };
-  return map[k]||"🌐";
+
+  const code = map[key];
+
+  if(!code) return "🌐";
+
+  return `<img class="country-flag" loading="lazy" src="https://flagcdn.com/w40/${code}.png" alt="${escapeHtml(raw)}" title="${escapeHtml(raw)}">`;
 }
 
 
