@@ -362,3 +362,80 @@
   border-radius:50%;
   box-shadow:none;
 }
+
+
+/* ===== V3.6 SEASON STINTS FLOW ===== */
+.check-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:8px;
+  max-height:260px;
+  overflow:auto;
+  padding:8px;
+  border-radius:16px;
+  background:rgba(15,23,42,.55);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.check-card{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:9px 10px;
+  border-radius:12px;
+  background:rgba(255,255,255,.05);
+  color:#dbeafe;
+  cursor:pointer;
+}
+
+.check-card input{
+  accent-color:#fbbf24;
+}
+
+.season-stats-editor{
+  display:grid;
+  gap:10px;
+}
+
+.season-stat-edit{
+  display:grid;
+  grid-template-columns:minmax(160px,1.2fr) repeat(5,minmax(86px,.7fr));
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.season-stat-edit strong{
+  color:#fbbf24;
+}
+
+.season-stat-edit input{
+  min-width:0;
+}
+
+.season-actions{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.season-actions button{
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.07);
+  color:white;
+  border-radius:12px;
+  padding:9px 12px;
+  cursor:pointer;
+  font-weight:800;
+}
+
+@media(max-width:900px){
+  .season-stat-edit{
+    grid-template-columns:1fr 1fr;
+  }
+  .season-stat-edit strong{
+    grid-column:1/-1;
+  }
+}

@@ -1,3 +1,3 @@
-# Football Legacy V3.5.3
+# Football Legacy V3.6
 
-Hotfix de performance: remove log gigante do banco completo no console. Mantém proxy, bandeiras e lógica global/carreira da Bola de Ouro.
+Corrige o fluxo de criar temporada: agora vira uma passagem por time/período, com início/fim em mês, cálculo automático da temporada, seleção de clube, competições jogadas e estatísticas por competição. Cards de temporadas jogadas agora têm botão Editar.
