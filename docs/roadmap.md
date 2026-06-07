@@ -1,3 +1,3 @@
-# Football Legacy V3.7.22
+# Football Legacy V3.7.23
 
-Versão de estabilização. Remove carregamento summary/cache e volta para action=all direto. Adiciona timeout de 45s para carregamento/salvamento e destrava botão Salvar em erros para evitar ficar preso.
+Correção visual do modal Novo ranking Bola de Ouro: inputs voltam ao estilo escuro, grid alinhado, espaçamento corrigido e botões fixos no rodapé. Não altera carregamento nem salvamento.

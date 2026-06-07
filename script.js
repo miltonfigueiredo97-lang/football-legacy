@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.22 stable direct load save unlock');
+console.log('Football Legacy script carregado v3.7.23 fix ballon modal style');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";

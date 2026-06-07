@@ -1640,3 +1640,146 @@ button[disabled]{
   opacity:.65;
   cursor:wait!important;
 }
+
+
+/* ===== V3.7.23 FIX MODAL BOLA DE OURO ===== */
+.ballon-rank-modal{
+  max-width:1120px!important;
+  width:min(1120px,calc(100vw - 32px))!important;
+}
+
+.ballon-batch-form{
+  display:grid;
+  gap:14px;
+}
+
+.ballon-batch-form .form-field{
+  display:grid;
+  gap:7px;
+}
+
+.ballon-batch-form label{
+  color:#9fc4ff;
+  font-size:13px;
+  font-weight:900;
+}
+
+.ballon-batch-form input,
+.ballon-batch-form select{
+  width:100%;
+  min-height:42px;
+  border-radius:12px;
+  border:1px solid rgba(148,163,184,.26)!important;
+  background:#1f2b3d!important;
+  color:#fff!important;
+  padding:0 12px!important;
+  font-size:14px;
+  outline:none;
+  box-shadow:none!important;
+}
+
+.ballon-batch-form input::placeholder{
+  color:#94a3b8!important;
+  opacity:1!important;
+}
+
+.ballon-batch-form input:focus,
+.ballon-batch-form select:focus{
+  border-color:rgba(251,191,36,.65)!important;
+  box-shadow:0 0 0 3px rgba(251,191,36,.12)!important;
+}
+
+.ballon-batch-form .file-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+}
+
+.ballon-batch-form .upload-btn{
+  min-height:42px;
+  border-radius:14px;
+  padding:0 18px;
+  border:1px solid rgba(251,191,36,.42);
+  background:rgba(251,191,36,.12);
+  color:#fbbf24;
+  font-weight:1000;
+}
+
+.ballon-rank-grid,
+.ballon-rank-grid-with-club{
+  display:grid!important;
+  grid-template-columns:46px minmax(240px,1.4fr) minmax(170px,.85fr) minmax(180px,.9fr) minmax(90px,.45fr) minmax(140px,.65fr)!important;
+  gap:8px!important;
+  align-items:center!important;
+  margin-top:2px;
+}
+
+.ballon-rank-grid .ballon-rank-head,
+.ballon-rank-grid-with-club .ballon-rank-head{
+  color:#fef08a!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  text-transform:uppercase;
+  padding-bottom:4px;
+}
+
+.ballon-rank-pos{
+  color:#fff!important;
+  font-size:20px!important;
+  font-weight:1000!important;
+  text-align:left;
+}
+
+.ballon-rank-grid input,
+.ballon-rank-grid-with-club input{
+  min-width:0!important;
+  height:40px!important;
+  min-height:40px!important;
+  border-radius:10px!important;
+  background:#1f2b3d!important;
+  border:1px solid rgba(148,163,184,.26)!important;
+  color:#fff!important;
+  padding:0 10px!important;
+}
+
+.ballon-rank-grid input::placeholder,
+.ballon-rank-grid-with-club input::placeholder{
+  color:#94a3b8!important;
+}
+
+.ballon-batch-form .form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:5;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:16px;
+  margin-top:4px;
+  background:linear-gradient(180deg,rgba(15,23,42,0),#111827 38%);
+}
+
+.ballon-batch-form .ghost-btn,
+.ballon-batch-form .gold-btn{
+  min-height:46px;
+  border-radius:16px;
+  padding:0 22px;
+  font-weight:1000;
+}
+
+@media(max-width:1000px){
+  .ballon-rank-grid,
+  .ballon-rank-grid-with-club{
+    grid-template-columns:40px 1fr 1fr!important;
+  }
+
+  .ballon-rank-grid .ballon-rank-head:nth-child(4),
+  .ballon-rank-grid .ballon-rank-head:nth-child(5),
+  .ballon-rank-grid .ballon-rank-head:nth-child(6),
+  .ballon-rank-grid-with-club .ballon-rank-head:nth-child(4),
+  .ballon-rank-grid-with-club .ballon-rank-head:nth-child(5),
+  .ballon-rank-grid-with-club .ballon-rank-head:nth-child(6){
+    display:none;
+  }
+}
