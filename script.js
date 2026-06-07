@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.53 projection beside summary cards');
+console.log('Football Legacy script carregado v3.7.54 force projection in hero');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8639,4 +8639,156 @@ function flInjectProjectionV3752(){
 }
 
 window.flInjectProjectionV3752 = flInjectProjectionV3752;
+
+
+
+// ===== V3.7.54 FORÇA PREVISÃO NO CARD DO RESUMO =====
+// Corrige caso a previsão não apareça por não achar o container dos cards.
+// Ela será inserida dentro do card principal, depois dos cards Jogos/Gols/Assistências.
+
+function flFindHeroCardV3754(){
+  const name = (typeof getActiveProtagonist === "function" ? getActiveProtagonist()?.nome : "") || "";
+
+  const cards = [...document.querySelectorAll("section, article, main > div, .content-card, .summary-hero, .hero-card, .career-hero, .dashboard-hero, div")]
+    .filter(el=>{
+      const txt = el.textContent || "";
+      if(name && !txt.includes(name)) return false;
+      if(!txt.toLowerCase().includes("resumo da carreira")) return false;
+      if(!txt.toLowerCase().includes("clubes da carreira")) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 600 && r.height > 300;
+    })
+    .sort((a,b)=>{
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return (ar.width*ar.height) - (br.width*br.height);
+    });
+
+  return cards[0] || document.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, .content-card");
+}
+
+function flFindStatsRowV3754(hero){
+  if(!hero) return null;
+
+  const groups = [...hero.querySelectorAll("div")]
+    .filter(el=>{
+      const txt = (el.textContent || "").toLowerCase();
+      const r = el.getBoundingClientRect();
+
+      return (
+        txt.includes("jogos") &&
+        txt.includes("gols") &&
+        txt.includes("assist") &&
+        !txt.includes("clubes da carreira") &&
+        r.width > 250 &&
+        r.height > 50 &&
+        r.height < 180
+      );
+    })
+    .sort((a,b)=>{
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return (ar.width*ar.height) - (br.width*br.height);
+    });
+
+  return groups[0] || null;
+}
+
+function flInjectProjectionV3752(){
+  try{
+    const p = flBuildProjectionV3752 ? flBuildProjectionV3752() : null;
+    if(!p) return;
+
+    const hero = flFindHeroCardV3754();
+    if(!hero) return;
+
+    let statsRow = flFindStatsRowV3754(hero);
+
+    if(!statsRow){
+      const clubsTitle = [...hero.querySelectorAll("h2,h3,h4,strong,div")]
+        .find(el=>/clubes da carreira/i.test(el.textContent || ""));
+
+      statsRow = document.createElement("div");
+      statsRow.className = "summary-stats-with-projection-v3754 forced-row-v3754";
+
+      if(clubsTitle) clubsTitle.insertAdjacentElement("beforebegin", statsRow);
+      else hero.appendChild(statsRow);
+    }else{
+      statsRow.classList.add("summary-stats-with-projection-v3754");
+    }
+
+    let box = document.querySelector(".career-projection-v3752");
+
+    if(!box){
+      box = document.createElement("div");
+      box.className = "career-projection-v3752 projection-beside-v3753 projection-forced-v3754";
+    }
+
+    box.classList.add("projection-beside-v3753", "projection-forced-v3754");
+
+    if(box.parentElement !== statsRow){
+      statsRow.appendChild(box);
+    }
+
+    box.innerHTML = `
+      <div class="projection-header-v3752">
+        <div>
+          <strong>Previsão até 38 anos</strong>
+          <small>Média por temporada com queda gradual</small>
+        </div>
+        <span>${p.currentAge} anos • ${p.seasonsLeft} temp.</span>
+      </div>
+
+      <div class="projection-cards-v3752">
+        <div>
+          <small>Jogos</small>
+          <strong>${Math.round(p.final.jogos)}</strong>
+          <span>+${Math.round(p.future.jogos)}</span>
+        </div>
+        <div>
+          <small>Gols</small>
+          <strong>${Math.round(p.final.gols)}</strong>
+          <span>+${Math.round(p.future.gols)}</span>
+        </div>
+        <div>
+          <small>Assist.</small>
+          <strong>${Math.round(p.final.assistencias)}</strong>
+          <span>+${Math.round(p.future.assistencias)}</span>
+        </div>
+      </div>
+    `;
+
+    console.log("Previsão v3.7.54 inserida no resumo:", p);
+  }catch(err){
+    console.warn("Falha ao inserir previsão v3.7.54:", err);
+  }
+}
+
+function flApplyProjectionV3754(){
+  setTimeout(flInjectProjectionV3752, 100);
+  setTimeout(flInjectProjectionV3752, 700);
+  setTimeout(flInjectProjectionV3752, 1600);
+  setTimeout(flInjectProjectionV3752, 3000);
+}
+
+const __renderAllOriginalV3754 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3754 && !window.__renderAllProjectionWrappedV3754){
+  window.__renderAllProjectionWrappedV3754 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3754.apply(this, arguments);
+    flApplyProjectionV3754();
+    return result;
+  };
+}
+
+document.addEventListener("DOMContentLoaded", flApplyProjectionV3754);
+document.addEventListener("click", flApplyProjectionV3754, true);
+
+setInterval(()=>{
+  if(document.visibilityState === "visible") flInjectProjectionV3752();
+}, 2500);
+
+window.flInjectProjectionV3752 = flInjectProjectionV3752;
+window.flApplyProjectionV3754 = flApplyProjectionV3754;
 

@@ -2176,3 +2176,48 @@ button[disabled],
     min-width:100%!important;
   }
 }
+
+
+/* ===== V3.7.54 FORÇA PREVISÃO NO RESUMO ===== */
+.summary-stats-with-projection-v3754{
+  display:flex!important;
+  align-items:stretch!important;
+  gap:14px!important;
+  flex-wrap:wrap!important;
+  width:100%!important;
+  max-width:980px!important;
+  margin:18px 0 20px!important;
+}
+
+.summary-stats-with-projection-v3754 > *:not(.career-projection-v3752){
+  flex:0 0 auto!important;
+}
+
+.career-projection-v3752.projection-forced-v3754{
+  display:block!important;
+  width:auto!important;
+  min-width:430px!important;
+  max-width:560px!important;
+  flex:1 1 430px!important;
+  margin:0!important;
+  padding:13px 14px!important;
+  align-self:stretch!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+.projection-forced-v3754 .projection-header-v3752{
+  margin-bottom:10px!important;
+}
+
+.projection-forced-v3754 .projection-cards-v3752{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+
+@media(max-width:1050px){
+  .career-projection-v3752.projection-forced-v3754{
+    min-width:100%!important;
+    max-width:100%!important;
+  }
+}

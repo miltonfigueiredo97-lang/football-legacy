@@ -1,3 +1,3 @@
-# Football Legacy V3.7.53
+# Football Legacy V3.7.54
 
-Move a previsão até 38 anos para o lado dos cards de Jogos/Gols/Assistências no Resumo, em vez de aparecer abaixo. Não altera Apps Script nem salvamento.
+Força o bloco de previsão até 38 anos a aparecer dentro do card principal do Resumo, junto dos cards de Jogos/Gols/Assistências. Corrige o caso em que a previsão não aparecia por falha de detecção do container.
