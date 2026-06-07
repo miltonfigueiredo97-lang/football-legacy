@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6.5 resumo fix titulos');
+console.log('Football Legacy script carregado v3.6.6 titles and club visual');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -2614,6 +2614,184 @@ setTimeout(()=>{
   if(close) close.onclick = closeClubJourney;
   if(modal) modal.onclick = e => { if(e.target === modal) closeClubJourney(); };
 },0);
+
+
+// ===== V3.6.6 TITULOS PRINCIPAIS + VISUAL DE CLUBES =====
+const MAIN_SEASON_TITLES = [
+  "Champions League",
+  "Europa League",
+  "Conference League",
+  "Libertadores",
+  "Sul-Americana",
+  "Mundial de Clubes",
+  "Intercontinental de Clubes",
+  "Copa do Mundo",
+  "Eurocopa",
+  "Copa América",
+  "Premier League",
+  "La Liga",
+  "Serie A Italiana",
+  "Bundesliga",
+  "Ligue 1",
+  "Brasileirão",
+  "Liga Portuguesa",
+  "Eredivisie"
+];
+
+function getSeasonTitleCompetitions(){
+  const selected = getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions() : [];
+  return [...new Set([...selected, ...MAIN_SEASON_TITLES].filter(Boolean))];
+}
+
+function renderSeasonTitlesRows(existing=null){
+  const wrap = $("seasonTitlesRows");
+  if(!wrap) return;
+
+  const comps = getSeasonTitleCompetitions();
+  const seasonId = existing ? existing.id : "";
+
+  if(!comps.length){
+    wrap.innerHTML = `<div class="entity-card"><small>Nenhuma competição disponível.</small></div>`;
+    return;
+  }
+
+  const selectedSet = new Set((getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions() : []).map(x=>String(x).toLowerCase()));
+
+  wrap.innerHTML = `
+    <div class="title-section-label">Competições jogadas nessa passagem</div>
+    ${comps.map((comp, idx)=>{
+      const key = escapeName(comp);
+      const old = seasonId ? getExistingChampionRecord(seasonId, comp) : null;
+      const won = old && String(old.status || "").includes("titulo");
+      const isPlayed = selectedSet.has(String(comp).toLowerCase());
+      const divider = idx === (getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions().length : 0) && idx > 0 ? `<div class="title-section-label">Histórico geral da temporada</div>` : "";
+
+      return `
+        ${divider}
+        <div class="season-title-row ${isPlayed ? "played-title" : "global-title"}">
+          <div class="title-name-block">
+            <strong>${escapeHtml(comp)}</strong>
+            <span>${isPlayed ? "Competição jogada" : "Competição geral"}</span>
+          </div>
+          <label class="title-toggle">
+            <input type="checkbox" name="titulo_${key}" ${won ? "checked" : ""}>
+            <span>Ganhei</span>
+          </label>
+          <input name="campeao_${key}" placeholder="Time campeão" value="${escapeAttr(old?.clube || "")}">
+          <input name="artilheiro_${key}" placeholder="Artilheiro" value="${escapeAttr(old?.artilheiro || "")}">
+          <input name="assist_${key}" placeholder="Líder de assistências" value="${escapeAttr(old?.lider_assistencias || "")}">
+          <input name="melhor_${key}" placeholder="Melhor jogador" value="${escapeAttr(old?.melhor_jogador || "")}">
+        </div>
+      `;
+    }).join("")}
+  `;
+}
+
+async function saveSeasonTitlesFlow(data, existing=null){
+  const comps = getSeasonTitleCompetitions();
+  if(!comps.length) return;
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+  const seasonRecord = getCareerSeasonRecords()
+    .filter(s=>String(s.carreira_id)===String(active.carreira_id))
+    .sort((a,b)=>num(b.id)-num(a.id))
+    .find(s =>
+      String(s.temporada)===String(temporada) &&
+      String(s.clube_nome || "").toLowerCase() === String(selectedSeasonTeam?.name || "").toLowerCase()
+    );
+
+  const carreiraTemporadaId = existing?.id || seasonRecord?.id || "";
+  if(!carreiraTemporadaId) return;
+
+  for(const comp of comps){
+    const key = escapeName(comp);
+    const won = !!data[`titulo_${key}`];
+
+    const campeao = data[`campeao_${key}`] || (won ? selectedSeasonTeam.name : "");
+    const artilheiro = data[`artilheiro_${key}`] || "";
+    const assist = data[`assist_${key}`] || "";
+    const melhor = data[`melhor_${key}`] || "";
+
+    if(!won && !campeao && !artilheiro && !assist && !melhor) continue;
+
+    let compObj = getTable("COMPETICOES").find(c=>String(c.nome || "").toLowerCase()===String(comp).toLowerCase());
+
+    if(!compObj){
+      const compJson = await apiPost({action:"create", table:"COMPETICOES", record:{nome:comp}});
+      if(compJson.ok) compObj = compJson.data;
+    }
+
+    const old = getExistingChampionRecord(carreiraTemporadaId, comp);
+
+    const record = {
+      carreira_id: active.carreira_id,
+      carreira_temporada_id: carreiraTemporadaId,
+      temporada,
+      competicao_id: compObj?.id || "",
+      competicao: comp,
+      clube: campeao,
+      artilheiro,
+      lider_assistencias: assist,
+      melhor_jogador: melhor,
+      status: won ? "titulo_ganho" : "registro_geral"
+    };
+
+    const payload = old
+      ? {action:"update", table:"CAMPEOES_CARREIRA", id:old.id, record}
+      : {action:"create", table:"CAMPEOES_CARREIRA", record};
+
+    const res = await apiPost(payload);
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar título/campeão de " + comp);
+  }
+}
+
+function renderDashboardJourney(){
+  const user = getActiveUser();
+  const career = getActiveCareer();
+  const protagonist = getActiveProtagonist();
+  const stats = getProtagonistStats();
+  const season = getCurrentSeason(stats);
+  const journey = buildClubJourney();
+
+  setText("careerNameSide", career ? career.nome : "Football Legacy");
+  setText("careerMetaSide", user ? user.nome : "Google Sheets");
+
+  setText("currentSeason", season || "Banco conectado");
+  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
+  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
+  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
+  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
+
+  setPlayerPhoto(protagonist);
+
+  const meta = document.querySelector(".hero-meta");
+
+  if(meta){
+    meta.classList.add("club-journey-hero");
+    meta.innerHTML = `
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+        <small>Clique no escudo para ver o detalhe</small>
+      </div>
+      <div class="club-journey-strip clean-club-strip">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap clean-club-crest">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-full-stats">
+              <span><b>${c.jogos}</b> Jogos</span>
+              <span><b>${c.gols}</b> Gols</span>
+              <span><b>${c.assistencias}</b> Assistências</span>
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+      </div>
+    `;
+  }
+}
 
 function startFootballLegacy(){
   try{

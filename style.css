@@ -912,3 +912,140 @@ button.saving::before,
     grid-column:1/-1;
   }
 }
+
+
+/* ===== V3.6.6 TITLES + CLEAN CLUB VISUAL ===== */
+.season-titles-grid{
+  display:grid;
+  gap:10px;
+}
+
+.title-section-label{
+  margin:16px 0 4px;
+  color:#93c5fd;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:900;
+}
+
+.season-title-row{
+  display:grid;
+  grid-template-columns:minmax(170px,.95fr) 92px repeat(4,minmax(150px,1fr));
+  gap:8px;
+  align-items:center;
+  padding:12px;
+  border-radius:16px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.season-title-row.played-title{
+  border-color:rgba(251,191,36,.22);
+  background:rgba(251,191,36,.055);
+}
+
+.title-name-block strong{
+  display:block;
+  color:#fbbf24;
+  line-height:1.15;
+}
+
+.title-name-block span{
+  display:block;
+  margin-top:3px;
+  color:#9fb0c7;
+  font-size:11px;
+  font-weight:800;
+}
+
+.title-toggle{
+  height:42px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  background:rgba(15,23,42,.75);
+  border:1px solid rgba(255,255,255,.12);
+  color:#dbeafe;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+  user-select:none;
+}
+
+.title-toggle input{
+  accent-color:#fbbf24;
+  width:15px;
+  height:15px;
+}
+
+.clean-club-strip{
+  align-items:flex-start;
+  gap:26px;
+  padding-top:8px;
+}
+
+.clean-club-item{
+  min-width:124px!important;
+  max-width:150px;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  text-align:center!important;
+  justify-items:center;
+}
+
+.clean-club-item:hover{
+  transform:translateY(-3px);
+  box-shadow:none!important;
+}
+
+.clean-club-crest{
+  width:82px!important;
+  height:82px!important;
+  border-radius:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+.clean-club-crest img{
+  width:78px!important;
+  height:78px!important;
+  object-fit:contain;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.35));
+}
+
+.clean-club-item strong{
+  margin-top:8px;
+  font-size:16px;
+}
+
+.clean-club-item small{
+  font-size:12px;
+}
+
+.club-full-stats{
+  display:grid;
+  gap:2px;
+  margin-top:4px;
+  color:#cbd5e1;
+  font-size:12px;
+  line-height:1.25;
+}
+
+.club-full-stats b{
+  color:#fbbf24;
+}
+
+@media(max-width:1200px){
+  .season-title-row{
+    grid-template-columns:1fr 1fr;
+  }
+  .title-name-block{
+    grid-column:1/-1;
+  }
+}

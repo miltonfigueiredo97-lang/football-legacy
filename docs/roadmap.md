@@ -1,3 +1,3 @@
-# Football Legacy V3.6.5
+# Football Legacy V3.6.6
 
-Corrige Resumo da v3.6.4: usa IDs reais do HTML atual, restaura nome/foto do protagonista, coloca trilha de clubes no hero-card e adiciona títulos/campeões gerais ao editor de temporada.
+Ajusta visual dos títulos no editor de temporada, adiciona competições principais globais ao formulário de títulos/campeões, e deixa os clubes do resumo com escudo maior solto e estatísticas com nomes completos.
