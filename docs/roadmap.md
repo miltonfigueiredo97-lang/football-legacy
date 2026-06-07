@@ -1,3 +1,3 @@
-# Football Legacy V3.7.61
+# Football Legacy V3.7.63
 
-Corrige salvamento do novo ranking Bola de Ouro. O dashboard agora força o salvamento linha por linha na aba BOLA_DE_OURO_CARREIRA, remove registros antigos da mesma temporada e mantém clube/idade/valor/imagem.
+Correções sem mexer na formatação: soft save para Bola de Ouro quando o proxy retorna 504 mas o Sheets grava; emblema da seleção via mapa/local + API TheSportsDB; aliases renderSidebar/renderEstatisticas para remover erros do console.
