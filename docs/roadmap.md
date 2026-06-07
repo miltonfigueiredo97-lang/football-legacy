@@ -1,3 +1,3 @@
-# Football Legacy V2.9 Frontend Load Guard
+# Football Legacy V3.0
 
-Hotfix frontend: endpoint Apps Script está OK. Corrige JS travando antes do loadData por event binding em elemento inexistente, adiciona diagnóstico de erros e torna renderAll defensivo.
+Hardcoded API URL no script.js, inicialização segura via DOMContentLoaded e diagnóstico no console. Corrige caso em que o dashboard ficava preso em 'Conectando ao Google Sheets'.

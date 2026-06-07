@@ -1,4 +1,4 @@
-const API_URL = window.FOOTBALL_LEGACY_API;
+const API_URL = window.FOOTBALL_LEGACY_API || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
 
@@ -77,32 +77,46 @@ function getCurrentSeason(stats=getProtagonistStats()){
 async function loadData(){
   try{
     setStatus("Carregando dados do Google Sheets...");
-    const url = API_URL + "?action=all&cache=" + Date.now();
-    const res=await fetch(url, { method:"GET", cache:"no-store" });
+
+    const finalUrl = (API_URL || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec") + "?action=all&cache=" + Date.now();
+
+    console.log("Football Legacy API:", finalUrl);
+
+    const res = await fetch(finalUrl, {
+      method: "GET",
+      cache: "no-store",
+      redirect: "follow"
+    });
 
     if(!res.ok){
       throw new Error("HTTP " + res.status + " ao chamar Apps Script");
     }
 
     const text = await res.text();
-    let json;
 
+    let json;
     try{
       json = JSON.parse(text);
     }catch(parseErr){
-      console.error("Resposta recebida:", text);
-      throw new Error("Apps Script não retornou JSON válido");
+      console.error("Resposta não JSON:", text);
+      throw new Error("Apps Script não retornou JSON. Veja Console.");
     }
 
-    if(!json.ok) throw new Error(json.error||"Erro ao carregar dados");
+    if(!json.ok){
+      throw new Error(json.error || "Apps Script retornou ok:false");
+    }
 
-    db=json.data||{};
+    db = json.data || {};
+
+    console.log("Football Legacy DB carregado:", db);
+
     ensureActive();
     renderAll();
+
     setStatus("Dados carregados do Google Sheets com sucesso.","ok");
   }catch(err){
-    console.error(err);
-    setStatus("Erro ao carregar Google Sheets: "+err.message,"error");
+    console.error("Erro loadData:", err);
+    setStatus("Erro ao carregar Google Sheets: " + err.message, "error");
   }
 }
 
@@ -620,56 +634,6 @@ function openSeasonFlow(){
 function triggerUpload(key){const input=$("file_"+key); if(input)input.click()}
 async function uploadToCloudinary(event,key){const file=event.target.files[0]; if(!file)return; const target=form.querySelector(`[name="${key}"]`); const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLOUDINARY_UPLOAD_PRESET);setStatus("Enviando mídia...");const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});const json=await res.json();if(!json.secure_url)throw new Error(json.error?.message||"Erro Cloudinary");target.value=json.secure_url;setStatus("Mídia enviada.","ok")}
 
-document.querySelectorAll(".menu-item").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.page)));
-document.querySelectorAll("[data-form]").forEach(b=>b.addEventListener("click",()=>openForm(b.dataset.form)));
-
-setClick("syncBtn", loadData);
-setClick("seasonCreateBtn", openSeasonFlow);
-setClick("openSeasonBtn", openSeasonFlow);
-setClick("top11BatchBtn", openTop11BatchForm);
-setClick("ballonBatchBtn", openBallonBatchForm);
-
-setClick("protagonistEditCard", ()=>{
-  const p=getActiveProtagonist();
-  p?openForm("personagem",p.id):openForm("personagem");
-});
-
-const userSelectEl = $("userSelect");
-if(userSelectEl){
-  userSelectEl.addEventListener("change", e=>{
-    active.usuario_id=e.target.value;
-    const c=getCareersForUser(active.usuario_id);
-    active.carreira_id=c[0]?String(c[0].id):"";
-    active.protagonista_id="";
-    active.temporada="";
-    saveActive();
-    renderAll();
-  });
-}
-
-const careerSelectEl = $("careerSelect");
-if(careerSelectEl){
-  careerSelectEl.addEventListener("change", e=>{
-    active.carreira_id=e.target.value;
-    active.protagonista_id="";
-    active.temporada="";
-    const ch=getCareerCharacters();
-    if(ch[0])active.protagonista_id=String(ch[0].id);
-    saveActive();
-    renderAll();
-  });
-}
-
-const protagonistSelectEl = $("protagonistSelect");
-if(protagonistSelectEl){
-  protagonistSelectEl.addEventListener("change", e=>{
-    active.protagonista_id=e.target.value;
-    active.temporada="";
-    saveActive();
-    renderAll();
-  });
-}
-
 window.openForm=openForm;window.removeRecord=removeRecord;window.setActiveProtagonist=setActiveProtagonist;window.openPlayerByName=openPlayerByName;window.triggerUpload=triggerUpload;window.uploadToCloudinary=uploadToCloudinary;
 
 window.addEventListener('error', function(event){
@@ -683,6 +647,82 @@ window.addEventListener('unhandledrejection', function(event){
   setStatus("Erro no dashboard: " + msg, "error");
 });
 
-loadData();
 
+function startFootballLegacy(){
+  try{
+    console.log("Football Legacy iniciando...");
+    console.log("API configurada:", API_URL);
 
+    // bindings principais com proteção
+    document.querySelectorAll(".menu-item").forEach(b=>{
+      if(!b.dataset.bound){
+        b.dataset.bound = "1";
+        b.addEventListener("click",()=>navigate(b.dataset.page));
+      }
+    });
+
+    document.querySelectorAll("[data-form]").forEach(b=>{
+      if(!b.dataset.bound){
+        b.dataset.bound = "1";
+        b.addEventListener("click",()=>openForm(b.dataset.form));
+      }
+    });
+
+    if($("syncBtn")) $("syncBtn").onclick = loadData;
+    if($("seasonCreateBtn")) $("seasonCreateBtn").onclick = openSeasonFlow;
+    if($("openSeasonBtn")) $("openSeasonBtn").onclick = openSeasonFlow;
+    if($("top11BatchBtn")) $("top11BatchBtn").onclick = openTop11BatchForm;
+    if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = openBallonBatchForm;
+
+    if($("protagonistEditCard")){
+      $("protagonistEditCard").onclick = ()=>{
+        const p = getActiveProtagonist();
+        p ? openForm("personagem", p.id) : openForm("personagem");
+      };
+    }
+
+    if($("userSelect")){
+      $("userSelect").onchange = e=>{
+        active.usuario_id = e.target.value;
+        const c = getCareersForUser(active.usuario_id);
+        active.carreira_id = c[0] ? String(c[0].id) : "";
+        active.protagonista_id = "";
+        active.temporada = "";
+        saveActive();
+        renderAll();
+      };
+    }
+
+    if($("careerSelect")){
+      $("careerSelect").onchange = e=>{
+        active.carreira_id = e.target.value;
+        active.protagonista_id = "";
+        active.temporada = "";
+        const ch = getCareerCharacters();
+        if(ch[0]) active.protagonista_id = String(ch[0].id);
+        saveActive();
+        renderAll();
+      };
+    }
+
+    if($("protagonistSelect")){
+      $("protagonistSelect").onchange = e=>{
+        active.protagonista_id = e.target.value;
+        active.temporada = "";
+        saveActive();
+        renderAll();
+      };
+    }
+
+    loadData();
+  }catch(err){
+    console.error("Erro ao iniciar Football Legacy:", err);
+    setStatus("Erro ao iniciar dashboard: " + err.message, "error");
+  }
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", startFootballLegacy);
+}else{
+  startFootballLegacy();
+}
