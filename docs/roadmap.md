@@ -1,3 +1,3 @@
-# Football Legacy V3.7.28
+# Football Legacy V3.7.29
 
-Bola de Ouro simplificada: formulário mostra Temporada/Ano como 2025/2026 - 2026, mas salva temporada=2026 e ano=2026. Após salvar BOLA_DE_OURO_CARREIRA, o dashboard sincroniza o banco local imediatamente e renderiza a aba sem depender do reload do Google Sheets.
+Altera a regra da Bola de Ouro para usar o ano inicial da temporada. Exemplo: 2025/2026 - 2025. Salva BOLA_DE_OURO_CARREIRA.temporada=2025 e ano=2025.
