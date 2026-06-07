@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.46 age field and season card clean');
+console.log('Football Legacy script carregado v3.7.47 age badges projection emblem fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8375,4 +8375,354 @@ setInterval(()=>{
 
 window.injectPersonagemBirthFieldV3746 = injectPersonagemBirthFieldV3746;
 window.injectAgeOnSeasonCardsV3746 = injectAgeOnSeasonCardsV3746;
+
+
+
+// ===== V3.7.47 IDADE NO CARD + PROJEÇÃO ATÉ 38 + ESCUDOS =====
+// Não mexe no salvamento.
+// Corrige visual do escudo, reforça idade no card e adiciona projeção no resumo.
+
+function parseDateOrAgeV3747(value){
+  const raw = String(value || "").trim();
+  if(!raw) return null;
+
+  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
+
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
+
+  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[2]), month:Number(m[1]), day:1};
+
+  m = raw.match(/^(\d{4})$/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function getPersonagemBirthValueV3747(personagem){
+  if(!personagem) return "";
+  return (
+    personagem.idade ||
+    personagem.data_nascimento ||
+    personagem.nascimento ||
+    personagem.aniversario ||
+    personagem.data_aniversario ||
+    personagem["idade"] ||
+    personagem["data_nascimento"] ||
+    ""
+  );
+}
+
+function getSeasonStartPartsV3747(season){
+  const start = String(season?.data_inicio || "").trim();
+
+  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  const temp = String(season?.temporada || "").trim();
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return {year:Number(m[1]), month:8, day:1};
+
+  m = temp.match(/(\d{4})/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function calculateAgeAtSeasonV3747(season){
+  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  const birthRaw = getPersonagemBirthValueV3747(personagem);
+  const birth = parseDateOrAgeV3747(birthRaw);
+  const start = getSeasonStartPartsV3747(season);
+
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+  if(!start) return "";
+
+  let age = start.year - birth.year;
+  if(start.month < birth.month || (start.month === birth.month && start.day < birth.day)) age--;
+
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+function cleanSeasonDateTextsV3747(card){
+  try{
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node=>{
+      let txt = node.nodeValue || "";
+      const cleaned = txt
+        .replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "")
+        .replace(/\s*•\s*$/g, "")
+        .replace(/^\s*•\s*/g, "")
+        .trim();
+
+      if(cleaned !== txt.trim()){
+        node.nodeValue = cleaned ? " " + cleaned : "";
+      }
+    });
+  }catch(err){}
+}
+
+function findSeasonCardsV3747(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+  if(!seasons.length) return [];
+
+  const cards = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
+    .filter(el=>{
+      const txt = el.textContent || "";
+      if(!/jogos|gols|assist|editar/i.test(txt)) return false;
+      if(!el.querySelector("img")) return false;
+
+      return seasons.some(s=>{
+        return txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || ""));
+      });
+    });
+
+  // remove cards pais quando existe filho também selecionado
+  return cards.filter(card=>!cards.some(other=>other !== card && card.contains(other)));
+}
+
+function injectAgeOnSeasonCardsV3747(){
+  try{
+    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+    if(!seasons.length) return;
+
+    const cards = findSeasonCardsV3747();
+
+    cards.forEach(card=>{
+      const txt = card.textContent || "";
+      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
+      if(!season) return;
+
+      cleanSeasonDateTextsV3747(card);
+
+      const img = card.querySelector("img");
+      if(!img) return;
+
+      // Corrige escudo cortado.
+      img.classList.add("season-emblem-fixed-v3747");
+      const imgBox = img.parentElement;
+      if(imgBox) imgBox.classList.add("season-emblem-box-fixed-v3747");
+
+      let badge = card.querySelector(".season-age-badge-v3747");
+      const age = calculateAgeAtSeasonV3747(season);
+
+      if(age === "" || age === null || age === undefined) return;
+
+      if(!badge){
+        badge = document.createElement("span");
+        badge.className = "season-age-badge-v3747";
+        img.insertAdjacentElement("afterend", badge);
+      }
+
+      badge.textContent = `${age} anos`;
+    });
+  }catch(err){
+    console.warn("Falha ao aplicar idade/escudo nos cards:", err);
+  }
+}
+
+function getCareerTotalsV3747(){
+  const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
+
+  return stats.reduce((acc,s)=>{
+    acc.jogos += Number(s.jogos || 0);
+    acc.gols += Number(s.gols || 0);
+    acc.assistencias += Number(s.assistencias || 0);
+    return acc;
+  }, {jogos:0,gols:0,assistencias:0});
+}
+
+function getSeasonAggregatesV3747(){
+  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+  const stats = typeof getProtagonistStats === "function" ? getProtagonistStats() : [];
+
+  return seasons.map(season=>{
+    const seasonStats = stats.filter(s=>String(s.carreira_temporada_id) === String(season.id));
+    const total = seasonStats.reduce((acc,s)=>{
+      acc.jogos += Number(s.jogos || 0);
+      acc.gols += Number(s.gols || 0);
+      acc.assistencias += Number(s.assistencias || 0);
+      return acc;
+    }, {jogos:0,gols:0,assistencias:0});
+
+    total.season = season;
+    total.age = calculateAgeAtSeasonV3747(season);
+    return total;
+  }).filter(x=>x.jogos || x.gols || x.assistencias);
+}
+
+function getCurrentCareerAgeV3747(){
+  const aggs = getSeasonAggregatesV3747().filter(x=>x.age !== "" && x.age !== null && x.age !== undefined);
+  if(aggs.length) return Math.max(...aggs.map(x=>Number(x.age)));
+
+  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  const birth = parseDateOrAgeV3747(getPersonagemBirthValueV3747(personagem));
+  if(!birth) return "";
+
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+
+  const now = new Date();
+  let age = now.getFullYear() - birth.year;
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  if(month < birth.month || (month === birth.month && day < birth.day)) age--;
+
+  return age;
+}
+
+function ageDeclineFactorV3747(age){
+  const a = Number(age);
+  if(!Number.isFinite(a)) return 1;
+
+  if(a <= 29) return 1;
+  if(a <= 32) return Math.max(.88, 1 - (a - 29) * .04);
+  if(a <= 35) return Math.max(.70, .88 - (a - 32) * .06);
+  if(a <= 38) return Math.max(.52, .70 - (a - 35) * .06);
+  return .50;
+}
+
+function buildProjectionUntil38V3747(){
+  const aggs = getSeasonAggregatesV3747();
+  const totals = getCareerTotalsV3747();
+
+  if(!aggs.length) return null;
+
+  const validSeasons = aggs.filter(a=>a.jogos > 0);
+  const avgBase = validSeasons.length ? validSeasons : aggs;
+
+  const avg = avgBase.reduce((acc,s)=>{
+    acc.jogos += s.jogos;
+    acc.gols += s.gols;
+    acc.assistencias += s.assistencias;
+    return acc;
+  }, {jogos:0,gols:0,assistencias:0});
+
+  avg.jogos /= avgBase.length || 1;
+  avg.gols /= avgBase.length || 1;
+  avg.assistencias /= avgBase.length || 1;
+
+  const currentAge = Number(getCurrentCareerAgeV3747());
+  if(!Number.isFinite(currentAge)) return null;
+
+  const remainingAges = [];
+  for(let age=currentAge+1; age<=38; age++){
+    remainingAges.push(age);
+  }
+
+  const future = remainingAges.reduce((acc,age)=>{
+    const f = ageDeclineFactorV3747(age);
+    acc.jogos += avg.jogos * f;
+    acc.gols += avg.gols * f;
+    acc.assistencias += avg.assistencias * f;
+    return acc;
+  }, {jogos:0,gols:0,assistencias:0});
+
+  return {
+    currentAge,
+    seasonsLeft: remainingAges.length,
+    totals,
+    avg,
+    future,
+    final:{
+      jogos: totals.jogos + future.jogos,
+      gols: totals.gols + future.gols,
+      assistencias: totals.assistencias + future.assistencias
+    }
+  };
+}
+
+function injectCareerProjectionV3747(){
+  try{
+    const projection = buildProjectionUntil38V3747();
+    if(!projection) return;
+
+    const dashboard =
+      document.querySelector("#dashboard.active, #resumo.active, .page.active") ||
+      document.querySelector("#dashboard, #resumo") ||
+      document.body;
+
+    if(!dashboard) return;
+
+    let box = document.querySelector(".career-projection-v3747");
+
+    if(!box){
+      box = document.createElement("div");
+      box.className = "career-projection-v3747";
+
+      const clubsTitle = [...dashboard.querySelectorAll("h2,h3,strong")]
+        .find(el=>/clubes da carreira/i.test(el.textContent || ""));
+
+      if(clubsTitle && clubsTitle.parentElement){
+        clubsTitle.parentElement.insertAdjacentElement("afterend", box);
+      }else{
+        const hero = dashboard.querySelector(".summary-hero, .hero-card, .career-hero, .dashboard-hero, section, .content-card");
+        if(hero) hero.appendChild(box);
+        else dashboard.prepend(box);
+      }
+    }
+
+    const p = projection;
+
+    box.innerHTML = `
+      <div class="projection-title">
+        <span>Previsão até 38 anos</span>
+        <small>Baseada na média por temporada com queda gradual por idade</small>
+      </div>
+      <div class="projection-grid">
+        <div>
+          <small>Jogos finais</small>
+          <strong>${Math.round(p.final.jogos)}</strong>
+          <span>+${Math.round(p.future.jogos)} previstos</span>
+        </div>
+        <div>
+          <small>Gols finais</small>
+          <strong>${Math.round(p.final.gols)}</strong>
+          <span>+${Math.round(p.future.gols)} previstos</span>
+        </div>
+        <div>
+          <small>Assistências finais</small>
+          <strong>${Math.round(p.final.assistencias)}</strong>
+          <span>+${Math.round(p.future.assistencias)} previstas</span>
+        </div>
+      </div>
+      <div class="projection-foot">
+        Idade atual estimada: ${p.currentAge} anos • ${p.seasonsLeft} temporadas restantes até 38
+      </div>
+    `;
+  }catch(err){
+    console.warn("Falha ao criar projeção até 38:", err);
+  }
+}
+
+function applyResumoEnhancementsV3747(){
+  injectAgeOnSeasonCardsV3747();
+  injectCareerProjectionV3747();
+}
+
+const __renderAllOriginalV3747 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3747 && !window.__renderAllV3747Wrapped){
+  window.__renderAllV3747Wrapped = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3747.apply(this, arguments);
+    setTimeout(applyResumoEnhancementsV3747, 120);
+    setTimeout(applyResumoEnhancementsV3747, 700);
+    return result;
+  };
+}
+
+setInterval(()=>{
+  if(document.visibilityState === "visible") applyResumoEnhancementsV3747();
+}, 2500);
+
+window.applyResumoEnhancementsV3747 = applyResumoEnhancementsV3747;
+window.buildProjectionUntil38V3747 = buildProjectionUntil38V3747;
 

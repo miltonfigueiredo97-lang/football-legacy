@@ -1,3 +1,3 @@
-# Football Legacy V3.7.46
+# Football Legacy V3.7.47
 
-Corrige campo de idade/data nascimento no modal genérico 'Editar registro' detectando formulário de PERSONAGENS pelos campos nome/posição/nacionalidade. Remove texto de datas dos cards de temporadas jogadas e injeta idade calculada no início da temporada logo após o escudo.
+Corrige escudos cortados nos cards de temporadas, reforça idade após o escudo e adiciona projeção de jogos/gols/assistências até 38 anos usando média por temporada com queda gradual conforme idade.
