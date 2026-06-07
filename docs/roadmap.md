@@ -1,3 +1,3 @@
-# Football Legacy V3.7.80
+# Football Legacy V3.7.81
 
-Seleção: escudos melhorados via TheSportsDB/fallback, totais sem duplicar, títulos da seleção com opções e Hall alimentado. Troféus: imagens por competição. Bola de Ouro: novas visualizações em Melhores: por jogador, 2º lugar, 3º lugar, time, país e qualquer posição.
+Top 11: mapa visual com jogadores arrastáveis no modo edição, busca de foto do jogador via TheSportsDB, fundo do mapa por URL e salvamento de posições x/y/foto_url/mapa_url na aba TOP11_CARREIRA.
