@@ -1616,3 +1616,13 @@ button.saving::before,
     display:none;
   }
 }
+
+
+/* ===== V3.7.21 WARN STATUS ===== */
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
+}

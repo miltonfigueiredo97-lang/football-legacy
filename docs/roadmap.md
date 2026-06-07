@@ -1,3 +1,3 @@
-# Football Legacy V3.7.20
+# Football Legacy V3.7.21
 
-Rollback seguro da v3.7.19: não sobrescreve renderBolaOuro. Mantém a aba funcionando e aplica ano da premiação apenas no formulário/salvamento: 2025/2026 vira 2026.
+Corrige temporadas da carreira para formato completo YYYY/YYYY, evitando 29/30. Melhora fallback do resumo rápido: se action=summary falhar, carrega action=all sem mensagem assustadora.
