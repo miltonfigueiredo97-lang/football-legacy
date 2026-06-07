@@ -855,3 +855,60 @@ button.saving::before,
     flex-wrap:wrap;
   }
 }
+
+
+/* ===== V3.6.5 FIX HERO JOURNEY + TITULOS ===== */
+.hero-meta.club-journey-hero{
+  display:block!important;
+  margin-top:24px;
+}
+
+.hero-meta.club-journey-hero > div{
+  background:transparent!important;
+  border:0!important;
+  padding:0!important;
+}
+
+.season-titles-grid{
+  display:grid;
+  gap:10px;
+}
+
+.season-title-row{
+  display:grid;
+  grid-template-columns:minmax(180px,1.2fr) repeat(4,minmax(140px,.9fr));
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.season-title-row strong{
+  display:block;
+  color:#fbbf24;
+  margin-bottom:4px;
+}
+
+.tiny-check{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:#cbd5e1;
+  font-weight:800;
+}
+
+.tiny-check input{
+  accent-color:#fbbf24;
+}
+
+@media(max-width:1100px){
+  .season-title-row{
+    grid-template-columns:1fr 1fr;
+  }
+  .season-title-row > div{
+    grid-column:1/-1;
+  }
+}
