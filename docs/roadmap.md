@@ -1,3 +1,3 @@
-# Football Legacy V3.7.72
+# Football Legacy V3.7.73
 
-Conjunto final: remove X espalhados, mantém apenas X de temporada corretamente vinculado pelo botão Editar temporada, corrige bug de troca de abas que deixava card do jogador órfão e preserva correções anteriores de Bola de Ouro por cabeçalho.
+Adiciona preenchimento automático do modal Novo ranking Bola de Ouro quando a temporada/ano já existe em BOLA_DE_OURO_CARREIRA. Também desativa limpeza agressiva de card do jogador ao trocar de aba para reduzir bug de tela vazia/piscada. Sem alteração visual.

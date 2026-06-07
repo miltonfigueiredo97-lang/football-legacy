@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.72 final stable tabs season x');
+console.log('Football Legacy script carregado v3.7.73 ballon prefill stability');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -9242,3 +9242,288 @@ document.addEventListener("click", function(e){
 window.injectDeleteSeasonButtonsV3772 = injectDeleteSeasonButtonsV3772;
 window.removeScatteredCareerDeleteXV3772 = removeScatteredCareerDeleteXV3772;
 window.stableTabsAfterRenderV3772 = stableTabsAfterRenderV3772;
+
+
+// ===== V3.7.73 BOLA DE OURO PREFILL + ESTABILIDADE =====
+// Não mexe em formatação.
+// 1) Ao selecionar temporada já existente no Bola de Ouro, preenche o ranking.
+// 2) Remove limpeza agressiva de card do jogador que causava tela vazia/piscada.
+
+function FL_normV3773(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_normalizeSeasonV3773(value){
+  const raw = String(value || "").trim();
+
+  let m = raw.match(/-\s*(\d{4})$/);
+  if(m) return m[1];
+
+  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return m[2];
+
+  m = raw.match(/(\d{4})/);
+  if(m) return m[1];
+
+  return raw;
+}
+
+function FL_isBallonModalV3773(){
+  const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
+  const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
+
+  return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || txt.includes("jogador") && txt.includes("valor");
+}
+
+function FL_getBallonSeasonInputV3773(){
+  const root = form || document;
+
+  return (
+    root.querySelector("[name='temporada']") ||
+    root.querySelector("[name='ano']") ||
+    root.querySelector("#ballonSeason") ||
+    root.querySelector("select")
+  );
+}
+
+function FL_getBallonSeasonCurrentV3773(){
+  const input = FL_getBallonSeasonInputV3773();
+  return FL_normalizeSeasonV3773(input?.value || "");
+}
+
+function FL_getExistingBallonRowsV3773(season){
+  const normalized = FL_normalizeSeasonV3773(season);
+
+  const rows = (db.BOLA_DE_OURO_CARREIRA || [])
+    .filter(r => {
+      const a = FL_normalizeSeasonV3773(r.temporada);
+      const b = FL_normalizeSeasonV3773(r.ano);
+      return String(a) === String(normalized) || String(b) === String(normalized);
+    })
+    .sort((a,b) => Number(a.posicao || 999) - Number(b.posicao || 999));
+
+  return rows;
+}
+
+function FL_findAncestorWithInputsV3773(input){
+  let el = input;
+
+  for(let i=0; i<8 && el; i++){
+    const count = el.querySelectorAll ? el.querySelectorAll("input,select,textarea").length : 0;
+
+    if(count >= 4){
+      const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : {height:0,width:0};
+      if(rect.width > 300 || count >= 5) return el;
+    }
+
+    el = el.parentElement;
+  }
+
+  return input.closest("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row,.ranking-player-row,div");
+}
+
+function FL_getBallonInputRowsV3773(){
+  const root = form || document;
+
+  let rowEls = [
+    ...root.querySelectorAll("tr"),
+    ...root.querySelectorAll(".ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row,.ranking-player-row")
+  ].filter(el => {
+    const inputs = [...el.querySelectorAll("input,select,textarea")].filter(i => i.type !== "file");
+    if(inputs.length < 4) return false;
+
+    const combined = FL_normV3773(
+      inputs.map(i => [i.name,i.id,i.placeholder,i.dataset?.field,i.getAttribute("aria-label")].join(" ")).join(" ")
+    );
+
+    return inputs.length >= 5 || combined.includes("jogador") || combined.includes("player");
+  });
+
+  // Se não tiver classes de linha, usa cada input "Jogador" como âncora.
+  if(!rowEls.length){
+    const playerInputs = [...root.querySelectorAll("input,select,textarea")]
+      .filter(i => i.type !== "file")
+      .filter(i => {
+        const key = FL_normV3773([i.name,i.id,i.placeholder,i.dataset?.field,i.getAttribute("aria-label")].join(" "));
+        return key.includes("jogador") || key.includes("player");
+      });
+
+    rowEls = playerInputs.map(FL_findAncestorWithInputsV3773).filter(Boolean);
+  }
+
+  // Remove duplicados e pais que contêm filhos.
+  rowEls = [...new Set(rowEls)];
+  rowEls = rowEls.filter(el => !rowEls.some(other => other !== el && other.contains(el)));
+
+  return rowEls.slice(0, 10);
+}
+
+function FL_inputByMeaningV3773(row, patterns, fallbackIndex){
+  const inputs = [...row.querySelectorAll("input,select,textarea")].filter(i => i.type !== "file");
+
+  for(const input of inputs){
+    const key = FL_normV3773([input.name,input.id,input.placeholder,input.dataset?.field,input.getAttribute("aria-label")].join(" "));
+
+    if(patterns.some(p => key.includes(p))) return input;
+  }
+
+  return inputs[fallbackIndex] || null;
+}
+
+function FL_setInputValueV3773(input, value){
+  if(!input) return;
+
+  input.value = value || "";
+  input.dispatchEvent(new Event("input", {bubbles:true}));
+  input.dispatchEvent(new Event("change", {bubbles:true}));
+}
+
+function FL_getBallonImageInputV3773(){
+  const root = form || document;
+
+  const candidates = [
+    root.querySelector("[name='imagem_destaque_url']"),
+    root.querySelector("[name='imagem_url']"),
+    root.querySelector("#ballonWinnerImage"),
+    ...root.querySelectorAll("input[type='url']"),
+    ...root.querySelectorAll("input:not([type='file'])")
+  ].filter(Boolean);
+
+  for(const input of candidates){
+    const key = FL_normV3773([input.name,input.id,input.placeholder,input.dataset?.field,input.getAttribute("aria-label")].join(" "));
+
+    if(
+      key.includes("imagem") ||
+      key.includes("image") ||
+      key.includes("url") ||
+      String(input.placeholder || "").toLowerCase().includes("url")
+    ){
+      return input;
+    }
+  }
+
+  return null;
+}
+
+function FL_prefillBallonFromExistingV3773(){
+  try{
+    if(!FL_isBallonModalV3773()) return;
+
+    const season = FL_getBallonSeasonCurrentV3773();
+    if(!season) return;
+
+    const rows = FL_getExistingBallonRowsV3773(season);
+    const inputRows = FL_getBallonInputRowsV3773();
+
+    if(!rows.length){
+      return;
+    }
+
+    console.log("Preenchendo Bola de Ouro existente v3.7.73:", season, rows);
+
+    const image =
+      rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_destaque_url ||
+      rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_url ||
+      "";
+
+    const imageInput = FL_getBallonImageInputV3773();
+    if(imageInput && image && !String(image).toLowerCase().includes("fakepath")){
+      FL_setInputValueV3773(imageInput, image);
+    }
+
+    rows.slice(0, 10).forEach((record, index) => {
+      const rowEl = inputRows[index];
+      if(!rowEl) return;
+
+      FL_setInputValueV3773(
+        FL_inputByMeaningV3773(rowEl, ["jogador","player","nome"], 0),
+        record.jogador || ""
+      );
+
+      FL_setInputValueV3773(
+        FL_inputByMeaningV3773(rowEl, ["pais","país","nacionalidade","country"], 1),
+        record.pais || record.nacionalidade || ""
+      );
+
+      FL_setInputValueV3773(
+        FL_inputByMeaningV3773(rowEl, ["clube","club","time","team"], 2),
+        record.clube || ""
+      );
+
+      FL_setInputValueV3773(
+        FL_inputByMeaningV3773(rowEl, ["idade","age"], 3),
+        record.idade_na_premiacao || record.idade || ""
+      );
+
+      FL_setInputValueV3773(
+        FL_inputByMeaningV3773(rowEl, ["valor","mercado","market","euro"], 4),
+        record.valor_mercado || ""
+      );
+    });
+
+    setStatus(`Ranking ${season} carregado para edição.`, "ok");
+  }catch(err){
+    console.warn("Falha ao preencher Bola de Ouro existente v3.7.73:", err);
+  }
+}
+
+function FL_attachBallonPrefillListenersV3773(){
+  try{
+    if(!FL_isBallonModalV3773()) return;
+
+    const seasonInput = FL_getBallonSeasonInputV3773();
+    if(seasonInput && !seasonInput.dataset.prefillBallonV3773){
+      seasonInput.dataset.prefillBallonV3773 = "1";
+
+      seasonInput.addEventListener("change", () => setTimeout(FL_prefillBallonFromExistingV3773, 120));
+      seasonInput.addEventListener("input", () => setTimeout(FL_prefillBallonFromExistingV3773, 220));
+    }
+
+    // Preenche ao abrir se já veio com uma temporada selecionada.
+    setTimeout(FL_prefillBallonFromExistingV3773, 250);
+    setTimeout(FL_prefillBallonFromExistingV3773, 900);
+  }catch(err){
+    console.warn("Falha listeners Bola de Ouro v3.7.73:", err);
+  }
+}
+
+// Desativa a limpeza agressiva do v3.7.72 que podia remover card/tela em troca de aba.
+window.cleanupOrphanPlayerCardOnNonResumoV3772 = function(){};
+window.stableTabsAfterRenderV3772 = function(){
+  try{
+    if(typeof removeScatteredCareerDeleteXV3772 === "function") removeScatteredCareerDeleteXV3772();
+    if(typeof cleanupWrongSeasonXV3772 === "function") cleanupWrongSeasonXV3772();
+    if(typeof injectDeleteSeasonButtonsV3772 === "function") injectDeleteSeasonButtonsV3772();
+  }catch(err){
+    console.warn("stableTabs v3.7.73 falhou:", err);
+  }
+};
+
+const __renderAllOriginalV3773 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3773 && !window.__renderAllBallonPrefillWrappedV3773){
+  window.__renderAllBallonPrefillWrappedV3773 = true;
+
+  renderAll = function(){
+    const result = __renderAllOriginalV3773.apply(this, arguments);
+    setTimeout(FL_attachBallonPrefillListenersV3773, 150);
+    setTimeout(FL_attachBallonPrefillListenersV3773, 900);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(FL_attachBallonPrefillListenersV3773, 250);
+}, true);
+
+document.addEventListener("change", function(e){
+  if(FL_isBallonModalV3773() && e.target === FL_getBallonSeasonInputV3773()){
+    setTimeout(FL_prefillBallonFromExistingV3773, 150);
+  }
+}, true);
+
+window.FL_prefillBallonFromExistingV3773 = FL_prefillBallonFromExistingV3773;
+window.FL_attachBallonPrefillListenersV3773 = FL_attachBallonPrefillListenersV3773;
