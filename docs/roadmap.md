@@ -1,3 +1,3 @@
-# Football Legacy V3.7.94
+# Football Legacy V3.7.95
 
-Corrige TOP11_BASE com posicao_origem genérica (GOL/DEF/MEI/ATA), distribuindo os 11 jogadores pela ordem dentro da temporada. Remove X vermelho perdido no topo do resumo de forma mais agressiva.
+Adiciona suporte à coluna criado em TOP11_CARREIRA. Se criado=SIM, o dashboard não busca foto na API e usa apenas foto_url; se foto_url estiver vazia, mostra iniciais. Modal +Top11 ganha campos Criado/API e Foto URL manual.

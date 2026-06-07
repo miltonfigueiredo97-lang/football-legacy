@@ -4116,3 +4116,24 @@ body > .remove-season-x-v3793{
 .top11-pitch-v3790 .top11-player-v3790:hover{
   z-index:10;
 }
+
+
+/* ===== V3.7.95 TOP11 CRIADO/FOTO MANUAL ===== */
+.top11-create-row-v3787{
+  grid-template-columns:34px 80px 1.25fr 80px .9fr .9fr 90px 1.3fr!important;
+}
+
+.top11-create-row-v3787 select[name^="criado_"],
+.top11-create-row-v3787 input[name^="foto_url_"]{
+  min-width:0;
+  border:1px solid rgba(148,163,184,.24);
+  background:#1e293b;
+  color:#fff;
+  border-radius:12px;
+  padding:10px;
+  font-weight:800;
+}
+
+.top11-create-row-v3787 select[name^="criado_"]{
+  color:#fbbf24;
+}

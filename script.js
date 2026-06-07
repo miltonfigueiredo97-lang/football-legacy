@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.94 top11 generic positions remove x');
+console.log('Football Legacy script carregado v3.7.95 top11 criado foto manual');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -15975,3 +15975,365 @@ document.addEventListener("click", ()=>{
 setTimeout(FL_removeLostTopRightXV3794, 300);
 setTimeout(FL_removeLostTopRightXV3794, 1200);
 setTimeout(FL_removeLostTopRightXV3794, 2500);
+
+
+// ===== V3.7.95 TOP11 — JOGADOR CRIADO + FOTO MANUAL =====
+// Nova coluna TOP11_CARREIRA:
+// criado
+//
+// Regras:
+// criado = SIM / TRUE / 1 / CRIADO
+// - Não busca foto por API.
+// - Usa apenas foto_url.
+// - Se foto_url estiver vazia, mostra iniciais.
+// criado vazio ou NÃO
+// - Pode buscar foto por API.
+
+function FL_isCreatedPlayerV3795(row){
+  const v = String(
+    row?.criado ??
+    row?.CRIADO ??
+    row?.jogador_criado ??
+    row?.JOGADOR_CRIADO ??
+    row?.created ??
+    ""
+  ).trim().toLowerCase();
+
+  return ["sim","s","yes","y","true","1","criado","created"].includes(v);
+}
+
+function FL_pickV3795(row, keys){
+  for(const k of keys){
+    if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+  }
+
+  const norm = {};
+  Object.keys(row || {}).forEach(k=>{
+    const nk = String(k).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
+    norm[nk] = row[k];
+  });
+
+  for(const k of keys){
+    const nk = String(k).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
+    if(norm[nk] !== undefined && norm[nk] !== null && norm[nk] !== "") return norm[nk];
+  }
+
+  return "";
+}
+
+function FL_initialsV3795(name){
+  if(typeof FL_initialsV3794 === "function") return FL_initialsV3794(name);
+  if(typeof FL_initialsV3790 === "function") return FL_initialsV3790(name);
+
+  const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+}
+
+function FL_escapeV3795(value){
+  return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3795(value){
+  return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+// Puxa carreira preservando criado/foto_url.
+function FL_top11CareerRowsV3795(){
+  const carreiraId = active?.carreira_id || "";
+  return (getTable("TOP11_CARREIRA") || []).filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId));
+}
+
+// Se a função de grupo já existe, só reusa; se não, cria fallback.
+function FL_top11UnifiedGroupsV3795(){
+  if(typeof FL_top11UnifiedGroupsV3794 === "function"){
+    const groups = FL_top11UnifiedGroupsV3794();
+
+    // Reinjeta dados completos da tabela de carreira, caso função anterior tenha perdido coluna criado.
+    const careerRows = FL_top11CareerRowsV3795();
+    groups.forEach(g=>{
+      if(g.source !== "career") return;
+
+      g.rows = g.rows.map(r=>{
+        const full = careerRows.find(x => String(x.id || "") === String(r.id || ""));
+        return full ? Object.assign({__top11Source:"career"}, r, full) : r;
+      });
+    });
+
+    return groups;
+  }
+
+  return [];
+}
+
+function FL_shouldFetchPhotoV3795(row){
+  if(FL_isCreatedPlayerV3795(row)) return false;
+  const foto = FL_pickV3795(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+  if(foto) return false;
+  return true;
+}
+
+function FL_photoHtmlV3795(row, name){
+  const foto = FL_pickV3795(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+  if(foto){
+    return `<img src="${FL_escapeAttrV3795(foto)}" onerror="this.parentElement.innerHTML='${FL_escapeV3795(FL_initialsV3795(name))}'">`;
+  }
+  return FL_escapeV3795(FL_initialsV3795(name));
+}
+
+// Sobrescreve enriquecimento de fotos para respeitar jogador criado.
+function FL_enrichTop11PhotosV3795(){
+  const nodes = [...document.querySelectorAll(".top11-player-v3790,.top11-player-v3787")];
+  const allRows = [
+    ...(typeof FL_top11BaseRowsV3794 === "function" ? FL_top11BaseRowsV3794() : (getTable("TOP11_BASE") || [])),
+    ...FL_top11CareerRowsV3795().map(r=>Object.assign({__top11Source:"career"}, r))
+  ];
+
+  nodes.forEach(async node=>{
+    const name = node.dataset.player || "";
+    const id = node.dataset.id || "";
+    const source = node.dataset.source || "";
+    const photo = node.querySelector(".top11-photo-v3790,.top11-photo-v3787");
+
+    if(!name || !photo || photo.querySelector("img")) return;
+
+    const row =
+      allRows.find(r => id && String(r.id || "") === String(id) && (!source || String(r.__top11Source || r.source || "") === String(source))) ||
+      allRows.find(r => String(r.jogador || "").trim().toLowerCase() === String(name).trim().toLowerCase());
+
+    if(row && !FL_shouldFetchPhotoV3795(row)){
+      photo.innerHTML = FL_photoHtmlV3795(row, name);
+      return;
+    }
+
+    if(typeof FL_fetchPlayerPhotoV3790 !== "function") return;
+
+    const img = await FL_fetchPlayerPhotoV3790(name);
+    if(!img || !node.isConnected) return;
+
+    photo.innerHTML = `<img src="${FL_escapeAttrV3795(img)}" onerror="this.parentElement.innerHTML='${FL_escapeV3795(FL_initialsV3795(name))}'">`;
+  });
+}
+
+// Melhorar ranking melhores: criado não busca API se tiver foto manual ou sem foto.
+function FL_enrichTop11BestPhotosV3795(){
+  const nodes = [...document.querySelectorAll("[data-top11-best-photo]")];
+  const allCareer = FL_top11CareerRowsV3795();
+
+  nodes.forEach(async node=>{
+    const name = node.dataset.top11BestPhoto || "";
+    if(!name || node.querySelector("img")) return;
+
+    const createdRow = allCareer.find(r =>
+      String(r.jogador || "").trim().toLowerCase() === String(name).trim().toLowerCase() &&
+      FL_isCreatedPlayerV3795(r)
+    );
+
+    if(createdRow){
+      const foto = FL_pickV3795(createdRow, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+      if(foto){
+        node.innerHTML = `<img src="${FL_escapeAttrV3795(foto)}" onerror="this.parentElement.innerHTML='${FL_escapeV3795(FL_initialsV3795(name))}'">`;
+      }else{
+        node.innerHTML = FL_escapeV3795(FL_initialsV3795(name));
+      }
+      return;
+    }
+
+    if(typeof FL_fetchPlayerPhotoV3790 !== "function") return;
+    const img = await FL_fetchPlayerPhotoV3790(name);
+    if(!img || !node.isConnected) return;
+
+    node.innerHTML = `<img src="${FL_escapeAttrV3795(img)}" onerror="this.parentElement.innerHTML='${FL_escapeV3795(FL_initialsV3795(name))}'">`;
+  });
+}
+
+// Render final: reaproveita v3.7.94 e depois aplica a regra de foto.
+const FL_renderTop11UnifiedOriginalV3795 =
+  typeof FL_renderTop11UnifiedV3794 === "function" ? FL_renderTop11UnifiedV3794 :
+  typeof FL_renderTop11UnifiedV3793 === "function" ? FL_renderTop11UnifiedV3793 :
+  typeof renderTop11 === "function" ? renderTop11 : null;
+
+function FL_renderTop11UnifiedV3795(){
+  if(FL_renderTop11UnifiedOriginalV3795){
+    FL_renderTop11UnifiedOriginalV3795();
+  }
+
+  setTimeout(()=>{
+    FL_enrichTop11PhotosV3795();
+    FL_enrichTop11BestPhotosV3795();
+  }, 120);
+}
+
+// Modal de +Top11: se existir modal antigo, adiciona criado/foto_url manual sem quebrar layout.
+const FL_openCreateTop11OriginalV3795 =
+  typeof FL_openCreateTop11V3788 === "function" ? FL_openCreateTop11V3788 :
+  typeof FL_openCreateTop11V3787 === "function" ? FL_openCreateTop11V3787 :
+  null;
+
+function FL_openCreateTop11V3795(){
+  if(FL_openCreateTop11OriginalV3795){
+    FL_openCreateTop11OriginalV3795();
+
+    setTimeout(()=>{
+      const form = document.getElementById("top11-create-form-v3788") || document.getElementById("top11-create-form-v3787");
+      if(!form || form.dataset.criadoV3795 === "1") return;
+      form.dataset.criadoV3795 = "1";
+
+      const rows = form.querySelectorAll(".top11-create-row-v3787");
+      rows.forEach((row, idx)=>{
+        if(row.querySelector(`[name="criado_${idx}"]`)) return;
+
+        const criado = document.createElement("select");
+        criado.name = `criado_${idx}`;
+        criado.innerHTML = `<option value="">API</option><option value="SIM">Criado</option>`;
+        criado.title = "Se for criado, o dashboard não buscará imagem na API.";
+
+        const foto = document.createElement("input");
+        foto.name = `foto_url_${idx}`;
+        foto.placeholder = "Foto URL manual";
+        foto.title = "Use quando jogador for criado.";
+
+        row.appendChild(criado);
+        row.appendChild(foto);
+      });
+    }, 200);
+  }
+}
+
+// Salvamento novo do Top11 com criado/foto_url.
+async function FL_saveNewTop11V3795(){
+  const form = document.getElementById("top11-create-form-v3788") || document.getElementById("top11-create-form-v3787");
+
+  if(!form){
+    if(typeof FL_saveNewTop11V3788 === "function") return FL_saveNewTop11V3788();
+    return;
+  }
+
+  if(window.FL_TOP11_SAVING_V3788) return;
+
+  try{
+    window.FL_TOP11_SAVING_V3788 = true;
+
+    const btn = document.getElementById("fl-top11-save-v3788") || document.getElementById("fl-top11-save-v3787");
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+    }
+
+    const defaults = typeof FL_defaultTop11PositionsV3788 === "function" ? FL_defaultTop11PositionsV3788() : [
+      ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],["MEI",52,28],["MEI",52,50],["MEI",52,72],["PE",78,28],["CA",84,50],["PD",78,72]
+    ];
+
+    const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+
+    const temporada = String(form.temporada?.value || "").trim();
+    const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
+
+    const rows = [];
+
+    for(let i=0;i<11;i++){
+      const jogador = String(form[`jogador_${i}`]?.value || "").trim();
+      if(!jogador) continue;
+
+      const criado = String(form[`criado_${i}`]?.value || "").trim();
+      const fotoUrl = String(form[`foto_url_${i}`]?.value || "").trim();
+
+      rows.push({
+        carreira_id: active?.carreira_id || "",
+        carreira_temporada_id: carreiraTemporadaId,
+        temporada,
+        posicao_origem: origins[i] || "",
+        posicao_tatica: String(form[`posicao_${i}`]?.value || defaults[i]?.[0] || "").trim(),
+        jogador,
+        overall: String(form[`overall_${i}`]?.value || "").trim(),
+        clube: String(form[`clube_${i}`]?.value || "").trim(),
+        pais: String(form[`pais_${i}`]?.value || "").trim(),
+        criado,
+        foto_url: fotoUrl,
+        x: defaults[i]?.[1] ?? "",
+        y: defaults[i]?.[2] ?? "",
+        mapa_url: "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg"
+      });
+    }
+
+    if(!rows.length){
+      setStatus("Preencha pelo menos um jogador no Top 11.", "error");
+      return;
+    }
+
+    setStatus("Salvando Top 11...", "loading");
+
+    const result = await apiPost({
+      action:"saveTop11CareerV2",
+      carreira_id: active?.carreira_id || "",
+      carreira_temporada_id: carreiraTemporadaId,
+      temporada,
+      mapa_url:"https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg",
+      replace_existing:true,
+      rows
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou salvamento do Top 11.");
+    }
+
+    if(!Array.isArray(db.TOP11_CARREIRA)) db.TOP11_CARREIRA = [];
+
+    db.TOP11_CARREIRA = db.TOP11_CARREIRA.filter(r=>{
+      const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
+      const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
+      const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
+      return !(sameCareer && (sameSeasonId || sameSeason));
+    });
+
+    const saved = result.data?.rows || rows;
+    saved.forEach(r=>db.TOP11_CARREIRA.push(r));
+
+    if(typeof FL_closeTop11ModalV3788 === "function") FL_closeTop11ModalV3788();
+    else document.getElementById("fl-top11-modal-v3787")?.remove();
+
+    setStatus("Top 11 salvo.", "ok");
+
+    if(typeof FL_renderTop11UnifiedV3795 === "function") FL_renderTop11UnifiedV3795();
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao salvar Top 11: " + err.message, "error");
+  }finally{
+    window.FL_TOP11_SAVING_V3788 = false;
+    const btn = document.getElementById("fl-top11-save-v3788") || document.getElementById("fl-top11-save-v3787");
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = "Salvar Top 11";
+    }
+  }
+}
+
+// Listener forte para salvar com campos novos.
+document.addEventListener("click", function(e){
+  const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
+  if(!btn) return;
+
+  if(btn.id === "fl-top11-save-v3787" || btn.id === "fl-top11-save-v3788" || /salvar top 11/i.test(btn.textContent || "")){
+    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
+    if(modal){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      FL_saveNewTop11V3795();
+    }
+  }
+}, true);
+
+window.FL_isCreatedPlayerV3795 = FL_isCreatedPlayerV3795;
+window.FL_top11CareerRowsV3795 = FL_top11CareerRowsV3795;
+window.FL_top11UnifiedGroupsV3794 = FL_top11UnifiedGroupsV3795;
+window.FL_enrichTop11PhotosV3790 = FL_enrichTop11PhotosV3795;
+window.FL_enrichTop11BestPhotosV3790 = FL_enrichTop11BestPhotosV3795;
+window.FL_renderTop11UnifiedV3794 = FL_renderTop11UnifiedV3795;
+window.FL_renderTop11UnifiedV3795 = FL_renderTop11UnifiedV3795;
+window.FL_openCreateTop11V3790 = FL_openCreateTop11V3795;
+window.FL_openCreateTop11V3788 = FL_openCreateTop11V3795;
+window.FL_saveNewTop11V3788 = FL_saveNewTop11V3795;
+window.FL_saveNewTop11V3795 = FL_saveNewTop11V3795;
+
+renderTop11 = FL_renderTop11UnifiedV3795;
+window.renderTop11 = FL_renderTop11UnifiedV3795;
