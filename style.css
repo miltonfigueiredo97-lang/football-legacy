@@ -4488,3 +4488,180 @@ body > .remove-season-x-v3793{
 #top11 .top11-empty-v3781{
   display:none!important;
 }
+
+
+/* ===== V3.7.98 EDITAR JOGADOR TOP11 ===== */
+.top11-player-v3796{
+  cursor:pointer;
+}
+
+.top11-player-v3796.editing{
+  cursor:grab;
+}
+
+.fl-modal-backdrop-v3798{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(2,6,23,.72);
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+.fl-modal-card-v3798{
+  width:min(760px,96vw);
+  max-height:92vh;
+  overflow:auto;
+  background:#0f172a;
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:24px;
+  padding:24px;
+  color:#fff;
+  position:relative;
+  box-shadow:0 24px 80px rgba(0,0,0,.5);
+}
+
+.fl-modal-close-v3798{
+  position:absolute;
+  top:16px;
+  right:16px;
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  border:0;
+  background:#1e293b;
+  color:#fff;
+  font-size:26px;
+  font-weight:1000;
+  cursor:pointer;
+}
+
+.fl-modal-card-v3798 h2{
+  margin:0;
+  font-size:26px;
+}
+
+.fl-modal-card-v3798 p{
+  margin:6px 0 18px;
+  color:#bfdbfe;
+  font-weight:800;
+}
+
+.fl-modal-card-v3798 label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  color:#93c5fd;
+  font-weight:900;
+  font-size:13px;
+  margin-bottom:12px;
+}
+
+.fl-modal-card-v3798 input,
+.fl-modal-card-v3798 select{
+  border:1px solid rgba(148,163,184,.26);
+  background:#1e293b;
+  color:#fff;
+  border-radius:13px;
+  padding:12px;
+  font-weight:900;
+  min-width:0;
+}
+
+.fl-grid-2-v3798{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.fl-url-row-v3798{
+  display:grid;
+  grid-template-columns:1fr 110px;
+  gap:10px;
+}
+
+.fl-url-row-v3798 button{
+  border:1px solid rgba(251,191,36,.35);
+  background:rgba(251,191,36,.12);
+  color:#fbbf24;
+  border-radius:13px;
+  font-weight:1000;
+  cursor:pointer;
+}
+
+.fl-preview-v3798{
+  width:112px;
+  height:112px;
+  border-radius:999px;
+  border:2px solid rgba(251,191,36,.6);
+  background:#020617;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fbbf24;
+  font-weight:1000;
+  overflow:hidden;
+  margin:4px 0 16px;
+}
+
+.fl-preview-v3798 img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.fl-modal-actions-v3798{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:16px;
+}
+
+.fl-modal-actions-v3798 button{
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:14px;
+  padding:12px 18px;
+  font-weight:1000;
+  cursor:pointer;
+}
+
+.fl-modal-actions-v3798 .ghost{
+  background:#1e293b;
+  color:#fff;
+}
+
+.fl-modal-actions-v3798 .gold{
+  background:#fbbf24;
+  border-color:#fbbf24;
+  color:#111827;
+}
+
+.top11-create-row-v3787,
+.top11-create-row-v3788{
+  grid-template-columns:34px 80px 1.1fr 80px .85fr .85fr 90px 1.15fr!important;
+}
+
+.top11-created-select-v3798,
+.top11-photo-url-v3798{
+  min-width:0;
+  border:1px solid rgba(148,163,184,.24);
+  background:#1e293b;
+  color:#fff;
+  border-radius:12px;
+  padding:10px;
+  font-weight:800;
+}
+
+.top11-created-select-v3798{
+  color:#fbbf24;
+}
+
+@media (max-width:760px){
+  .fl-grid-2-v3798,
+  .fl-url-row-v3798{
+    grid-template-columns:1fr;
+  }
+}

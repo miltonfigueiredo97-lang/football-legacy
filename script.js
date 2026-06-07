@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.97 top11 career slot fix');
+console.log('Football Legacy script carregado v3.7.98 top11 edit player created');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -17405,4 +17405,473 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 
   setTimeout(removeLostX, 400);
   setTimeout(removeLostX, 1400);
+})();
+
+
+// ===== V3.7.98 — EDITAR JOGADOR DO TOP 11 + CRIADO/FOTO URL =====
+// Funcionalidades:
+// - Clicar em jogador da carreira abre modal de edição.
+// - Edita nome, posição, criado e foto_url.
+// - Se criado = SIM, não busca imagem pela API.
+// - + Top 11 tem campos Criado/API e Foto URL manual.
+
+(function(){
+  const TOP11_BG_V3798 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+
+  function esc(v){
+    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
+    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+  }
+
+  function attr(v){
+    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
+    return String(v ?? "").replace(/"/g,"&quot;");
+  }
+
+  function norm(v){
+    return String(v || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,"");
+  }
+
+  function pick(row, keys){
+    for(const k of keys){
+      if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+    }
+    const n = {};
+    Object.keys(row || {}).forEach(k=>n[norm(k)] = row[k]);
+    for(const k of keys){
+      const nk = norm(k);
+      if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
+    }
+    return "";
+  }
+
+  function initials(name){
+    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+  }
+
+  function isCreated(row){
+    const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
+    return ["sim","s","yes","y","true","1","criado","created"].includes(v);
+  }
+
+  function currentTop11Group(){
+    if(typeof FL_top11CareerRowsV3797 === "function" && typeof FL_top11BaseRowsV3797 === "function"){
+      const allCareer = FL_top11CareerRowsV3797();
+      const allBase = FL_top11BaseRowsV3797();
+
+      const selected =
+        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3797 ||
+        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796 ||
+        "";
+
+      const careerGroups = new Map();
+      allCareer.forEach(r=>{
+        const sid = pick(r, ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) || "";
+        const temp = pick(r, ["temporada","TEMPORADA"]) || "";
+        const key = sid ? `career:${sid}` : `career:${temp}`;
+        if(!careerGroups.has(key)) careerGroups.set(key, {key, source:"career", editable:true, rows:[]});
+        careerGroups.get(key).rows.push(r);
+      });
+
+      const baseGroups = new Map();
+      allBase.forEach(r=>{
+        const ano = r.ano || r.temporada || "";
+        const key = `base:${ano}`;
+        if(!baseGroups.has(key)) baseGroups.set(key, {key, source:"base", editable:false, rows:[]});
+        baseGroups.get(key).rows.push(r);
+      });
+
+      return careerGroups.get(selected) || baseGroups.get(selected) || null;
+    }
+
+    return null;
+  }
+
+  function findCareerRowById(id){
+    const rows =
+      typeof FL_top11CareerRowsV3797 === "function" ? FL_top11CareerRowsV3797() :
+      typeof FL_top11CareerRowsV3795 === "function" ? FL_top11CareerRowsV3795() :
+      (getTable("TOP11_CARREIRA") || []);
+
+    return rows.find(r=>String(r.id || "") === String(id));
+  }
+
+  function openEditTop11PlayerModal(id){
+    const row = findCareerRowById(id);
+
+    if(!row){
+      setStatus("Só dá para editar jogadores do Top 11 da carreira. Base histórica é fixa.", "error");
+      return;
+    }
+
+    const nome = pick(row, ["jogador","JOGADOR"]);
+    const pos = pick(row, ["posicao_tatica","POSICAO_TATICA"]);
+    const origem = pick(row, ["posicao_origem","POSICAO_ORIGEM"]);
+    const criado = isCreated(row) ? "SIM" : "";
+    const foto = pick(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+    const clube = pick(row, ["clube","CLUBE"]);
+    const pais = pick(row, ["pais","PAIS"]);
+    const overall = pick(row, ["overall","OVERALL"]);
+
+    document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "fl-top11-player-edit-modal-v3798";
+    modal.className = "fl-modal-backdrop-v3798";
+    modal.innerHTML = `
+      <div class="fl-modal-card-v3798">
+        <button type="button" class="fl-modal-close-v3798" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">×</button>
+
+        <h2>Editar jogador do Top 11</h2>
+        <p>Altere nome, posição e imagem manual quando o jogador for criado.</p>
+
+        <form id="fl-top11-player-edit-form-v3798">
+          <input type="hidden" name="id" value="${attr(id)}">
+
+          <label>
+            Nome do jogador
+            <input name="jogador" value="${attr(nome)}" required>
+          </label>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Posição
+              <select name="posicao_tatica">
+                ${["GOL","LE","ZAG","LD","VOL","MC","MEI","PE","CA","PD"].map(p=>`
+                  <option value="${p}" ${String(pos).toUpperCase()===p ? "selected" : ""}>${p}</option>
+                `).join("")}
+              </select>
+            </label>
+
+            <label>
+              Posição origem
+              <select name="posicao_origem">
+                ${["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"].map(p=>`
+                  <option value="${p}" ${String(origem).toUpperCase()===p ? "selected" : ""}>${p}</option>
+                `).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Tipo de imagem
+              <select name="criado">
+                <option value="" ${!criado ? "selected" : ""}>Buscar por API</option>
+                <option value="SIM" ${criado ? "selected" : ""}>Criado / usar URL manual</option>
+              </select>
+            </label>
+
+            <label>
+              Overall
+              <input name="overall" value="${attr(overall)}" placeholder="Opcional">
+            </label>
+          </div>
+
+          <label>
+            Foto URL manual
+            <div class="fl-url-row-v3798">
+              <input name="foto_url" value="${attr(foto)}" placeholder="https://res.cloudinary.com/.../jogador.png">
+              <button type="button" onclick="FL_previewTop11PlayerPhotoV3798()">Prévia</button>
+            </div>
+          </label>
+
+          <div id="fl-top11-player-preview-v3798" class="fl-preview-v3798">
+            ${foto ? `<img src="${attr(foto)}" onerror="this.parentElement.innerHTML='URL inválida'">` : `<span>${esc(initials(nome))}</span>`}
+          </div>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Clube
+              <input name="clube" value="${attr(clube)}" placeholder="Opcional">
+            </label>
+
+            <label>
+              País
+              <input name="pais" value="${attr(pais)}" placeholder="Opcional">
+            </label>
+          </div>
+
+          <div class="fl-modal-actions-v3798">
+            <button type="button" class="ghost" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">Cancelar</button>
+            <button type="submit" class="gold">Salvar jogador</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById("fl-top11-player-edit-form-v3798").onsubmit = saveTop11PlayerEdit;
+  }
+
+  function previewTop11PlayerPhoto(){
+    const form = document.getElementById("fl-top11-player-edit-form-v3798");
+    const preview = document.getElementById("fl-top11-player-preview-v3798");
+    if(!form || !preview) return;
+
+    const url = String(form.foto_url.value || "").trim();
+    const nome = String(form.jogador.value || "").trim();
+
+    if(url){
+      preview.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='URL inválida'">`;
+    }else{
+      preview.innerHTML = `<span>${esc(initials(nome))}</span>`;
+    }
+  }
+
+  async function saveTop11PlayerEdit(e){
+    e.preventDefault();
+
+    const form = e.currentTarget;
+    const id = String(form.id.value || "").trim();
+    const original = findCareerRowById(id);
+
+    if(!original){
+      setStatus("Jogador não encontrado na TOP11_CARREIRA.", "error");
+      return;
+    }
+
+    const updated = Object.assign({}, original, {
+      id,
+      jogador: String(form.jogador.value || "").trim(),
+      posicao_tatica: String(form.posicao_tatica.value || "").trim(),
+      posicao_origem: String(form.posicao_origem.value || "").trim(),
+      criado: String(form.criado.value || "").trim(),
+      foto_url: String(form.foto_url.value || "").trim(),
+      clube: String(form.clube.value || "").trim(),
+      pais: String(form.pais.value || "").trim(),
+      overall: String(form.overall.value || "").trim()
+    });
+
+    try{
+      setStatus("Salvando jogador do Top 11...", "loading");
+
+      const result = await apiPost({
+        action:"saveTop11CareerV2",
+        carreira_id: active?.carreira_id || updated.carreira_id || "",
+        carreira_temporada_id: updated.carreira_temporada_id || "",
+        temporada: updated.temporada || "",
+        mapa_url: updated.mapa_url || TOP11_BG_V3798,
+        replace_existing:false,
+        rows:[updated]
+      });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+      }
+
+      if(Array.isArray(window.db?.TOP11_CARREIRA)){
+        const idx = window.db.TOP11_CARREIRA.findIndex(r=>String(r.id || "") === String(id));
+        if(idx >= 0){
+          window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], updated);
+        }
+      }
+
+      document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
+
+      setStatus("Jogador atualizado.", "ok");
+
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
+      else if(typeof renderTop11 === "function") renderTop11();
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao salvar jogador: " + err.message, "error");
+    }
+  }
+
+  function enhanceCreateTop11Modal(){
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form || form.dataset.criadoV3798 === "1") return;
+    form.dataset.criadoV3798 = "1";
+
+    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+
+    rows.forEach((row, idx)=>{
+      if(row.querySelector(`[name="criado_${idx}"]`)) return;
+
+      const criado = document.createElement("select");
+      criado.name = `criado_${idx}`;
+      criado.className = "top11-created-select-v3798";
+      criado.innerHTML = `
+        <option value="">API</option>
+        <option value="SIM">Criado</option>
+      `;
+      criado.title = "Se for criado, usa só a foto_url manual e não busca na API.";
+
+      const foto = document.createElement("input");
+      foto.name = `foto_url_${idx}`;
+      foto.className = "top11-photo-url-v3798";
+      foto.placeholder = "Foto URL manual";
+
+      row.appendChild(criado);
+      row.appendChild(foto);
+    });
+  }
+
+  const originalOpenCreate =
+    window.FL_openCreateTop11V3795 ||
+    window.FL_openCreateTop11V3790 ||
+    window.FL_openCreateTop11V3788 ||
+    window.FL_openCreateTop11V3787 ||
+    null;
+
+  function openCreateTop11WithCreated(){
+    if(originalOpenCreate) originalOpenCreate();
+    setTimeout(enhanceCreateTop11Modal, 120);
+    setTimeout(enhanceCreateTop11Modal, 350);
+  }
+
+  async function saveTop11WithCreatedFromModal(e){
+    const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
+    if(!btn) return;
+
+    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
+    if(!modal) return;
+
+    if(!/salvar top 11/i.test(btn.textContent || "") && btn.id !== "fl-top11-save-v3787" && btn.id !== "fl-top11-save-v3788") return;
+
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    if(window.FL_TOP11_SAVING_V3798) return;
+    window.FL_TOP11_SAVING_V3798 = true;
+
+    try{
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+
+      const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+      const defaults = [
+        ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],
+        ["MEI",52,28],["MEI",52,50],["MEI",52,72],
+        ["PE",78,28],["CA",84,50],["PD",78,72]
+      ];
+
+      const temporada = String(form.temporada?.value || "").trim();
+      const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
+
+      const rows = [];
+      for(let i=0;i<11;i++){
+        const jogador = String(form[`jogador_${i}`]?.value || "").trim();
+        if(!jogador) continue;
+
+        rows.push({
+          carreira_id: active?.carreira_id || "",
+          carreira_temporada_id: carreiraTemporadaId,
+          temporada,
+          posicao_origem: origins[i],
+          posicao_tatica: String(form[`posicao_${i}`]?.value || defaults[i][0]).trim(),
+          jogador,
+          overall: String(form[`overall_${i}`]?.value || "").trim(),
+          clube: String(form[`clube_${i}`]?.value || "").trim(),
+          pais: String(form[`pais_${i}`]?.value || "").trim(),
+          criado: String(form[`criado_${i}`]?.value || "").trim(),
+          foto_url: String(form[`foto_url_${i}`]?.value || "").trim(),
+          x: defaults[i][1],
+          y: defaults[i][2],
+          mapa_url: TOP11_BG_V3798
+        });
+      }
+
+      if(!rows.length){
+        setStatus("Preencha pelo menos um jogador.", "error");
+        return;
+      }
+
+      setStatus("Salvando Top 11...", "loading");
+
+      const result = await apiPost({
+        action:"saveTop11CareerV2",
+        carreira_id: active?.carreira_id || "",
+        carreira_temporada_id: carreiraTemporadaId,
+        temporada,
+        mapa_url: TOP11_BG_V3798,
+        replace_existing:true,
+        rows
+      });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+      }
+
+      if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
+
+      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r=>{
+        const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
+        const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
+        const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
+        return !(sameCareer && (sameSeasonId || sameSeason));
+      });
+
+      (result.data?.rows || rows).forEach(r=>window.db.TOP11_CARREIRA.push(r));
+
+      modal.remove();
+      setStatus("Top 11 salvo.", "ok");
+
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof renderTop11 === "function") renderTop11();
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao salvar Top 11: " + err.message, "error");
+    }finally{
+      window.FL_TOP11_SAVING_V3798 = false;
+      btn.disabled = false;
+      btn.textContent = "Salvar Top 11";
+    }
+  }
+
+  // Clique no jogador do Top 11 da carreira para editar.
+  document.addEventListener("click", function(e){
+    const card = e.target.closest(".top11-player-v3796");
+    if(!card) return;
+
+    const source = card.dataset.source || "";
+    const id = card.dataset.id || "";
+
+    if(source !== "career") return;
+
+    // Em modo de arraste, não abrir edição.
+    if(window.FL_TOP11_EDITING_V3787) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    openEditTop11PlayerModal(id);
+  }, true);
+
+  // Intercepta abertura de + Top11 para adicionar campos Criado/FOTO.
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest("button");
+    if(!btn) return;
+
+    if(/\+\s*top\s*11/i.test(btn.textContent || "")){
+      setTimeout(enhanceCreateTop11Modal, 250);
+      setTimeout(enhanceCreateTop11Modal, 700);
+    }
+  }, true);
+
+  // Intercepta salvamento do modal +Top11 para enviar criado/foto_url.
+  document.addEventListener("click", saveTop11WithCreatedFromModal, true);
+
+  window.FL_openEditTop11PlayerModalV3798 = openEditTop11PlayerModal;
+  window.FL_previewTop11PlayerPhotoV3798 = previewTop11PlayerPhoto;
+  window.FL_openCreateTop11V3798 = openCreateTop11WithCreated;
+  window.FL_openCreateTop11V3795 = openCreateTop11WithCreated;
+  window.FL_openCreateTop11V3790 = openCreateTop11WithCreated;
 })();

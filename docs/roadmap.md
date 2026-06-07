@@ -1,3 +1,3 @@
-# Football Legacy V3.7.97
+# Football Legacy V3.7.98
 
-Corrige Top11_CARREIRA fora do mapa: recalcula slot 0..10 por temporada, ignora x/y inválido ou #### e só usa x/y salvo se for número válido entre 0 e 100.
+Permite clicar em jogador do Top 11 da carreira para editar nome, posição, criado e foto_url. O modal +Top11 recebe campos Criado/API e Foto URL manual por jogador.
