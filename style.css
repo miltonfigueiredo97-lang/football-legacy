@@ -3616,3 +3616,50 @@ body[data-current-page="museu"] #museu{
 #top11 .top11-empty-v3781{
   display:none!important;
 }
+
+
+/* ===== V3.7.89 TOP11 BASE HISTÓRICA ===== */
+.top11-mode-tabs-v3789{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.top11-mode-tabs-v3789 button,
+.top11-head-actions-v3787 button.ghost{
+  border:1px solid rgba(148,163,184,.22);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  border-radius:14px;
+  padding:11px 14px;
+  font-weight:1000;
+  cursor:pointer;
+}
+
+.top11-mode-tabs-v3789 button.gold,
+.top11-head-actions-v3787 button.gold{
+  background:#fbbf24;
+  border-color:#fbbf24;
+  color:#111827;
+}
+
+.top11-base-player-v3789{
+  pointer-events:none;
+}
+
+.top11-base-empty-v3789{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  text-align:center;
+  gap:8px;
+}
+
+.top11-base-empty-v3789 span{
+  color:#93c5fd;
+  font-weight:800;
+}

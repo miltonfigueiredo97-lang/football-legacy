@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.88 top11 save no duplicates');
+console.log('Football Legacy script carregado v3.7.89 top11 base historica');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -13799,3 +13799,165 @@ window.FL_saveNewTop11V3787 = FL_saveNewTop11V3788;
 window.FL_saveNewTop11V3788 = FL_saveNewTop11V3788;
 window.FL_closeTop11ModalV3788 = FL_closeTop11ModalV3788;
 window.FL_saveTop11PositionsV3788 = FL_saveTop11PositionsV3788;
+
+
+// ===== V3.7.89 TOP11 BASE HISTÓRICA + TOP11 CARREIRA =====
+// Corrige estrutura:
+// - TOP11_BASE = base histórica fixa, colada manualmente.
+// - TOP11_CARREIRA = Top 11 mutável da carreira.
+// - Dashboard passa a ler as duas.
+// - Top 11 da carreira continua editável.
+// - Top 11 histórico aparece separado e não salva/edita.
+
+let FL_TOP11_VIEW_MODE_V3789 = "carreira"; // carreira | base
+let FL_TOP11_BASE_YEAR_V3789 = "";
+
+function FL_normV3789(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_escapeV3789(value){
+  return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
+}
+
+function FL_escapeAttrV3789(value){
+  return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
+}
+
+function FL_top11FixedBgV3789(){
+  return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+}
+
+function FL_top11BaseRowsV3789(){
+  return getTable("TOP11_BASE") || [];
+}
+
+function FL_top11BaseYearsV3789(){
+  const years = [...new Set(FL_top11BaseRowsV3789().map(r => r.ano || r.temporada).filter(Boolean))];
+  years.sort((a,b)=>String(b).localeCompare(String(a)));
+  if(!FL_TOP11_BASE_YEAR_V3789 && years.length) FL_TOP11_BASE_YEAR_V3789 = years[0];
+  return years;
+}
+
+function FL_selectedTop11BaseRowsV3789(){
+  const years = FL_top11BaseYearsV3789();
+  const year = FL_TOP11_BASE_YEAR_V3789 || years[0] || "";
+
+  return FL_top11BaseRowsV3789()
+    .filter(r => String(r.ano || r.temporada || "") === String(year))
+    .sort((a,b)=>Number(a.id || 0)-Number(b.id || 0));
+}
+
+function FL_initialsV3789(name){
+  const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+}
+
+function FL_top11BaseCardHtmlV3789(row, idx){
+  const x = row.x !== undefined && row.x !== "" ? Number(row.x) : 50;
+  const y = row.y !== undefined && row.y !== "" ? Number(row.y) : 50;
+  const name = row.jogador || "Jogador";
+  const pos = row.posicao_tatica || row.posicao_origem || "";
+
+  return `
+    <div class="top11-player-v3787 top11-base-player-v3789"
+         style="left:${x}%; top:${y}%;">
+      <div class="top11-photo-v3787">
+        ${FL_escapeV3789(FL_initialsV3789(name))}
+      </div>
+      <div class="top11-info-v3787">
+        <b>${FL_escapeV3789(name)}</b>
+        <span>${FL_escapeV3789(pos)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function FL_renderTop11BaseV3789(){
+  const page = document.getElementById("top11");
+  if(!page) return;
+
+  const years = FL_top11BaseYearsV3789();
+  const rows = FL_selectedTop11BaseRowsV3789();
+
+  page.innerHTML = `
+    <div class="top11-page-head-v3787">
+      <div>
+        <h2>Top 11</h2>
+        <p>Base histórica fixa e Top 11 da carreira ficam separados.</p>
+        <small>Base histórica não é editável. Para editar, use Top 11 da carreira.</small>
+      </div>
+
+      <div class="top11-head-actions-v3787">
+        <button type="button" class="${FL_TOP11_VIEW_MODE_V3789 === "carreira" ? "gold" : "ghost"}" onclick="FL_TOP11_VIEW_MODE_V3789='carreira'; FL_renderTop11V3789();">Top 11 Carreira</button>
+        <button type="button" class="${FL_TOP11_VIEW_MODE_V3789 === "base" ? "gold" : "ghost"}" onclick="FL_TOP11_VIEW_MODE_V3789='base'; FL_renderTop11V3789();">Top 11 Base</button>
+
+        ${years.length ? `
+          <select onchange="FL_TOP11_BASE_YEAR_V3789=this.value; FL_renderTop11V3789();">
+            ${years.map(y=>`
+              <option value="${FL_escapeAttrV3789(y)}" ${String(y) === String(FL_TOP11_BASE_YEAR_V3789) ? "selected" : ""}>${FL_escapeV3789(y)}</option>
+            `).join("")}
+          </select>
+        ` : ""}
+      </div>
+    </div>
+
+    <section class="top11-map-section-v3787">
+      <div class="top11-map-toolbar-v3787">
+        <strong>Top 11 Base ${FL_escapeV3789(FL_TOP11_BASE_YEAR_V3789 || "")}</strong>
+        <span>Histórico fixo</span>
+      </div>
+
+      <div class="top11-pitch-v3787"
+           style="background-image:linear-gradient(rgba(2,6,23,.08),rgba(2,6,23,.18)),url('${FL_escapeAttrV3789(FL_top11FixedBgV3789())}')">
+        ${rows.length ? rows.map(FL_top11BaseCardHtmlV3789).join("") : `
+          <div class="top11-base-empty-v3789">
+            <b>Nenhuma base histórica encontrada.</b>
+            <span>Crie/cole dados na aba TOP11_BASE.</span>
+          </div>
+        `}
+      </div>
+    </section>
+  `;
+}
+
+const FL_renderCareerTop11OriginalV3789 =
+  typeof FL_renderTop11V3787 === "function" ? FL_renderTop11V3787 :
+  typeof FL_renderTop11CleanV3786 === "function" ? FL_renderTop11CleanV3786 :
+  typeof renderTop11 === "function" ? renderTop11 : null;
+
+function FL_renderTop11V3789(){
+  if(FL_TOP11_VIEW_MODE_V3789 === "base"){
+    FL_renderTop11BaseV3789();
+    return;
+  }
+
+  if(FL_renderCareerTop11OriginalV3789){
+    FL_renderCareerTop11OriginalV3789();
+  }
+
+  // Injeta botões de alternância no modo carreira também.
+  setTimeout(()=>{
+    const head = document.querySelector("#top11 .top11-page-head-v3787");
+    if(!head || head.querySelector(".top11-mode-tabs-v3789")) return;
+
+    const tabs = document.createElement("div");
+    tabs.className = "top11-mode-tabs-v3789";
+    tabs.innerHTML = `
+      <button type="button" class="gold" onclick="FL_TOP11_VIEW_MODE_V3789='carreira'; FL_renderTop11V3789();">Top 11 Carreira</button>
+      <button type="button" class="ghost" onclick="FL_TOP11_VIEW_MODE_V3789='base'; FL_renderTop11V3789();">Top 11 Base</button>
+    `;
+
+    const actions = head.querySelector(".top11-head-actions-v3787") || head;
+    actions.prepend(tabs);
+  }, 50);
+}
+
+renderTop11 = FL_renderTop11V3789;
+window.renderTop11 = FL_renderTop11V3789;
+window.FL_renderTop11V3789 = FL_renderTop11V3789;
+window.FL_renderTop11BaseV3789 = FL_renderTop11BaseV3789;

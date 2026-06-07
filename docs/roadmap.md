@@ -1,3 +1,3 @@
-# Football Legacy V3.7.88
+# Football Legacy V3.7.89
 
-Corrige o salvamento do Top 11: botão Salvar Top 11 agora desativa enquanto salva, fecha o modal ao concluir e impede duplo clique. O payload envia replace_existing=true para evitar duplicatas na mesma temporada.
+Top 11 passa a ler TOP11_BASE como base histórica fixa e TOP11_CARREIRA como Top 11 editável da carreira. Adiciona alternância Top 11 Carreira / Top 11 Base.
