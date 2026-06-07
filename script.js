@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.77 ballon no overwrite edits');
+console.log('Football Legacy script carregado v3.7.78 ballon save column index');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -10100,3 +10100,235 @@ document.addEventListener("click", function(){
 
 window.FL_fillSeasonV3777 = FL_fillSeasonV3777;
 window.FL_attachBallonNoOverwriteV3777 = FL_attachBallonNoOverwriteV3777;
+
+
+// ===== V3.7.78 BOLA DE OURO SALVAR POR ÍNDICE DE COLUNA =====
+// Corrige bug onde o salvamento copiava a primeira linha em todas as posições.
+// Agora o payload usa:
+// jogador[i], país[i], clube[i], idade[i], valor[i]
+
+function FL_keyV3778(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"");
+}
+
+function FL_isBallonModalV3778(){
+  const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
+  const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
+  return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
+}
+
+function FL_fieldTypeV3778(input){
+  const key = FL_keyV3778([
+    input.name,
+    input.id,
+    input.placeholder,
+    input.dataset?.field,
+    input.getAttribute("aria-label")
+  ].join(" "));
+
+  if(input.type === "file") return "file";
+  if(key.includes("temporada") || key === "ano" || key.includes("anoboladeouro")) return "season";
+  if(key.includes("imagem") || key.includes("image") || key.includes("url")) return "image";
+
+  if(key.includes("jogador") || key.includes("player") || key === "nome") return "jogador";
+  if(key.includes("pais") || key.includes("nacionalidade") || key.includes("country")) return "pais";
+  if(key.includes("clube") || key.includes("club") || key.includes("time") || key.includes("team")) return "clube";
+  if(key.includes("idade") || key.includes("age")) return "idade";
+  if(key.includes("valor") || key.includes("mercado") || key.includes("market") || key.includes("euro") || key.includes("90m")) return "valor";
+
+  return "";
+}
+
+function FL_columnsV3778(){
+  const root = form || document;
+  const result = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
+
+  const inputs = [...root.querySelectorAll("input,select,textarea")]
+    .filter(input => input.type !== "file");
+
+  inputs.forEach(input=>{
+    const type = FL_fieldTypeV3778(input);
+    if(result[type]) result[type].push(input);
+  });
+
+  // O modal atual tem ordem visual fixa:
+  // temporada + imagem, depois 10 blocos de 5 campos:
+  // jogador, país, clube, idade, valor.
+  // Usamos fallback se a detecção por placeholder não pegou 10 campos.
+  const needsFallback = Object.values(result).some(arr => arr.length < 10);
+
+  if(needsFallback){
+    const dataInputs = inputs.filter(input=>{
+      const type = FL_fieldTypeV3778(input);
+      return type !== "season" && type !== "image" && type !== "file";
+    });
+
+    const fallback = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
+
+    for(let i=0;i<10;i++){
+      const base = i * 5;
+      if(dataInputs[base]) fallback.jogador.push(dataInputs[base]);
+      if(dataInputs[base+1]) fallback.pais.push(dataInputs[base+1]);
+      if(dataInputs[base+2]) fallback.clube.push(dataInputs[base+2]);
+      if(dataInputs[base+3]) fallback.idade.push(dataInputs[base+3]);
+      if(dataInputs[base+4]) fallback.valor.push(dataInputs[base+4]);
+    }
+
+    Object.keys(result).forEach(k=>{
+      if(fallback[k].length > result[k].length) result[k] = fallback[k];
+    });
+  }
+
+  return result;
+}
+
+function FL_cleanUrlV3778(value){
+  const raw = String(value || "").trim();
+  if(!raw) return "";
+  if(raw.toLowerCase().includes("fakepath")) return "";
+  if(raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  return "";
+}
+
+function FL_getBallonImageV3778(){
+  const root = form || document;
+
+  const candidates = [...root.querySelectorAll("input,select,textarea")]
+    .filter(input => input.type !== "file")
+    .filter(input => FL_fieldTypeV3778(input) === "image");
+
+  for(const input of candidates){
+    const url = FL_cleanUrlV3778(input.value);
+    if(url) return url;
+  }
+
+  return "";
+}
+
+function FL_normalizeSeasonV3778(value){
+  const raw = String(value || "").trim();
+
+  let m = raw.match(/-\s*(\d{4})$/);
+  if(m) return m[1];
+
+  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return m[2];
+
+  m = raw.match(/(\d{4})/);
+  if(m) return m[1];
+
+  return raw;
+}
+
+function FL_getBallonSeasonV3778(){
+  const root = form || document;
+  const input =
+    root.querySelector("[name='temporada']") ||
+    root.querySelector("[name='ano']") ||
+    root.querySelector("#ballonSeason") ||
+    root.querySelector("select");
+
+  return FL_normalizeSeasonV3778(input?.value || "");
+}
+
+function FL_getBallonRowsForSaveV3778(){
+  const c = FL_columnsV3778();
+  const rows = [];
+
+  for(let i=0;i<10;i++){
+    const jogador = String(c.jogador[i]?.value || "").trim();
+    const pais = String(c.pais[i]?.value || "").trim();
+    const clube = String(c.clube[i]?.value || "").trim();
+    const idade = String(c.idade[i]?.value || "").trim();
+    const valor = String(c.valor[i]?.value || "").trim();
+
+    if(!jogador) continue;
+
+    rows.push({
+      posicao: i + 1,
+      jogador,
+      pais,
+      nacionalidade: pais,
+      clube,
+      idade,
+      idade_na_premiacao: idade,
+      valor_mercado: valor,
+      observacao: "",
+      overall: "",
+      carreira_temporada_id: ""
+    });
+  }
+
+  console.log("Bola de Ouro rows para salvar v3.7.78:", rows);
+
+  return rows;
+}
+
+async function FL_saveBallonRankingV3778(){
+  const btn = $("saveBtn") || document.querySelector(".gold-btn") || document.querySelector("button[type='submit']");
+  if(btn && btn.disabled) return;
+
+  const temporada = FL_getBallonSeasonV3778();
+  const imagem = FL_getBallonImageV3778();
+  const rows = FL_getBallonRowsForSaveV3778();
+
+  if(!temporada){
+    setStatus("Erro ao salvar Bola de Ouro: temporada vazia.", "error");
+    return;
+  }
+
+  if(!rows.length){
+    setStatus("Erro ao salvar Bola de Ouro: nenhum jogador preenchido.", "error");
+    return;
+  }
+
+  setButtonSaving(btn);
+
+  try{
+    const result = await apiPost({
+      action: "saveBallonCareerRankingV2",
+      carreira_id: active?.carreira_id || "",
+      temporada,
+      imagem_destaque_url: imagem,
+      rows
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+    }
+
+    if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
+    db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r => String(r.temporada) !== String(temporada));
+
+    const saved = result.data?.rows || [];
+    saved.forEach(r => db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {__source:"career"})));
+
+    clearButtonSaving(btn);
+    closeModal();
+    renderAll();
+    setStatus("Ranking Bola de Ouro salvo corretamente.", "ok");
+  }catch(err){
+    clearButtonSaving(btn);
+    console.error(err);
+    setStatus("Erro ao salvar Bola de Ouro: " + err.message, "error");
+  }
+}
+
+// Força todas as versões antigas do save a usarem a coleta correta por índice.
+window.saveBallonRankingCareerV3761 = FL_saveBallonRankingV3778;
+window.saveBallonRankingCareerV3762 = FL_saveBallonRankingV3778;
+window.saveBallonRankingCareerV3764 = FL_saveBallonRankingV3778;
+window.FL_saveBallonRanking_3766 = FL_saveBallonRankingV3778;
+window.FL_saveBallonRankingV3778 = FL_saveBallonRankingV3778;
+
+document.addEventListener("submit", function(e){
+  if(!FL_isBallonModalV3778()) return;
+
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  FL_saveBallonRankingV3778();
+}, true);
