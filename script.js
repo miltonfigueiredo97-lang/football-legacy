@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.63 soft save ballon selection badge');
+console.log('Football Legacy script carregado v3.7.65 use global save clean');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8467,12 +8467,14 @@ if(__openFormOriginalV3760 && !window.__openFormSelectionWrappedV3760){
 window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
 
 
-// ===== V3.7.63 SOFT SAVE BOLA DE OURO + EMBLEMA SELEÇÃO =====
-// NÃO mexe em formatação.
-// Corrige:
-// 1) salvando infinito do Bola de Ouro quando o proxy Vercel dá 504 mas a planilha grava;
-// 2) renderSidebar/renderEstatisticas undefined;
-// 3) emblema da seleção com fallback local + busca API.
+
+
+
+// ===== V3.7.64 CLEAN SAVE BOLA DE OURO + SELEÇÃO =====
+// Não mexe na formatação.
+// Corrige salvamento por action direta.
+// Corrige leitura das colunas do modal Bola de Ouro.
+// Corrige seleção usando action direta, evitando loop de create/update genérico.
 
 if(typeof renderSidebar !== "function"){
   window.renderSidebar = function(){};
@@ -8482,9 +8484,7 @@ if(typeof renderEstatisticas !== "function" && typeof renderStats === "function"
   window.renderEstatisticas = renderStats;
 }
 
-const selectionBadgeCacheV3763 = {};
-
-function flKeyV3763(value){
+function flKeyV3764(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -8492,12 +8492,10 @@ function flKeyV3763(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function normalizeSelectionNameV3763(value){
-  if(typeof normalizeSelectionNameV3760 === "function"){
-    return normalizeSelectionNameV3760(value);
-  }
+function normalizeSelectionNameV3764(value){
   const raw = String(value || "").trim();
-  const key = flKeyV3763(raw);
+  const key = flKeyV3764(raw);
+
   const aliases = {
     brasileiro:"Brasil", brasileira:"Brasil", brasil:"Brasil", brazil:"Brasil",
     argentino:"Argentina", argentina:"Argentina",
@@ -8510,12 +8508,13 @@ function normalizeSelectionNameV3763(value){
     holandes:"Holanda", holandesa:"Holanda", holanda:"Holanda", netherlands:"Holanda",
     uruguaio:"Uruguai", uruguaia:"Uruguai", uruguai:"Uruguai", uruguay:"Uruguai"
   };
+
   return aliases[key] || raw;
 }
 
-function getSelectionBadgeLocalV3763(name){
-  const norm = normalizeSelectionNameV3763(name);
-  const key = flKeyV3763(norm);
+function getSelectionBadgeV3760(name){
+  const norm = normalizeSelectionNameV3764(name);
+  const key = flKeyV3764(norm);
 
   const map = {
     brasil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
@@ -8541,128 +8540,131 @@ function getSelectionBadgeLocalV3763(name){
   return map[key] || "";
 }
 
-// Sobrescreve a função de emblema da seleção mantendo a formatação atual.
-window.getSelectionBadgeV3760 = function(name){
-  return getSelectionBadgeLocalV3763(name);
-};
-
-async function fetchSelectionBadgeV3763(name){
-  const norm = normalizeSelectionNameV3763(name);
-  const key = flKeyV3763(norm);
-  if(!key) return "";
-
-  if(selectionBadgeCacheV3763[key] !== undefined) return selectionBadgeCacheV3763[key];
-
-  const local = getSelectionBadgeLocalV3763(norm);
-  if(local){
-    selectionBadgeCacheV3763[key] = local;
-    return local;
+// ---------- API POST DIRETA ----------
+async function apiPostDirectV3764(payload){
+  const result = await apiPost(payload);
+  if(!result || !result.ok){
+    throw new Error(result?.error || "Apps Script não confirmou salvamento.");
   }
-
-  try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(norm)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const teams = data?.teams || [];
-    const found = teams.find(t=>{
-      const type = flKeyV3763(t.strTeamType || "");
-      const team = flKeyV3763(t.strTeam || "");
-      return team.includes(key) || key.includes(team) || type.includes("national");
-    }) || teams[0];
-
-    const badge = found?.strBadge || "";
-    selectionBadgeCacheV3763[key] = badge;
-    return badge;
-  }catch(err){
-    console.warn("Falha ao buscar emblema da seleção:", norm, err);
-    selectionBadgeCacheV3763[key] = "";
-    return "";
-  }
+  return result;
 }
 
-async function enrichSelectionBadgesV3763(){
-  const nodes = [...document.querySelectorAll(".season-selection-badge-v3760, .selection-career-card-v3760 .club-crest-wrap")]
-    .filter(el=>!el.querySelector("img"));
+// ---------- SELEÇÃO: ACTION DIRETA ----------
+async function saveSelectionSeasonDirectV3764(season, old, record, btn){
+  const payload = {
+    action:"saveSelectionSeason",
+    record
+  };
 
-  for(const el of nodes){
-    const cardText = el.closest(".season-selection-card-v3760,.selection-career-card-v3760")?.textContent || "";
-    const name = cardText.split("\n").map(s=>s.trim()).filter(Boolean)[0] || "";
-    const badge = await fetchSelectionBadgeV3763(name);
+  if(old?.id) payload.id = old.id;
 
-    if(badge && el.isConnected && !el.querySelector("img")){
-      el.innerHTML = `<img src="${escapeAttr(badge)}" onerror="this.parentElement.innerHTML='🌎'">`;
-    }
+  const result = await apiPostDirectV3764(payload);
+
+  if(!Array.isArray(db.SELECOES_CARREIRA)) db.SELECOES_CARREIRA = [];
+
+  const savedId = result?.data?.id || old?.id || result?.id || ("local_" + Date.now());
+
+  if(old?.id){
+    const idx = db.SELECOES_CARREIRA.findIndex(r=>String(r.id)===String(old.id));
+    if(idx >= 0) db.SELECOES_CARREIRA[idx] = Object.assign({}, db.SELECOES_CARREIRA[idx], record, {id:savedId});
+    else db.SELECOES_CARREIRA.push(Object.assign({}, record, {id:savedId}));
+  }else{
+    db.SELECOES_CARREIRA.push(Object.assign({}, record, {id:savedId}));
   }
+
+  return result;
 }
 
-// Soft save: o Google Sheets está gravando, mas o proxy retorna 504 e deixa o botão infinito.
-// Aqui não esperamos a resposta eterna do proxy. Atualizamos a tela e deixamos a requisição terminar em background.
-function getBallonSeasonSoftV3763(){
+// Substitui apenas o submit dentro do modal de seleção depois que ele abrir.
+const __openSelectionSeasonModalV3760_original_v3764 = typeof openSelectionSeasonModalV3760 === "function" ? openSelectionSeasonModalV3760 : null;
+if(__openSelectionSeasonModalV3760_original_v3764 && !window.__openSelectionSeasonModalWrappedV3764){
+  window.__openSelectionSeasonModalWrappedV3764 = true;
+
+  openSelectionSeasonModalV3760 = function(seasonId){
+    __openSelectionSeasonModalV3760_original_v3764(seasonId);
+
+    setTimeout(()=>{
+      try{
+        const season = getCareerSeasonRecords().find(s=>String(s.id)===String(seasonId));
+        if(!season || !form) return;
+
+        const old = typeof getSelectionRowForSeasonV3760 === "function"
+          ? (getSelectionRowForSeasonV3760(season) || {})
+          : {};
+
+        form.onsubmit = async e=>{
+          e.preventDefault();
+
+          const btn = $("saveBtn");
+          if(btn && btn.disabled) return;
+          setButtonSaving(btn);
+
+          try{
+            const data = Object.fromEntries(new FormData(form).entries());
+            const record = {
+              carreira_id: active.carreira_id || "",
+              personagem_id: active.protagonista_id || "",
+              carreira_temporada_id: season.id || "",
+              temporada: season.temporada || "",
+              selecao: normalizeSelectionNameV3764(data.selecao || ""),
+              jogos: data.jogos || "",
+              gols: data.gols || "",
+              assistencias: data.assistencias || "",
+              titulos: data.titulos || "",
+              observacao: data.observacao || ""
+            };
+
+            await saveSelectionSeasonDirectV3764(season, old, record, btn);
+
+            clearButtonSaving(btn);
+            closeModal();
+            renderAll();
+            setStatus("Seleção salva.", "ok");
+          }catch(err){
+            clearButtonSaving(btn);
+            console.error(err);
+            setStatus("Erro ao salvar seleção: " + err.message, "error");
+          }
+        };
+      }catch(err){
+        console.warn("Falha wrapper seleção v3.7.64:", err);
+      }
+    }, 80);
+  };
+
+  window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
+}
+
+// ---------- BOLA DE OURO ----------
+function normalizeBallonSeasonValueV3764(value){
+  const raw = String(value || "").trim();
+
+  let m = raw.match(/-\s*(\d{4})$/);
+  if(m) return m[1];
+
+  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return m[2];
+
+  m = raw.match(/(\d{4})/);
+  if(m) return m[1];
+
+  return raw;
+}
+
+function getBallonSeasonFromModalV3764(){
   const root = form || document;
+
   const value =
     root.querySelector("[name='temporada']")?.value ||
     root.querySelector("[name='ano']")?.value ||
     root.querySelector("#ballonSeason")?.value ||
     root.querySelector("select")?.value ||
-    (typeof getActiveBallonSeason === "function" ? getActiveBallonSeason() : "") ||
     "";
 
-  const raw = String(value || "").trim();
-  let m = raw.match(/-\s*(\d{4})$/);
-  if(m) return m[1];
-  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
-  if(m) return m[2];
-  m = raw.match(/(\d{4})/);
-  if(m) return m[1];
-  return raw;
+  return normalizeBallonSeasonValueV3764(value);
 }
 
-function getBallonRowsSoftV3763(){
-  const root = form || document;
-  const rows = [];
-
-  const lineBlocks = [...root.querySelectorAll("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row")]
-    .filter(el=>el.querySelectorAll("input,select,textarea").length >= 3);
-
-  if(lineBlocks.length){
-    lineBlocks.forEach((el,idx)=>{
-      const inputs = [...el.querySelectorAll("input,select,textarea")];
-      const jogador = inputs[0]?.value || "";
-      if(!String(jogador).trim()) return;
-      rows.push({
-        posicao:idx+1,
-        jogador:String(jogador).trim(),
-        pais:String(inputs[1]?.value || "").trim(),
-        nacionalidade:String(inputs[1]?.value || "").trim(),
-        clube:String(inputs[2]?.value || "").trim(),
-        idade:String(inputs[3]?.value || "").trim(),
-        idade_na_premiacao:String(inputs[3]?.value || "").trim(),
-        valor_mercado:String(inputs[4]?.value || "").trim()
-      });
-    });
-    return rows.slice(0,10);
-  }
-
-  const allInputs = [...root.querySelectorAll("input,select,textarea")];
-  for(let i=0;i<10;i++){
-    const base = i * 5;
-    const jogador = allInputs[base]?.value || "";
-    if(!String(jogador).trim()) continue;
-    rows.push({
-      posicao:i+1,
-      jogador:String(jogador).trim(),
-      pais:String(allInputs[base+1]?.value || "").trim(),
-      nacionalidade:String(allInputs[base+1]?.value || "").trim(),
-      clube:String(allInputs[base+2]?.value || "").trim(),
-      idade:String(allInputs[base+3]?.value || "").trim(),
-      idade_na_premiacao:String(allInputs[base+3]?.value || "").trim(),
-      valor_mercado:String(allInputs[base+4]?.value || "").trim()
-    });
-  }
-  return rows.slice(0,10);
-}
-
-function getBallonImageSoftV3763(){
+function getBallonWinnerImageV3764(){
   const root = form || document;
   return (
     root.querySelector("[name='imagem_destaque_url']")?.value ||
@@ -8673,16 +8675,86 @@ function getBallonImageSoftV3763(){
   );
 }
 
-function saveBallonRankingSoftV3763(){
+function getBallonRowsV3764(){
+  const root = form || document;
+  const rows = [];
+
+  // O modal atual tem campos por linha. Vamos pegar por blocos de inputs.
+  const blocks = [...root.querySelectorAll("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row")]
+    .filter(el=>el.querySelectorAll("input,select,textarea").length >= 3);
+
+  if(blocks.length){
+    blocks.forEach((block,idx)=>{
+      const inputs = [...block.querySelectorAll("input,select,textarea")];
+
+      const byName = name => block.querySelector(`[name='${name}'],[data-field='${name}']`)?.value || "";
+
+      const jogador = byName("jogador") || byName("nome") || inputs[0]?.value || "";
+      if(!String(jogador).trim()) return;
+
+      const pais = byName("pais") || byName("país") || byName("nacionalidade") || inputs[1]?.value || "";
+      const clube = byName("clube") || byName("club") || byName("time") || inputs[2]?.value || "";
+      const idade = byName("idade") || byName("idade_na_premiacao") || inputs[3]?.value || "";
+      const valor = byName("valor_mercado") || byName("valor") || inputs[4]?.value || "";
+
+      rows.push({
+        posicao: idx + 1,
+        jogador: String(jogador).trim(),
+        pais: String(pais).trim(),
+        nacionalidade: String(pais).trim(),
+        clube: String(clube).trim(),
+        idade: String(idade).trim(),
+        idade_na_premiacao: String(idade).trim(),
+        valor_mercado: String(valor).trim()
+      });
+    });
+
+    return rows.slice(0,10);
+  }
+
+  // Fallback para tabela sem classes: detecta inputs por placeholder/ordem, ignorando campos de temporada e imagem.
+  const allInputs = [...root.querySelectorAll("input,select,textarea")]
+    .filter(input=>{
+      const name = String(input.name || "").toLowerCase();
+      const placeholder = String(input.placeholder || "").toLowerCase();
+      if(name.includes("temporada") || name.includes("ano")) return false;
+      if(name.includes("imagem") || placeholder.includes("url")) return false;
+      return true;
+    });
+
+  for(let i=0; i<10; i++){
+    const base = i * 5;
+    const jogador = allInputs[base]?.value || "";
+    if(!String(jogador).trim()) continue;
+
+    rows.push({
+      posicao: i + 1,
+      jogador: String(jogador).trim(),
+      pais: String(allInputs[base+1]?.value || "").trim(),
+      nacionalidade: String(allInputs[base+1]?.value || "").trim(),
+      clube: String(allInputs[base+2]?.value || "").trim(),
+      idade: String(allInputs[base+3]?.value || "").trim(),
+      idade_na_premiacao: String(allInputs[base+3]?.value || "").trim(),
+      valor_mercado: String(allInputs[base+4]?.value || "").trim()
+    });
+  }
+
+  return rows.slice(0,10);
+}
+
+async function saveBallonRankingCareerV3764(){
   const btn = $("saveBtn") || document.querySelector(".gold-btn") || document.querySelector("button[type='submit']");
-  const temporada = getBallonSeasonSoftV3763();
-  const rows = getBallonRowsSoftV3763();
-  const imagem = getBallonImageSoftV3763();
+  if(btn && btn.disabled) return;
+
+  const temporada = getBallonSeasonFromModalV3764();
+  const imagem = getBallonWinnerImageV3764();
+  const rows = getBallonRowsV3764();
 
   if(!temporada){
     setStatus("Erro ao salvar Bola de Ouro: temporada vazia.", "error");
     return;
   }
+
   if(!rows.length){
     setStatus("Erro ao salvar Bola de Ouro: preencha pelo menos um jogador.", "error");
     return;
@@ -8690,47 +8762,48 @@ function saveBallonRankingSoftV3763(){
 
   setButtonSaving(btn);
 
-  const payload = {
-    action:"saveBallonCareerRanking",
-    temporada,
-    imagem_destaque_url:imagem,
-    rows
-  };
-
-  // dispara salvamento real em background
-  apiPost(payload).then(result=>{
-    console.log("Bola de Ouro salvo:", result);
-  }).catch(err=>{
-    console.warn("Bola de Ouro: proxy respondeu erro/timeout, mas a planilha pode ter gravado:", err);
-  });
-
-  // atualiza local sem esperar o proxy
-  if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
-  db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r=>String(r.temporada) !== String(temporada));
-
-  rows.forEach(r=>{
-    db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {
+  try{
+    const result = await apiPostDirectV3764({
+      action:"saveBallonCareerRanking",
       temporada,
-      ano:temporada,
-      carreira_id:active?.carreira_id || 1,
-      imagem_url:r.posicao === 1 ? imagem : "",
-      imagem_destaque_url:r.posicao === 1 ? imagem : "",
-      __source:"career",
-      id:"local_"+Date.now()+"_"+r.posicao
-    }));
-  });
+      imagem_destaque_url: imagem,
+      rows
+    });
 
-  setTimeout(()=>{
+    if(!Array.isArray(db.BOLA_DE_OURO_CARREIRA)) db.BOLA_DE_OURO_CARREIRA = [];
+
+    db.BOLA_DE_OURO_CARREIRA = db.BOLA_DE_OURO_CARREIRA.filter(r=>String(r.temporada) !== String(temporada));
+
+    const saved = result?.data?.rows || [];
+    if(saved.length){
+      saved.forEach(r=>db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {__source:"career"})));
+    }else{
+      rows.forEach(r=>db.BOLA_DE_OURO_CARREIRA.push(Object.assign({}, r, {
+        temporada,
+        ano: temporada,
+        carreira_id: active?.carreira_id || "",
+        imagem_url: r.posicao === 1 ? imagem : "",
+        imagem_destaque_url: r.posicao === 1 ? imagem : "",
+        __source:"career",
+        id:"local_" + Date.now() + "_" + r.posicao
+      })));
+    }
+
     clearButtonSaving(btn);
     closeModal();
-    if(typeof renderAll === "function") renderAll();
-    setStatus("Ranking enviado para a planilha. Se o proxy mostrar 504, aguarde alguns segundos e atualize.", "ok");
-  }, 900);
+    renderAll();
+    setStatus("Ranking Bola de Ouro salvo na planilha.", "ok");
+  }catch(err){
+    clearButtonSaving(btn);
+    console.error(err);
+    setStatus("Erro ao salvar Bola de Ouro: " + err.message, "error");
+  }
 }
 
-// Garante que qualquer versão antiga chame a correção nova.
-window.saveBallonRankingCareerV3761 = saveBallonRankingSoftV3763;
-window.saveBallonRankingCareerV3762 = saveBallonRankingSoftV3763;
+window.saveBallonRankingCareerV3761 = saveBallonRankingCareerV3764;
+window.saveBallonRankingCareerV3762 = saveBallonRankingCareerV3764;
+window.saveBallonRankingSoftV3763 = saveBallonRankingCareerV3764;
+window.saveBallonRankingCareerV3764 = saveBallonRankingCareerV3764;
 
 document.addEventListener("submit", function(e){
   const title = (modalTitle?.textContent || "").toLowerCase();
@@ -8740,23 +8813,11 @@ document.addEventListener("submit", function(e){
   if(isBallon){
     e.preventDefault();
     e.stopImmediatePropagation();
-    saveBallonRankingSoftV3763();
+    saveBallonRankingCareerV3764();
   }
 }, true);
 
-const __renderAllOriginalV3763 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3763 && !window.__renderAllBadgesWrappedV3763){
-  window.__renderAllBadgesWrappedV3763 = true;
-  renderAll = function(){
-    const result = __renderAllOriginalV3763.apply(this, arguments);
-    setTimeout(enrichSelectionBadgesV3763, 300);
-    setTimeout(enrichSelectionBadgesV3763, 1200);
-    return result;
-  };
-}
 
-document.addEventListener("click", function(){
-  setTimeout(enrichSelectionBadgesV3763, 400);
-}, true);
-
-window.enrichSelectionBadgesV3763 = enrichSelectionBadgesV3763;
+// ===== V3.7.65 GLOBAL SAVE CLEAN CLIENT =====
+// Sem alteração visual. Apenas melhora mensagem de erro de salvamento.
+window.__footballLegacySaveClean = true;

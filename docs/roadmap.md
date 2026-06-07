@@ -1,3 +1,3 @@
-# Football Legacy V3.7.63
+# Football Legacy V3.7.65
 
-Correções sem mexer na formatação: soft save para Bola de Ouro quando o proxy retorna 504 mas o Sheets grava; emblema da seleção via mapa/local + API TheSportsDB; aliases renderSidebar/renderEstatisticas para remover erros do console.
+Mesmo layout da v3.7.64, preparado para Apps Script v3.5.24 global-save-clean. Sem alteração visual.
