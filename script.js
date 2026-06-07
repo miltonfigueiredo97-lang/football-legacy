@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.47 age badges projection emblem fix');
+console.log('Football Legacy script carregado v3.7.49 personagem image restore');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8725,4 +8725,286 @@ setInterval(()=>{
 
 window.applyResumoEnhancementsV3747 = applyResumoEnhancementsV3747;
 window.buildProjectionUntil38V3747 = buildProjectionUntil38V3747;
+
+
+
+// ===== V3.7.48 FIX EDITAR TEMPORADA: TIME JÁ EXISTENTE =====
+// Corrige erro:
+// "Selecione um time pela busca da API."
+// ao editar uma temporada antiga que já tem clube salvo.
+//
+// Se selectedSeasonTeam estiver vazio, reconstrói pelo existing/clube salvo.
+
+function normalizeClubKeyV3748(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/football club|futebol clube|sociedade esportiva|fc|cf|ac|sc|afc|calcio|club de futbol/g,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function findClubByNameOrIdV3748(name, id){
+  const clubs = getTable("CLUBES");
+
+  if(id){
+    const byId = clubs.find(c=>String(c.id)===String(id));
+    if(byId) return byId;
+  }
+
+  const key = normalizeClubKeyV3748(name);
+  if(!key) return null;
+
+  return clubs.find(c=>{
+    const ck = normalizeClubKeyV3748(c.nome);
+    return ck && (ck === key || ck.includes(key) || key.includes(ck));
+  }) || null;
+}
+
+function ensureSelectedSeasonTeamV3748(existing=null){
+  if(selectedSeasonTeam && selectedSeasonTeam.name) return selectedSeasonTeam;
+
+  const inputName =
+    document.querySelector("#seasonTeamSearch")?.value ||
+    "";
+
+  const clubName =
+    existing?.clube_nome ||
+    existing?.clube ||
+    inputName ||
+    "";
+
+  const clubId =
+    existing?.clube_id ||
+    "";
+
+  const club = findClubByNameOrIdV3748(clubName, clubId);
+
+  if(!clubName && !club?.nome) return null;
+
+  selectedSeasonTeam = {
+    name: clubName || club?.nome || "",
+    league: existing?.liga || club?.liga || "",
+    country: club?.pais || existing?.pais || "",
+    badge: existing?.escudo || club?.escudo || "",
+    api_id: club?.api_id || ""
+  };
+
+  // Reforça box visual, se existir.
+  try{
+    const box = document.querySelector("#selectedTeamBox");
+    if(box && selectedSeasonTeam.name){
+      box.classList.add("active");
+      if(!box.innerHTML.trim()){
+        box.innerHTML = `
+          ${selectedSeasonTeam.badge ? `<img src="${escapeAttr(selectedSeasonTeam.badge)}" onerror="this.style.display='none'">` : ""}
+          <div>
+            <strong>${escapeHtml(selectedSeasonTeam.name)}</strong>
+            <small>${escapeHtml(selectedSeasonTeam.league || "")}</small>
+          </div>
+        `;
+      }
+    }
+  }catch(err){}
+
+  return selectedSeasonTeam;
+}
+
+// Wrapper no saveSeasonFull: antes de montar payload, garante time.
+const __saveSeasonFullOriginalV3748 = typeof saveSeasonFullV3736 === "function" ? saveSeasonFullV3736 : null;
+if(__saveSeasonFullOriginalV3748 && !window.__saveSeasonFullTeamFallbackWrappedV3748){
+  window.__saveSeasonFullTeamFallbackWrappedV3748 = true;
+
+  saveSeasonFullV3736 = async function(data, existing=null){
+    ensureSelectedSeasonTeamV3748(existing || window.__editingSeasonRecord || null);
+    return await __saveSeasonFullOriginalV3748(data, existing);
+  };
+}
+
+// Wrapper extra no build payload, caso algum fluxo chame direto.
+const __buildSeasonFullPayloadOriginalV3748 = typeof buildSeasonFullPayloadV3736 === "function" ? buildSeasonFullPayloadV3736 : null;
+if(__buildSeasonFullPayloadOriginalV3748 && !window.__buildSeasonFullPayloadTeamFallbackWrappedV3748){
+  window.__buildSeasonFullPayloadTeamFallbackWrappedV3748 = true;
+
+  buildSeasonFullPayloadV3736 = function(data, existing=null){
+    ensureSelectedSeasonTeamV3748(existing || window.__editingSeasonRecord || null);
+    return __buildSeasonFullPayloadOriginalV3748(data, existing);
+  };
+}
+
+window.ensureSelectedSeasonTeamV3748 = ensureSelectedSeasonTeamV3748;
+
+
+
+// ===== V3.7.49 RESTAURA IMAGEM DO PERSONAGEM =====
+// Corrige sumiço da imagem após ajustes de idade.
+// Lê a imagem por vários nomes possíveis e preserva no salvar PERSONAGENS.
+
+function getPersonagemImageUrlV3749(p){
+  if(!p) return "";
+
+  return (
+    p.imagem_url ||
+    p.foto_url ||
+    p.foto ||
+    p.image_url ||
+    p.avatar_url ||
+    p.avatar ||
+    p.url_imagem ||
+    p["imagem"] ||
+    p["Foto URL"] ||
+    p["foto URL"] ||
+    p["foto_url"] ||
+    ""
+  );
+}
+
+function ensurePersonagemImageFieldInModalV3749(){
+  try{
+    if(!form || !modal?.classList?.contains("active")) return;
+
+    const names = [...form.querySelectorAll("input, select, textarea")].map(i=>String(i.name || "").toLowerCase());
+    const isPersonagem =
+      names.includes("nome") &&
+      names.includes("posicao") &&
+      names.includes("nacionalidade") &&
+      names.includes("carreira_id");
+
+    if(!isPersonagem) return;
+
+    const existingImgInput =
+      form.querySelector("[name='imagem_url']") ||
+      form.querySelector("[name='foto_url']") ||
+      form.querySelector("[name='foto']") ||
+      form.querySelector("[name='image_url']");
+
+    const id = form.querySelector("[name='id']")?.value || "";
+    const personagem = id
+      ? getTable("PERSONAGENS").find(p=>String(p.id)===String(id))
+      : (typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null);
+
+    const imgUrl = getPersonagemImageUrlV3749(personagem);
+
+    if(existingImgInput){
+      if(!existingImgInput.value && imgUrl) existingImgInput.value = imgUrl;
+      existingImgInput.name = "imagem_url";
+      return;
+    }
+
+    const html = `
+      <div class="form-field personagem-image-field-v3749">
+        <label>Foto URL</label>
+        <div class="file-row">
+          <input name="imagem_url" value="${escapeAttr(imgUrl || "")}" placeholder="URL gerada automaticamente">
+          <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
+        </div>
+        <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
+      </div>
+    `;
+
+    const nome = form.querySelector("[name='nome']");
+    const nomeField = nome?.closest(".form-field");
+
+    if(nomeField) nomeField.insertAdjacentHTML("afterend", html);
+    else form.insertAdjacentHTML("beforeend", html);
+  }catch(err){
+    console.warn("Falha ao garantir campo de imagem do personagem:", err);
+  }
+}
+
+// Preserva imagem ao salvar PERSONAGENS.
+const __apiPostOriginalV3749 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3749 && !window.__apiPostPersonagemImageWrappedV3749){
+  window.__apiPostPersonagemImageWrappedV3749 = true;
+
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const id = payload.id || payload.record.id || form?.querySelector("[name='id']")?.value || "";
+        const old = id ? getTable("PERSONAGENS").find(p=>String(p.id)===String(id)) : null;
+
+        const imgInput =
+          form?.querySelector("[name='imagem_url']") ||
+          form?.querySelector("[name='foto_url']") ||
+          form?.querySelector("[name='foto']") ||
+          form?.querySelector("[name='image_url']");
+
+        const img = imgInput?.value || getPersonagemImageUrlV3749(old);
+
+        if(img){
+          payload.record.imagem_url = img;
+          payload.record.foto_url = img; // compatibilidade
+        }
+
+        const ageInput = form?.querySelector("[name='idade'], [name='data_nascimento']");
+        if(ageInput){
+          payload.record.idade = ageInput.value || "";
+          payload.record.data_nascimento = ageInput.value || "";
+        }
+      }
+    }catch(err){}
+
+    return await __apiPostOriginalV3749(payload);
+  };
+}
+
+// Garante campo imagem e idade após abrir modal genérico.
+const __openFormOriginalV3749 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3749 && !window.__openFormPersonagemImageWrappedV3749){
+  window.__openFormPersonagemImageWrappedV3749 = true;
+
+  openForm = function(){
+    const result = __openFormOriginalV3749.apply(this, arguments);
+    setTimeout(ensurePersonagemImageFieldInModalV3749, 120);
+    setTimeout(ensurePersonagemImageFieldInModalV3749, 400);
+
+    if(typeof injectPersonagemBirthFieldV3746 === "function"){
+      setTimeout(injectPersonagemBirthFieldV3746, 160);
+      setTimeout(injectPersonagemBirthFieldV3746, 450);
+    }
+
+    return result;
+  };
+}
+
+// Se algum render usa foto_url/imagem_url com nomes diferentes, tenta corrigir imagem quebrada no resumo.
+function restoreBrokenPersonagemImagesV3749(){
+  try{
+    const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+    const url = getPersonagemImageUrlV3749(p);
+    if(!url) return;
+
+    document.querySelectorAll("img").forEach(img=>{
+      const altTitle = `${img.alt || ""} ${img.title || ""}`.toLowerCase();
+      const src = img.getAttribute("src") || "";
+
+      const looksLikePlayer =
+        altTitle.includes("milton") ||
+        altTitle.includes(String(p?.nome || "").toLowerCase()) ||
+        img.closest(".player-card, .profile-card, .summary-hero, .hero-card, .protagonist-card");
+
+      if(looksLikePlayer && (!src || src.includes("placeholder") || src.includes("undefined") || src === "#")){
+        img.src = url;
+      }
+    });
+  }catch(err){}
+}
+
+const __renderAllOriginalV3749 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3749 && !window.__renderAllPersonagemImageWrappedV3749){
+  window.__renderAllPersonagemImageWrappedV3749 = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3749.apply(this, arguments);
+    setTimeout(restoreBrokenPersonagemImagesV3749, 150);
+    setTimeout(restoreBrokenPersonagemImagesV3749, 700);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(ensurePersonagemImageFieldInModalV3749, 150);
+}, true);
+
+window.getPersonagemImageUrlV3749 = getPersonagemImageUrlV3749;
+window.ensurePersonagemImageFieldInModalV3749 = ensurePersonagemImageFieldInModalV3749;
 

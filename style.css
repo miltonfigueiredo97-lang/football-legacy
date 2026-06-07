@@ -2026,3 +2026,12 @@ button[disabled],
     grid-template-columns:1fr;
   }
 }
+
+
+/* ===== V3.7.49 RESTAURA IMAGEM PERSONAGEM ===== */
+.personagem-image-field-v3749 .file-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+}
