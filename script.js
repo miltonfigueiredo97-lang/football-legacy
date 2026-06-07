@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.30 summary fallback all');
+console.log('Football Legacy script carregado v3.7.31 clean no recursion');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -5466,10 +5466,9 @@ function openBallonFormSingle(existingId=null){
 
 
 
-// ===== V3.7.26 CLEAN FAST SUMMARY + LAZY FULL LOAD =====
-let fullDbLoaded = false;
-let fullDbLoading = false;
-const HEAVY_PAGES = new Set(["bolaouro","records","trofeus","top11","museu"]);
+// ===== V3.7.31 CLEAN NO RECURSION =====
+// Versão de limpeza: sem summary, sem lazy load, sem wrapper em navigate/renderPageById/openSeasonFlow.
+// Carrega action=all direto para eliminar Maximum call stack size exceeded.
 
 function normalizeDbAfterLoad(){
   if(!db || typeof db !== "object") db = {};
@@ -5478,10 +5477,10 @@ function normalizeDbAfterLoad(){
   });
 }
 
-async function fetchAction(action){
+async function fetchAllFromSheetsClean(){
   const base = API_URL;
-  const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
-  console.log("Football Legacy API:", url);
+  const url = `${base}${base.includes("?") ? "&" : "?"}action=all&cache=${Date.now()}`;
+  console.log("Football Legacy API action=all clean:", url);
 
   let data;
 
@@ -5490,326 +5489,56 @@ async function fetchAction(action){
     data = await res.json();
   }else{
     try{
-      data = await fetchJsonp(`${API_URL}?action=${encodeURIComponent(action)}`);
-    }catch(err){
+      data = await fetchJsonp(`${API_URL}?action=all`);
+    }catch(jsonpErr){
+      console.warn("JSONP falhou, tentando fetch direto:", jsonpErr);
       const res = await fetch(url, {cache:"no-store"});
       data = await res.json();
     }
   }
 
   if(!data || !data.ok){
-    throw new Error(data?.error || `Apps Script não retornou ok=true em action=${action}`);
+    throw new Error(data?.error || "Apps Script não retornou ok=true.");
   }
 
   return data.data || {};
 }
 
-function mergeDb(partial){
-  if(!db || typeof db !== "object") db = {};
-  Object.keys(partial || {}).forEach(k=>{
-    db[k] = Array.isArray(partial[k]) ? partial[k] : [];
-  });
-  normalizeDbAfterLoad();
-}
-
 async function loadData(){
-  setStatus("Carregando Resumo...");
+  setStatus("Carregando dados do Google Sheets...");
 
   try{
-    const summary = await fetchAction("summary");
-    mergeDb(summary);
-    fullDbLoaded = false;
-
-    console.log("Football Legacy SUMMARY carregado:", {
-      USUARIOS:getTable("USUARIOS").length,
-      CARREIRAS:getTable("CARREIRAS").length,
-      PERSONAGENS:getTable("PERSONAGENS").length,
-      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
-      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length
-    });
-
-    if(typeof renderGlobalSelectorsOnly === "function") renderGlobalSelectorsOnly();
-    if(typeof renderPageById === "function") renderPageById("dashboard", true);
-    else renderAll();
-
-    setStatus("Resumo carregado. Abas pesadas carregam ao abrir.", "ok");
-  }catch(err){
-    console.error("Falha no resumo rápido:", err);
-    setStatus("Erro no resumo rápido: atualize o Apps Script e reimplante o Web App.", "error");
-  }
-}
-
-async function loadFullDbIfNeeded(reason=""){
-  if(fullDbLoaded || fullDbLoading) return;
-
-  fullDbLoading = true;
-  setStatus(`Carregando dados completos${reason ? " para " + reason : ""}...`);
-
-  try{
-    const full = await fetchAction("all");
-    db = full;
+    const fresh = await fetchAllFromSheetsClean();
+    db = fresh;
     normalizeDbAfterLoad();
-    fullDbLoaded = true;
 
-    console.log("Football Legacy FULL carregado:", {
-      USUARIOS:getTable("USUARIOS").length,
-      CARREIRAS:getTable("CARREIRAS").length,
-      PERSONAGENS:getTable("PERSONAGENS").length,
+    console.log("Football Legacy DB carregado clean:", {
       CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
       ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
-      BOLA_DE_OURO_BASE:getTable("BOLA_DE_OURO_BASE").length,
       BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length,
+      BOLA_DE_OURO_BASE:getTable("BOLA_DE_OURO_BASE").length,
       RECORDS_BASE:getTable("RECORDS_BASE").length
     });
 
-    if(typeof renderGlobalSelectorsOnly === "function") renderGlobalSelectorsOnly();
-    if(typeof renderPageById === "function") renderPageById(getCurrentPageId ? getCurrentPageId() : "dashboard", true);
-    else renderAll();
-
-    setStatus("Dados completos carregados.", "ok");
+    renderAll();
+    setStatus("Dados carregados do Google Sheets com sucesso.", "ok");
   }catch(err){
-    console.error("Erro ao carregar dados completos:", err);
-    setStatus("Erro ao carregar dados completos: " + err.message, "error");
-  }finally{
-    fullDbLoading = false;
+    console.error("Erro ao carregar Google Sheets:", err);
+    setStatus("Erro ao carregar Google Sheets: " + err.message, "error");
   }
 }
 
 async function forceRefreshData(){
-  fullDbLoaded = false;
-  await loadFullDbIfNeeded("atualização manual");
+  await loadData();
 }
 
-// Intercepta navegação para só carregar banco completo quando precisar.
-const __oldNavigateV3726 = typeof navigate === "function" ? navigate : null;
-function navigate(pageId){
-  if(__oldNavigateV3726) __oldNavigateV3726(pageId);
-
-  if(HEAVY_PAGES.has(pageId) && !fullDbLoaded){
-    loadFullDbIfNeeded(pageId).then(()=>{
-      if(typeof renderPageById === "function") renderPageById(pageId, true);
-    });
-  }
-}
-
-// Render por página: se página pesada sem banco completo, mostra placeholder e busca.
-const __oldRenderPageByIdV3726 = typeof renderPageById === "function" ? renderPageById : null;
-function renderPageById(pageId, force=false){
-  const page = pageId || (getCurrentPageId ? getCurrentPageId() : "dashboard");
-
-  if(HEAVY_PAGES.has(page) && !fullDbLoaded){
-    const section = document.getElementById(page);
-    if(section){
-      const slot = section.querySelector(".content-card, .records-grid, .trophy-grid-real, .ballon-board") || section;
-      if(slot){
-        slot.innerHTML = `
-          <div class="lazy-loading-card">
-            <strong>Carregando dados completos...</strong>
-            <span>Essa aba usa bases maiores e será carregada agora.</span>
-          </div>
-        `;
-      }
-    }
-
-    loadFullDbIfNeeded(page);
-    return;
-  }
-
-  if(__oldRenderPageByIdV3726) return __oldRenderPageByIdV3726(page, force);
-  if(typeof renderAll === "function") return renderAll();
-}
-
-// Proteção: salvar não deve ficar preso se der erro.
-window.addEventListener("error", function(e){
-  try{
-    const btn = document.querySelector("#saveBtn, button[disabled].gold-btn");
-    if(btn && typeof clearButtonSaving === "function") clearButtonSaving(btn);
-  }catch(_){}
-});
-
-window.addEventListener("unhandledrejection", function(e){
-  try{
-    const btn = document.querySelector("#saveBtn, button[disabled].gold-btn");
-    if(btn && typeof clearButtonSaving === "function") clearButtonSaving(btn);
-  }catch(_){}
-});
-
-window.forceRefreshData = forceRefreshData;
-window.loadFullDbIfNeeded = loadFullDbIfNeeded;
-
-
-
-// ===== V3.7.27 SAVE CLOSE NO INFINITE =====
-// Problema corrigido: salvava na planilha, mas ficava preso esperando reload.
-// Agora: salva -> fecha modal -> tenta atualizar em segundo plano.
-
-const SAVE_TIMEOUT_MS_V3727 = 30000;
-
-function timeoutPromiseV3727(promise, ms, label){
-  let timeoutId;
-  const timeout = new Promise((_, reject)=>{
-    timeoutId = setTimeout(()=>reject(new Error(`${label} demorou demais, mas pode ter sido salvo na planilha.`)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(()=>clearTimeout(timeoutId));
-}
-
-function unlockSaveButtonV3727(btn){
-  try{
-    if(!btn) btn = $("saveBtn") || document.querySelector(".gold-btn[disabled], button[disabled]");
-    if(!btn) return;
-
-    if(typeof clearButtonSaving === "function"){
-      clearButtonSaving(btn);
-    }else{
-      btn.disabled = false;
-      btn.removeAttribute("aria-busy");
-      if(btn.dataset.originalText) btn.textContent = btn.dataset.originalText;
-      else btn.textContent = btn.textContent.replace("Salvando...", "Salvar");
-    }
-  }catch(err){}
-}
-
-function finishSaveFastV3727(btn, message="Salvo na planilha. Atualizando dados..."){
-  unlockSaveButtonV3727(btn);
-
-  try{
-    closeModal();
-  }catch(err){}
-
-  setStatus(message, "ok");
-
-  // Atualiza em segundo plano. Não trava modal, não trava botão.
-  setTimeout(async ()=>{
-    try{
-      if(typeof loadFullDbIfNeeded === "function"){
-        fullDbLoaded = false;
-        await loadFullDbIfNeeded("atualização após salvar");
-      }else if(typeof loadData === "function"){
-        await loadData();
-      }
-    }catch(err){
-      console.warn("Salvou, mas não conseguiu recarregar automaticamente:", err);
-      setStatus("Salvo na planilha. Clique em Atualizar se o dado ainda não aparecer.", "warn");
-    }
-  }, 80);
-}
-
-// Reescreve apiPost com timeout, mas sem quebrar o original.
-const __apiPostOriginalV3727 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3727 && !window.__apiPostWrappedV3727){
-  window.__apiPostWrappedV3727 = true;
-  apiPost = async function(payload){
-    return await timeoutPromiseV3727(
-      __apiPostOriginalV3727(payload),
-      SAVE_TIMEOUT_MS_V3727,
-      `Salvar ${payload?.table || ""}`
-    );
-  };
-}
-
-// Intercepta submit do modal de temporada SEM recriar fluxo.
-// Ele deixa o fluxo original salvar, mas se salvar e travar no reload,
-// desbloqueia e fecha após 35s.
-document.addEventListener("submit", function(e){
-  const btn = $("saveBtn") || e.target.querySelector("button[type='submit'], .gold-btn");
-  if(!btn) return;
-
-  const title = (modalTitle?.textContent || "").toLowerCase();
-  const isSeasonModal =
-    title.includes("temporada") ||
-    e.target.querySelector("[name='data_inicio']") ||
-    e.target.querySelector("#seasonCompetitionChecks") ||
-    e.target.querySelector("#seasonStatsRows");
-
-  if(!isSeasonModal) return;
-
-  setTimeout(()=>{
-    const stillSaving = btn.disabled || /salvando/i.test(btn.textContent || "");
-    const modalStillOpen = modal?.classList?.contains("active");
-
-    if(stillSaving && modalStillOpen){
-      console.warn("Save ainda preso depois do timeout visual. Destravando UI.");
-      finishSaveFastV3727(btn, "Dados enviados para a planilha. Atualizando em segundo plano...");
-    }
-  }, SAVE_TIMEOUT_MS_V3727 + 5000);
-}, true);
-
-// Se a função de salvar temporada existe, cria uma versão segura do submit do modal.
-// Não mexe em render/checks; só muda o pós-salvar.
-const __openSeasonFlowOriginalV3727 = typeof openSeasonFlow === "function" ? openSeasonFlow : null;
-if(__openSeasonFlowOriginalV3727){
-  openSeasonFlow = function(existingId=null){
-    __openSeasonFlowOriginalV3727(existingId);
-
-    setTimeout(()=>{
-      const currentForm = form || document.querySelector("#modal form");
-      if(!currentForm) return;
-
-      const title = (modalTitle?.textContent || "").toLowerCase();
-      const isSeasonModal =
-        title.includes("temporada") ||
-        currentForm.querySelector("[name='data_inicio']") ||
-        document.querySelector("#seasonCompetitionChecks");
-
-      if(!isSeasonModal) return;
-
-      const originalSubmit = currentForm.onsubmit;
-
-      currentForm.onsubmit = async function(e){
-        e.preventDefault();
-
-        const btn = $("saveBtn") || currentForm.querySelector("button[type='submit'], .gold-btn");
-        if(btn && btn.disabled) return;
-
-        try{
-          const data = Object.fromEntries(new FormData(currentForm).entries());
-
-          // Usa as funções originais já existentes, mas não espera reload no fim.
-          const existing = existingId
-            ? getCareerSeasonRecords().find(t=>String(t.id)===String(existingId))
-            : null;
-
-          await timeoutPromiseV3727(saveSeasonFlow(data, btn, existing), SAVE_TIMEOUT_MS_V3727, "Salvar temporada");
-
-          try{
-            if(typeof saveSeasonTitlesFlow === "function"){
-              await timeoutPromiseV3727(saveSeasonTitlesFlow(data, existing), SAVE_TIMEOUT_MS_V3727, "Salvar títulos da temporada");
-            }
-          }catch(titleErr){
-            console.warn("Temporada salva, mas títulos/campeões não finalizaram:", titleErr);
-          }
-
-          finishSaveFastV3727(btn, "Temporada salva na planilha. Atualizando em segundo plano...");
-        }catch(err){
-          console.error("Erro ao salvar temporada:", err);
-          unlockSaveButtonV3727(btn);
-
-          // Se o Apps Script salvou antes de falhar no retorno/reload, usuário não fica preso.
-          setStatus("Erro ao finalizar salvamento: " + err.message + " Se o dado apareceu na planilha, clique em Atualizar.", "error");
-        }
-      };
-    }, 0);
-  };
-}
-
-window.addEventListener("error", function(){
-  setTimeout(()=>unlockSaveButtonV3727(), 100);
-});
-
-window.addEventListener("unhandledrejection", function(){
-  setTimeout(()=>unlockSaveButtonV3727(), 100);
-});
-
-
-
-// ===== V3.7.28 BOLA DE OURO: LOCAL SYNC + TEMPORADA/ANO =====
-// Se salvou na planilha, entra no dashboard imediatamente sem esperar reload.
-
+// Bola de Ouro: usa ano inicial da temporada.
+// 2025/2026 -> 2025.
 function getAwardYearFromSeason(value){
   const text = String(value || "");
   const years = text.match(/\d{4}/g);
   if(!years || !years.length) return "";
-  return years.length > 1 ? years[years.length - 1] : years[0];
+  return years[0];
 }
 
 function getCareerSeasonBallonOptions(){
@@ -5821,12 +5550,7 @@ function getCareerSeasonBallonOptions(){
       const season = t.temporada || "";
       const year = getAwardYearFromSeason(season);
       if(!year) return;
-      rows.push({
-        value:year,
-        label:`${season} - ${year}`,
-        season,
-        year
-      });
+      rows.push({value:year, label:`${season} - ${year}`, season, year});
     });
 
   getTable("BOLA_DE_OURO_CARREIRA")
@@ -5834,31 +5558,18 @@ function getCareerSeasonBallonOptions(){
     .forEach(r=>{
       const year = getAwardYearFromSeason(r.ano || r.temporada);
       if(!year) return;
-      rows.push({
-        value:year,
-        label:`${year}`,
-        season:String(r.temporada || year),
-        year
-      });
+      rows.push({value:year, label:`${year}`, season:String(r.temporada || year), year});
     });
 
   getTable("BOLA_DE_OURO_BASE").forEach(r=>{
     const year = getAwardYearFromSeason(r.ano || r.temporada);
     if(!year) return;
-    rows.push({
-      value:year,
-      label:`${year}`,
-      season:String(r.temporada || year),
-      year
-    });
+    rows.push({value:year, label:`${year}`, season:String(r.temporada || year), year});
   });
 
   const map = new Map();
   rows.forEach(o=>{
-    // Prioriza label com intervalo de temporada quando existir.
-    if(!map.has(o.value) || o.label.includes("/")){
-      map.set(o.value, o);
-    }
+    if(!map.has(o.value) || o.label.includes("/")) map.set(o.value, o);
   });
 
   return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
@@ -5887,26 +5598,14 @@ function syncLocalTableAfterSave(payload, res){
     const table = payload.table;
     if(!Array.isArray(db[table])) db[table] = [];
 
-    const action = payload.action;
-    const id = String(payload.id || res?.data?.id || "");
-
-    if(action === "delete"){
-      db[table] = db[table].filter(r=>String(r.id)!==id);
-      return;
-    }
-
-    if(action === "create"){
+    if(payload.action === "create"){
       const created = Object.assign({}, payload.record || {}, res?.data || {});
-      if(!created.id && res?.id) created.id = res.id;
-      if(!created.id){
-        // ID temporário apenas para render imediato; o próximo reload troca pelo real.
-        created.id = "local_" + Date.now() + "_" + Math.floor(Math.random()*9999);
-      }
+      if(!created.id) created.id = res?.data?.id || res?.id || ("local_" + Date.now() + "_" + Math.floor(Math.random()*9999));
       db[table].push(created);
-      return;
     }
 
-    if(action === "update"){
+    if(payload.action === "update"){
+      const id = String(payload.id || res?.data?.id || "");
       const updated = Object.assign({}, payload.record || {}, res?.data || {});
       if(id) updated.id = id;
 
@@ -5914,17 +5613,21 @@ function syncLocalTableAfterSave(payload, res){
       if(idx >= 0) db[table][idx] = Object.assign({}, db[table][idx], updated);
       else db[table].push(updated);
     }
+
+    if(payload.action === "delete"){
+      const id = String(payload.id || "");
+      db[table] = db[table].filter(r=>String(r.id)!==id);
+    }
   }catch(err){
-    console.warn("Falha ao sincronizar banco local após salvar:", err);
+    console.warn("Falha ao sincronizar local:", err);
   }
 }
 
-// Wrapper local em volta do apiPost: se a planilha salvou, atualiza o dashboard local.
-const __apiPostBeforeLocalSyncV3728 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostBeforeLocalSyncV3728 && !window.__apiPostLocalSyncV3728){
-  window.__apiPostLocalSyncV3728 = true;
+const __apiPostOriginalV3731 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3731 && !window.__apiPostWrappedV3731){
+  window.__apiPostWrappedV3731 = true;
   apiPost = async function(payload){
-    const res = await __apiPostBeforeLocalSyncV3728(payload);
+    const res = await __apiPostOriginalV3731(payload);
     if(res && res.ok) syncLocalTableAfterSave(payload, res);
     return res;
   };
@@ -5934,7 +5637,6 @@ function getBallonRowClub(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
-// Formulário de Bola de Ouro: mostra temporada/ano, salva só ano.
 function openBallonBatchForm(options={}){
   const carreira = getActiveCareer();
 
@@ -5945,7 +5647,6 @@ function openBallonBatchForm(options={}){
 
   const editYear = getAwardYearFromSeason(options.editSeason || options.editYear || "");
   const isEdit = !!options.editExisting;
-
   const activeYear = getAwardYearFromSeason(active.temporada || getCurrentSeason(getProtagonistStats()) || "");
   const initialYear = editYear || activeYear || String(new Date().getFullYear());
 
@@ -5955,9 +5656,7 @@ function openBallonBatchForm(options={}){
     : [];
 
   const byPos = {};
-  existingRows.forEach(r=>{
-    byPos[String(r.posicao)] = r;
-  });
+  existingRows.forEach(r=>{ byPos[String(r.posicao)] = r; });
 
   let optionsList = getCareerSeasonBallonOptions();
   if(initialYear && !optionsList.some(o=>String(o.value)===String(initialYear))){
@@ -5977,7 +5676,7 @@ function openBallonBatchForm(options={}){
       <select name="ano_premiacao" id="ballonBatchSeason">
         ${optionsList.map(o=>`<option value="${escapeAttr(o.value)}" ${String(o.value)===String(initialYear)?"selected":""}>${escapeHtml(o.label)}</option>`).join("")}
       </select>
-      <small class="field-help">Exemplo: 2025/2026 - 2026. Na planilha salva como 2026 para misturar com a base real.</small>
+      <small class="field-help">Exemplo: 2025/2026 - 2025. Na planilha salva como 2025 para misturar com a base real.</small>
     </div>
 
     <div class="form-field full">
@@ -6019,7 +5718,6 @@ function openBallonBatchForm(options={}){
 
   form.onsubmit = async e=>{
     e.preventDefault();
-
     const btn = $("saveBtn");
     if(btn && btn.disabled) return;
     setButtonSaving(btn);
@@ -6065,11 +5763,7 @@ function openBallonBatchForm(options={}){
       clearButtonSaving(btn);
       closeModal();
 
-      // Importante: render imediato com banco local já atualizado.
-      fullDbLoaded = true;
       if(typeof renderBolaOuro === "function") renderBolaOuro();
-      if(typeof renderPageById === "function") renderPageById("bolaouro", true);
-
       setStatus(`Ranking da Bola de Ouro ${year} salvo e exibido.`, "ok");
     }catch(err){
       clearButtonSaving(btn);
@@ -6081,223 +5775,21 @@ function openBallonBatchForm(options={}){
   modal.classList.add("active");
 }
 
-function openNewBallonRanking(){
-  openBallonBatchForm({editExisting:false});
-}
+function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
+function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
 
-function openEditBallonRankingSeason(season){
-  openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)});
-}
-
+window.forceRefreshData = forceRefreshData;
 window.getAwardYearFromSeason = getAwardYearFromSeason;
 window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
 window.openBallonBatchForm = openBallonBatchForm;
 window.openNewBallonRanking = openNewBallonRanking;
 window.openEditBallonRankingSeason = openEditBallonRankingSeason;
 
+window.addEventListener("error", function(e){
+  console.error("Football Legacy error:", e.error || e.message);
+});
 
-
-// ===== V3.7.29 BOLA DE OURO USA ANO INICIAL DA TEMPORADA =====
-// Regra do dashboard:
-// 2025/2026 -> 2025
-// 2026/2027 -> 2026
-// 2027/2028 -> 2027
-
-function getAwardYearFromSeason(value){
-  const text = String(value || "");
-  const years = text.match(/\d{4}/g);
-  if(!years || !years.length) return "";
-  // Correção: usa o PRIMEIRO ano da temporada.
-  return years[0];
-}
-
-function getCareerSeasonBallonOptions(){
-  const rows = [];
-
-  getTable("CARREIRA_TEMPORADAS")
-    .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
-    .forEach(t=>{
-      const season = t.temporada || "";
-      const year = getAwardYearFromSeason(season);
-      if(!year) return;
-      rows.push({
-        value:year,
-        label:`${season} - ${year}`,
-        season,
-        year
-      });
-    });
-
-  getTable("BOLA_DE_OURO_CARREIRA")
-    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
-    .forEach(r=>{
-      const year = getAwardYearFromSeason(r.ano || r.temporada);
-      if(!year) return;
-      rows.push({
-        value:year,
-        label:`${year}`,
-        season:String(r.temporada || year),
-        year
-      });
-    });
-
-  getTable("BOLA_DE_OURO_BASE").forEach(r=>{
-    const year = getAwardYearFromSeason(r.ano || r.temporada);
-    if(!year) return;
-    rows.push({
-      value:year,
-      label:`${year}`,
-      season:String(r.temporada || year),
-      year
-    });
-  });
-
-  const map = new Map();
-  rows.forEach(o=>{
-    if(!map.has(o.value) || o.label.includes("/")){
-      map.set(o.value, o);
-    }
-  });
-
-  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
-}
-
-function normalizeBallonCareerRecord(record){
-  const year = getAwardYearFromSeason(record.ano || record.temporada || "");
-  return {
-    carreira_id: record.carreira_id || active.carreira_id || "",
-    temporada: year,
-    ano: year,
-    posicao: record.posicao || "",
-    jogador: record.jogador || "",
-    pais: record.pais || "",
-    idade_na_premiacao: record.idade_na_premiacao || record.idade || "",
-    valor_mercado: record.valor_mercado || record.valor || "",
-    imagem_url: record.imagem_url || "",
-    observacao: record.observacao || "",
-    clube: record.clube || record.club || record.time || ""
-  };
-}
-
-window.getAwardYearFromSeason = getAwardYearFromSeason;
-window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
-
-
-
-// ===== V3.7.30 SUMMARY FALLBACK PARA ACTION=ALL =====
-// Se action=summary não existir no Apps Script publicado,
-// carrega action=all automaticamente em vez de travar.
-
-async function fetchFootballLegacyActionV3730(action){
-  const base = API_URL;
-  const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
-  console.log("Football Legacy API:", url);
-
-  let data;
-
-  if(API_URL.startsWith("/api/")){
-    const res = await fetch(url, {cache:"no-store"});
-    data = await res.json();
-  }else{
-    try{
-      data = await fetchJsonp(`${API_URL}?action=${encodeURIComponent(action)}`);
-    }catch(err){
-      const res = await fetch(url, {cache:"no-store"});
-      data = await res.json();
-    }
-  }
-
-  if(!data || !data.ok){
-    throw new Error(data?.error || `action=${action} não disponível`);
-  }
-
-  return data.data || {};
-}
-
-function normalizeDbAfterLoad(){
-  if(!db || typeof db !== "object") db = {};
-  Object.keys(db).forEach(k=>{
-    if(!Array.isArray(db[k])) db[k] = [];
-  });
-}
-
-function mergeDbV3730(partial){
-  if(!db || typeof db !== "object") db = {};
-  Object.keys(partial || {}).forEach(k=>{
-    db[k] = Array.isArray(partial[k]) ? partial[k] : [];
-  });
-  normalizeDbAfterLoad();
-}
-
-async function loadData(){
-  setStatus("Carregando dados do Google Sheets...");
-
-  try{
-    const summary = await fetchFootballLegacyActionV3730("summary");
-    mergeDbV3730(summary);
-
-    console.log("Football Legacy SUMMARY carregado:", {
-      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
-      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
-      BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length
-    });
-
-    if(typeof renderGlobalSelectorsOnly === "function") renderGlobalSelectorsOnly();
-    if(typeof renderPageById === "function") renderPageById("dashboard", true);
-    else renderAll();
-
-    setStatus("Resumo carregado. Carregando dados completos em segundo plano...", "ok");
-
-    // Tenta carregar full em segundo plano, sem bloquear o resumo.
-    fetchFootballLegacyActionV3730("all").then(full=>{
-      db = full;
-      normalizeDbAfterLoad();
-      if(typeof renderAll === "function") renderAll();
-      setStatus("Dados completos carregados.", "ok");
-    }).catch(err=>{
-      console.warn("Resumo ok, full falhou:", err);
-      setStatus("Resumo carregado. Dados completos carregam ao clicar em Atualizar.", "warn");
-    });
-
-  }catch(summaryErr){
-    console.warn("action=summary falhou. Carregando action=all:", summaryErr);
-
-    try{
-      setStatus("Resumo rápido indisponível. Carregando banco completo...");
-      const full = await fetchFootballLegacyActionV3730("all");
-      db = full;
-      normalizeDbAfterLoad();
-
-      console.log("Football Legacy FULL carregado:", {
-        CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
-        ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
-        BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length,
-        BOLA_DE_OURO_BASE:getTable("BOLA_DE_OURO_BASE").length,
-        RECORDS_BASE:getTable("RECORDS_BASE").length
-      });
-
-      if(typeof renderAll === "function") renderAll();
-      setStatus("Dados carregados do Google Sheets com sucesso.", "ok");
-    }catch(fullErr){
-      console.error("action=all também falhou:", fullErr);
-      setStatus("Erro ao carregar Google Sheets: " + fullErr.message, "error");
-    }
-  }
-}
-
-async function forceRefreshData(){
-  setStatus("Atualizando banco completo...");
-  try{
-    const full = await fetchFootballLegacyActionV3730("all");
-    db = full;
-    normalizeDbAfterLoad();
-    if(typeof renderAll === "function") renderAll();
-    setStatus("Dados atualizados com sucesso.", "ok");
-  }catch(err){
-    console.error(err);
-    setStatus("Erro ao atualizar: " + err.message, "error");
-  }
-}
-
-window.forceRefreshData = forceRefreshData;
+window.addEventListener("unhandledrejection", function(e){
+  console.error("Football Legacy promise error:", e.reason);
+});
 

@@ -1618,60 +1618,7 @@ button.saving::before,
 }
 
 
-/* ===== V3.7.26 LAZY FULL LOAD ===== */
-.lazy-loading-card{
-  min-height:220px;
-  display:grid;
-  place-items:center;
-  gap:8px;
-  text-align:center;
-  color:#dbeafe;
-  border-radius:24px;
-  background:rgba(15,23,42,.74);
-  border:1px solid rgba(255,255,255,.08);
-}
-
-.lazy-loading-card strong{
-  font-size:22px;
-  color:#fff;
-}
-
-.lazy-loading-card span{
-  color:#9fb0c7;
-}
-
-.status.error,
-#status.error,
-.status-message.error{
-  background:rgba(239,68,68,.12)!important;
-  border-color:rgba(239,68,68,.35)!important;
-  color:#fecaca!important;
-}
-
-
-/* ===== V3.7.27 SAVE CLOSE NO INFINITE ===== */
-.status.warn,
-#status.warn,
-.status-message.warn{
-  background:rgba(251,191,36,.12)!important;
-  border-color:rgba(251,191,36,.32)!important;
-  color:#fde68a!important;
-}
-.status.error,
-#status.error,
-.status-message.error{
-  background:rgba(239,68,68,.12)!important;
-  border-color:rgba(239,68,68,.35)!important;
-  color:#fecaca!important;
-}
-button[disabled],
-.gold-btn[disabled]{
-  opacity:.7;
-  cursor:wait!important;
-}
-
-
-/* ===== V3.7.28 BOLA DE OURO SEASON LABEL ===== */
+/* ===== V3.7.31 CLEAN NO RECURSION ===== */
 .field-help{
   display:block;
   margin-top:4px;
@@ -1680,19 +1627,18 @@ button[disabled],
   font-weight:700;
 }
 
-
-/* ===== V3.7.30 SUMMARY FALLBACK ===== */
-.status.warn,
-#status.warn,
-.status-message.warn{
-  background:rgba(251,191,36,.12)!important;
-  border-color:rgba(251,191,36,.32)!important;
-  color:#fde68a!important;
-}
 .status.error,
 #status.error,
 .status-message.error{
   background:rgba(239,68,68,.12)!important;
   border-color:rgba(239,68,68,.35)!important;
   color:#fecaca!important;
+}
+
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
 }
