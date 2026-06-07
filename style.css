@@ -1642,3 +1642,151 @@ button.saving::before,
   border-color:rgba(251,191,36,.32)!important;
   color:#fde68a!important;
 }
+
+
+/* ===== V3.7.32 CSS ONLY — MODAL BOLA DE OURO ===== */
+/* Não mexe em JS, salvamento, carregamento ou funções. Só corrige input branco. */
+
+.ballon-rank-modal,
+.modal-box.ballon-rank-modal{
+  max-width:1120px!important;
+  width:min(1120px,calc(100vw - 28px))!important;
+}
+
+.ballon-batch-form{
+  display:grid!important;
+  gap:14px!important;
+}
+
+.ballon-batch-form .form-field{
+  display:grid!important;
+  gap:7px!important;
+}
+
+.ballon-batch-form label{
+  color:#a8c7ff!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+
+.ballon-batch-form select,
+.ballon-batch-form input,
+.ballon-rank-grid input,
+.ballon-rank-grid-with-club input{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:40px!important;
+  height:40px!important;
+  border-radius:11px!important;
+  border:1px solid rgba(148,163,184,.28)!important;
+  background:#1f2b3d!important;
+  color:#ffffff!important;
+  padding:0 11px!important;
+  font-size:14px!important;
+  line-height:40px!important;
+  outline:none!important;
+  box-shadow:none!important;
+}
+
+.ballon-batch-form select{
+  min-height:46px!important;
+  height:46px!important;
+  line-height:46px!important;
+  padding-right:36px!important;
+  background-color:#1f2b3d!important;
+}
+
+.ballon-batch-form input::placeholder,
+.ballon-rank-grid input::placeholder,
+.ballon-rank-grid-with-club input::placeholder{
+  color:#94a3b8!important;
+  opacity:1!important;
+}
+
+.ballon-batch-form input:focus,
+.ballon-batch-form select:focus,
+.ballon-rank-grid input:focus,
+.ballon-rank-grid-with-club input:focus{
+  border-color:rgba(251,191,36,.68)!important;
+  box-shadow:0 0 0 3px rgba(251,191,36,.12)!important;
+}
+
+.ballon-batch-form .file-row{
+  display:grid!important;
+  grid-template-columns:1fr auto!important;
+  gap:10px!important;
+  align-items:center!important;
+}
+
+.ballon-batch-form .upload-btn{
+  min-height:42px!important;
+  height:42px!important;
+  border-radius:14px!important;
+  padding:0 18px!important;
+  border:1px solid rgba(251,191,36,.45)!important;
+  background:rgba(251,191,36,.13)!important;
+  color:#fbbf24!important;
+  font-weight:1000!important;
+}
+
+.ballon-rank-grid,
+.ballon-rank-grid-with-club{
+  display:grid!important;
+  grid-template-columns:52px minmax(250px,1.35fr) minmax(170px,.85fr) minmax(180px,.85fr) minmax(95px,.45fr) minmax(140px,.6fr)!important;
+  gap:9px!important;
+  align-items:center!important;
+  margin-top:4px!important;
+}
+
+.ballon-rank-head{
+  color:#fef08a!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  text-transform:uppercase!important;
+  padding:0 0 3px 0!important;
+}
+
+.ballon-rank-pos{
+  color:#ffffff!important;
+  font-size:20px!important;
+  line-height:40px!important;
+  font-weight:1000!important;
+  text-align:left!important;
+}
+
+.ballon-batch-form .form-actions{
+  position:sticky!important;
+  bottom:0!important;
+  z-index:20!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+  padding:18px 0 0!important;
+  margin-top:8px!important;
+  background:linear-gradient(180deg,rgba(15,23,42,0),#111827 36%)!important;
+}
+
+.ballon-batch-form .ghost-btn,
+.ballon-batch-form .gold-btn{
+  min-height:46px!important;
+  border-radius:16px!important;
+  padding:0 24px!important;
+  font-weight:1000!important;
+}
+
+.ballon-batch-form .field-help{
+  color:#9fb0c7!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  margin-top:2px!important;
+}
+
+@media(max-width:1000px){
+  .ballon-rank-grid,
+  .ballon-rank-grid-with-club{
+    grid-template-columns:42px 1fr 1fr!important;
+  }
+}
