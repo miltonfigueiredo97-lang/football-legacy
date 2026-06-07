@@ -1,3 +1,4 @@
+console.log('Football Legacy script carregado v3.1');
 const API_URL = window.FOOTBALL_LEGACY_API || "https://script.google.com/macros/s/AKfycbwf5AklY1S3w9Ba28oLx4BllIWl4ucS5Tdlyh1kgbicqJQgPrQqmbcxqLD85dbN68FBDQ/exec";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -634,7 +635,12 @@ function openSeasonFlow(){
 function triggerUpload(key){const input=$("file_"+key); if(input)input.click()}
 async function uploadToCloudinary(event,key){const file=event.target.files[0]; if(!file)return; const target=form.querySelector(`[name="${key}"]`); const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLOUDINARY_UPLOAD_PRESET);setStatus("Enviando mídia...");const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});const json=await res.json();if(!json.secure_url)throw new Error(json.error?.message||"Erro Cloudinary");target.value=json.secure_url;setStatus("Mídia enviada.","ok")}
 
-window.openForm=openForm;window.removeRecord=removeRecord;window.setActiveProtagonist=setActiveProtagonist;window.openPlayerByName=openPlayerByName;window.triggerUpload=triggerUpload;window.uploadToCloudinary=uploadToCloudinary;
+if(typeof openForm !== "undefined") window.openForm = openForm;
+if(typeof removeRecord !== "undefined") window.removeRecord = removeRecord;
+if(typeof setActiveProtagonist !== "undefined") window.setActiveProtagonist = setActiveProtagonist;
+if(typeof openPlayerByName !== "undefined") window.openPlayerByName = openPlayerByName;
+if(typeof triggerUpload !== "undefined") window.triggerUpload = triggerUpload;
+if(typeof uploadToCloudinary !== "undefined") window.uploadToCloudinary = uploadToCloudinary;
 
 window.addEventListener('error', function(event){
   console.error("Football Legacy error:", event.error || event.message);
@@ -726,3 +732,43 @@ if(document.readyState === "loading"){
 }else{
   startFootballLegacy();
 }
+
+
+
+async function removeRecord(kind,id){
+  if(!id && id !== 0){
+    alert("ID não encontrado para excluir.");
+    return;
+  }
+
+  if(!confirm("Excluir este registro?")){
+    return;
+  }
+
+  const table = tableMap[kind];
+
+  if(!table){
+    alert("Tabela não configurada para: " + kind);
+    return;
+  }
+
+  try{
+    setStatus("Excluindo registro...");
+    const res = await apiPost({
+      action:"delete",
+      table,
+      id
+    });
+
+    if(!res.ok){
+      throw new Error(res.error || "Erro ao excluir registro.");
+    }
+
+    await loadData();
+    setStatus("Registro excluído com sucesso.","ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao excluir: " + err.message, "error");
+  }
+}
+

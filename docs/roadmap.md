@@ -1,3 +1,3 @@
-# Football Legacy V3.0
+# Football Legacy V3.1
 
-Hardcoded API URL no script.js, inicialização segura via DOMContentLoaded e diagnóstico no console. Corrige caso em que o dashboard ficava preso em 'Conectando ao Google Sheets'.
+Corrige erro fatal `removeRecord is not defined`, que impedia o script de chegar no `loadData()`. Exportações globais agora são protegidas.
