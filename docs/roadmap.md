@@ -1,3 +1,3 @@
-# Football Legacy V3.7.25
+# Football Legacy V3.7.28
 
-Rollback emergencial da v3.7.24. Volta para a base estável v3.7.23 e remove alterações que quebraram botões/causaram Maximum call stack size exceeded. Não sobrescreve openSeasonFlow nem funções de clique. Mantém apenas proteção para destravar botão em erro e inclui Supercopa da UEFA/Intercontinental nos títulos gerais sem recursão.
+Bola de Ouro simplificada: formulário mostra Temporada/Ano como 2025/2026 - 2026, mas salva temporada=2026 e ano=2026. Após salvar BOLA_DE_OURO_CARREIRA, o dashboard sincroniza o banco local imediatamente e renderiza a aba sem depender do reload do Google Sheets.
