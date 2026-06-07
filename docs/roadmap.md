@@ -1,3 +1,3 @@
-# Football Legacy V3.7.82
+# Football Legacy V3.7.83
 
-Troféus: mostra apenas títulos ganhos pelo protagonista, filtrando campeões de outros times. Estatísticas: substitui a tabela antiga por painel das grandes competições com Top 5 vencedores, alimentado pelos campeões cadastrados.
+Bola de Ouro: remove painel de filtros de dentro da arte/tabela e coloca as visualizações dentro do modal Os melhores. Estatísticas: adiciona Brasileirão. Seleção: força fallback confiável de escudo do Brasil via Wikimedia Commons e reforça injeção de badge em cards de seleção.
