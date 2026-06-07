@@ -1,3 +1,3 @@
-# Football Legacy V3.7.35
+# Football Legacy V3.7.36
 
-Bola de Ouro agora salva ranking em lote usando action=batch. Um ranking inteiro usa uma única chamada ao Apps Script, em vez de uma chamada por jogador. Requer Apps Script v3.5.7.
+Adiciona salvamento em lote para temporada usando action=saveSeasonFull. Uma temporada inteira, incluindo clube, temporada, estatísticas e títulos/campeões, passa a ser salva em uma única chamada ao Apps Script. Requer Apps Script v3.5.8.
