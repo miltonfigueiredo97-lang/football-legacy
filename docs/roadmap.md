@@ -1,3 +1,3 @@
-# Football Legacy V3.7.87
+# Football Legacy V3.7.88
 
-Top 11 corrigido: remove dependência de openModal, cria modal próprio, fixa fundo padrão do Top 11 para todos, remove aplicar fundo, adiciona seletor de Top 11 por temporada e salva posições apenas do Top 11 selecionado.
+Corrige o salvamento do Top 11: botão Salvar Top 11 agora desativa enquanto salva, fecha o modal ao concluir e impede duplo clique. O payload envia replace_existing=true para evitar duplicatas na mesma temporada.

@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.87 top11 season modal fixed bg');
+console.log('Football Legacy script carregado v3.7.88 top11 save no duplicates');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -13605,3 +13605,197 @@ window.FL_toggleTop11EditV3787 = FL_toggleTop11EditV3787;
 window.FL_openCreateTop11V3787 = FL_openCreateTop11V3787;
 window.FL_closeTop11ModalV3787 = FL_closeTop11ModalV3787;
 window.FL_saveTop11PositionsV3787 = FL_saveTop11PositionsV3787;
+
+
+// ===== V3.7.88 TOP11 SALVAR SEM DUPLICAR + FECHAR MODAL =====
+// Corrige:
+// - botão parecia não funcionar porque salvava mas não fechava;
+// - duplo clique gerava cópias;
+// - salvamento agora desativa botão, mostra status, fecha modal e recarrega o Top11.
+
+let FL_TOP11_SAVING_V3788 = false;
+
+function FL_top11FixedBgV3788(){
+  return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+}
+
+function FL_getTop11FormV3788(){
+  return document.getElementById("top11-create-form-v3787") ||
+         document.getElementById("top11-create-form-v3788");
+}
+
+function FL_closeTop11ModalV3788(){
+  document.getElementById("fl-top11-modal-v3787")?.remove();
+  document.getElementById("fl-top11-modal-v3788")?.remove();
+}
+
+function FL_setTop11ButtonSavingV3788(isSaving){
+  const btn =
+    document.getElementById("fl-top11-save-v3787") ||
+    document.getElementById("fl-top11-save-v3788") ||
+    [...document.querySelectorAll("button")].find(b => /salvar top 11/i.test(b.textContent || ""));
+
+  if(!btn) return;
+
+  btn.disabled = !!isSaving;
+  btn.textContent = isSaving ? "Salvando..." : "Salvar Top 11";
+}
+
+function FL_defaultTop11PositionsV3788(){
+  if(typeof FL_defaultTop11PositionsV3787 === "function") return FL_defaultTop11PositionsV3787();
+  return [
+    ["GOL",50,88],
+    ["LD",78,70],["ZAG",60,72],["ZAG",40,72],["LE",22,70],
+    ["VOL",50,56],
+    ["MC",35,43],["MC",65,43],
+    ["PD",78,25],["CA",50,18],["PE",22,25]
+  ];
+}
+
+function FL_activeCareerIdV3788(){
+  return active?.carreira_id || "";
+}
+
+function FL_collectNewTop11RowsV3788(){
+  const f = FL_getTop11FormV3788();
+  if(!f) throw new Error("Formulário do Top 11 não encontrado.");
+
+  const defaults = FL_defaultTop11PositionsV3788();
+  const temporada = String(f.temporada?.value || "").trim();
+  const carreiraTemporadaId = String(f.carreira_temporada_id?.value || "").trim();
+
+  const rows = [];
+
+  for(let i=0; i<11; i++){
+    const jogador = String(f[`jogador_${i}`]?.value || "").trim();
+    if(!jogador) continue;
+
+    rows.push({
+      carreira_id: FL_activeCareerIdV3788(),
+      carreira_temporada_id: carreiraTemporadaId,
+      temporada,
+      posicao_tatica: String(f[`posicao_${i}`]?.value || defaults[i]?.[0] || "").trim(),
+      jogador,
+      overall: String(f[`overall_${i}`]?.value || "").trim(),
+      clube: String(f[`clube_${i}`]?.value || "").trim(),
+      pais: String(f[`pais_${i}`]?.value || "").trim(),
+      foto_url: "",
+      x: defaults[i]?.[1] ?? "",
+      y: defaults[i]?.[2] ?? "",
+      mapa_url: FL_top11FixedBgV3788()
+    });
+  }
+
+  return {temporada, carreiraTemporadaId, rows};
+}
+
+async function FL_saveNewTop11V3788(){
+  if(FL_TOP11_SAVING_V3788) return;
+
+  try{
+    FL_TOP11_SAVING_V3788 = true;
+    FL_setTop11ButtonSavingV3788(true);
+
+    const payload = FL_collectNewTop11RowsV3788();
+
+    if(!payload.rows.length){
+      throw new Error("Preencha pelo menos um jogador no Top 11.");
+    }
+
+    setStatus("Salvando Top 11...", "loading");
+
+    const result = await apiPost({
+      action: "saveTop11CareerV2",
+      carreira_id: FL_activeCareerIdV3788(),
+      carreira_temporada_id: payload.carreiraTemporadaId,
+      temporada: payload.temporada,
+      mapa_url: FL_top11FixedBgV3788(),
+      replace_existing: true,
+      rows: payload.rows
+    });
+
+    if(!result || !result.ok){
+      throw new Error(result?.error || "Apps Script não confirmou salvamento do Top 11.");
+    }
+
+    const saved = result.data?.rows || payload.rows;
+
+    if(!Array.isArray(db.TOP11_CARREIRA)) db.TOP11_CARREIRA = [];
+
+    // Remove da memória os registros da mesma temporada antes de colocar os novos.
+    db.TOP11_CARREIRA = db.TOP11_CARREIRA.filter(r => {
+      const sameCareer = String(r.carreira_id || "") === String(FL_activeCareerIdV3788());
+      const sameSeasonId = payload.carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(payload.carreiraTemporadaId);
+      const sameSeason = !payload.carreiraTemporadaId && String(r.temporada || "") === String(payload.temporada);
+      return !(sameCareer && (sameSeasonId || sameSeason));
+    });
+
+    saved.forEach(r => db.TOP11_CARREIRA.push(r));
+
+    if(typeof FL_TOP11_SELECTED_KEY_V3787 !== "undefined"){
+      FL_TOP11_SELECTED_KEY_V3787 = payload.carreiraTemporadaId ? `id:${payload.carreiraTemporadaId}` : `temp:${payload.temporada}`;
+    }
+
+    if(typeof FL_TOP11_EDITING_V3787 !== "undefined"){
+      FL_TOP11_EDITING_V3787 = true;
+    }
+
+    FL_closeTop11ModalV3788();
+
+    if(typeof FL_renderTop11V3787 === "function"){
+      FL_renderTop11V3787();
+    }else if(typeof renderTop11 === "function"){
+      renderTop11();
+    }
+
+    setStatus("Top 11 salvo. Agora ajuste as posições e clique em Salvar posições deste Top 11.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao salvar Top 11: " + err.message, "error");
+  }finally{
+    FL_TOP11_SAVING_V3788 = false;
+    FL_setTop11ButtonSavingV3788(false);
+  }
+}
+
+async function FL_saveTop11PositionsV3788(){
+  if(FL_TOP11_SAVING_V3788) return;
+
+  const oldFn = typeof FL_saveTop11PositionsV3787 === "function" ? FL_saveTop11PositionsV3787 : null;
+
+  try{
+    FL_TOP11_SAVING_V3788 = true;
+    const btn = [...document.querySelectorAll("button")].find(b => /salvar posições/i.test(b.textContent || ""));
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = "Salvando posições...";
+    }
+
+    if(oldFn){
+      await oldFn();
+    }
+  }finally{
+    FL_TOP11_SAVING_V3788 = false;
+  }
+}
+
+// Listener forte no botão do modal, caso o onclick antigo falhe.
+document.addEventListener("click", function(e){
+  const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
+  if(!btn) return;
+
+  if(btn.id === "fl-top11-save-v3787" || btn.id === "fl-top11-save-v3788" || /salvar top 11/i.test(btn.textContent || "")){
+    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
+    if(modal){
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      FL_saveNewTop11V3788();
+    }
+  }
+}, true);
+
+window.FL_saveNewTop11V3787 = FL_saveNewTop11V3788;
+window.FL_saveNewTop11V3788 = FL_saveNewTop11V3788;
+window.FL_closeTop11ModalV3788 = FL_closeTop11ModalV3788;
+window.FL_saveTop11PositionsV3788 = FL_saveTop11PositionsV3788;
