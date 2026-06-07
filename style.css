@@ -1679,3 +1679,20 @@ button[disabled],
   font-size:12px;
   font-weight:700;
 }
+
+
+/* ===== V3.7.30 SUMMARY FALLBACK ===== */
+.status.warn,
+#status.warn,
+.status-message.warn{
+  background:rgba(251,191,36,.12)!important;
+  border-color:rgba(251,191,36,.32)!important;
+  color:#fde68a!important;
+}
+.status.error,
+#status.error,
+.status-message.error{
+  background:rgba(239,68,68,.12)!important;
+  border-color:rgba(239,68,68,.35)!important;
+  color:#fecaca!important;
+}

@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.29 ballon season start year');
+console.log('Football Legacy script carregado v3.7.30 summary fallback all');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -6181,4 +6181,123 @@ function normalizeBallonCareerRecord(record){
 
 window.getAwardYearFromSeason = getAwardYearFromSeason;
 window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
+
+
+
+// ===== V3.7.30 SUMMARY FALLBACK PARA ACTION=ALL =====
+// Se action=summary não existir no Apps Script publicado,
+// carrega action=all automaticamente em vez de travar.
+
+async function fetchFootballLegacyActionV3730(action){
+  const base = API_URL;
+  const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
+  console.log("Football Legacy API:", url);
+
+  let data;
+
+  if(API_URL.startsWith("/api/")){
+    const res = await fetch(url, {cache:"no-store"});
+    data = await res.json();
+  }else{
+    try{
+      data = await fetchJsonp(`${API_URL}?action=${encodeURIComponent(action)}`);
+    }catch(err){
+      const res = await fetch(url, {cache:"no-store"});
+      data = await res.json();
+    }
+  }
+
+  if(!data || !data.ok){
+    throw new Error(data?.error || `action=${action} não disponível`);
+  }
+
+  return data.data || {};
+}
+
+function normalizeDbAfterLoad(){
+  if(!db || typeof db !== "object") db = {};
+  Object.keys(db).forEach(k=>{
+    if(!Array.isArray(db[k])) db[k] = [];
+  });
+}
+
+function mergeDbV3730(partial){
+  if(!db || typeof db !== "object") db = {};
+  Object.keys(partial || {}).forEach(k=>{
+    db[k] = Array.isArray(partial[k]) ? partial[k] : [];
+  });
+  normalizeDbAfterLoad();
+}
+
+async function loadData(){
+  setStatus("Carregando dados do Google Sheets...");
+
+  try{
+    const summary = await fetchFootballLegacyActionV3730("summary");
+    mergeDbV3730(summary);
+
+    console.log("Football Legacy SUMMARY carregado:", {
+      CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
+      ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
+      BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length
+    });
+
+    if(typeof renderGlobalSelectorsOnly === "function") renderGlobalSelectorsOnly();
+    if(typeof renderPageById === "function") renderPageById("dashboard", true);
+    else renderAll();
+
+    setStatus("Resumo carregado. Carregando dados completos em segundo plano...", "ok");
+
+    // Tenta carregar full em segundo plano, sem bloquear o resumo.
+    fetchFootballLegacyActionV3730("all").then(full=>{
+      db = full;
+      normalizeDbAfterLoad();
+      if(typeof renderAll === "function") renderAll();
+      setStatus("Dados completos carregados.", "ok");
+    }).catch(err=>{
+      console.warn("Resumo ok, full falhou:", err);
+      setStatus("Resumo carregado. Dados completos carregam ao clicar em Atualizar.", "warn");
+    });
+
+  }catch(summaryErr){
+    console.warn("action=summary falhou. Carregando action=all:", summaryErr);
+
+    try{
+      setStatus("Resumo rápido indisponível. Carregando banco completo...");
+      const full = await fetchFootballLegacyActionV3730("all");
+      db = full;
+      normalizeDbAfterLoad();
+
+      console.log("Football Legacy FULL carregado:", {
+        CARREIRA_TEMPORADAS:getTable("CARREIRA_TEMPORADAS").length,
+        ESTATISTICAS_CARREIRA:getTable("ESTATISTICAS_CARREIRA").length,
+        BOLA_DE_OURO_CARREIRA:getTable("BOLA_DE_OURO_CARREIRA").length,
+        BOLA_DE_OURO_BASE:getTable("BOLA_DE_OURO_BASE").length,
+        RECORDS_BASE:getTable("RECORDS_BASE").length
+      });
+
+      if(typeof renderAll === "function") renderAll();
+      setStatus("Dados carregados do Google Sheets com sucesso.", "ok");
+    }catch(fullErr){
+      console.error("action=all também falhou:", fullErr);
+      setStatus("Erro ao carregar Google Sheets: " + fullErr.message, "error");
+    }
+  }
+}
+
+async function forceRefreshData(){
+  setStatus("Atualizando banco completo...");
+  try{
+    const full = await fetchFootballLegacyActionV3730("all");
+    db = full;
+    normalizeDbAfterLoad();
+    if(typeof renderAll === "function") renderAll();
+    setStatus("Dados atualizados com sucesso.", "ok");
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao atualizar: " + err.message, "error");
+  }
+}
+
+window.forceRefreshData = forceRefreshData;
 
