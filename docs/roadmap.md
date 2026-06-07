@@ -1,3 +1,3 @@
-# Football Legacy V3.5
+# Football Legacy V3.5.1
 
-Bola de Ouro agora lê BOLA_DE_OURO_BASE global + BOLA_DE_OURO_CARREIRA filtrada pela carreira atual. Adicionado botão Os melhores para ranking dos maiores vencedores somando base real e carreira atual.
+Hotfix: adiciona escapeAttr e escapeHtml. Corrige erro `escapeAttr is not defined` que quebrava a aba Bola de Ouro depois de carregar os dados globais.

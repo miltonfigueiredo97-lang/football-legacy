@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.5 ballon global career');
+console.log('Football Legacy script carregado v3.5.1 ballon escape fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -93,6 +93,25 @@ function ensureActive(){
   const chars=getCareerCharacters(); if(!active.protagonista_id&&chars[0]) active.protagonista_id=String(chars[0].id);
   saveActive();
 }
+
+function escapeAttr(value){
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeHtml(value){
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 
 function seasonKey(value){const m=String(value||"").match(/\d{4}/g); return m?Number(m[m.length-1]):0}
 function compareSeasonsDesc(a,b){return seasonKey(b)-seasonKey(a)}
@@ -447,7 +466,7 @@ function renderBolaOuro(){
     <div>${r.posicao||"-"}</div>
     <div class="ballon-player-cell">
       <span class="flag-dot">${flagFrom(r.nacionalidade)}</span>
-      <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${r.jogador||"-"}</button>
+      <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
     </div>
     <div>${r.idade||"-"}</div>
     <div>${r.valor_mercado||"-"}</div>
@@ -871,11 +890,11 @@ function renderBolaOuro(){
       <div>${r.posicao||"-"}</div>
       <div class="ballon-player-cell">
         <span class="flag-dot">${flagFrom(r.nacionalidade || r.pais)}</span>
-        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${r.jogador||"-"}</button>
-        <span class="ballon-source-pill">${sourceLabel}</span>
+        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
+        <span class="ballon-source-pill">${escapeHtml(sourceLabel)}</span>
       </div>
-      <div>${r.idade || r.idade_na_premiacao || "-"}</div>
-      <div>${r.valor_mercado || "-"}</div>
+      <div>${escapeHtml(r.idade || r.idade_na_premiacao || "-")}</div>
+      <div>${escapeHtml(r.valor_mercado || "-")}</div>
       <div class="ballon-actions"><button onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
     </div>`;
   }).join("")+
@@ -926,8 +945,8 @@ function openBestBallonModal(){
       <article class="best-ballon-row">
         <div class="best-ballon-rank">${item.rank}</div>
         <div class="best-ballon-player">
-          <strong>${flagFrom(item.pais)} ${item.jogador}</strong>
-          <small>${item.fontes.join(" + ")}</small>
+          <strong>${flagFrom(item.pais)} ${escapeHtml(item.jogador)}</strong>
+          <small>${escapeHtml(item.fontes.join(" + "))}</small>
         </div>
         <div class="best-ballon-count">${item.count}x</div>
         <div class="best-ballon-seasons">${item.temporadas.sort((a,b)=>{
