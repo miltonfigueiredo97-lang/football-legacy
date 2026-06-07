@@ -1,3 +1,3 @@
-# Football Legacy V3.7.6
+# Football Legacy V3.7.8
 
-Rollback seguro da v3.7.4: remove alteração que bugava imagem do jogador. Mantém correções da v3.7.3: totais no resumo, records por competição e troféus. Adiciona cache local seguro para acelerar carregamento.
+Corrige card do jogador no Resumo: remove dois quadrados, usa um único card com foto inteira e nome sobreposto com degradê.

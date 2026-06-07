@@ -1361,54 +1361,107 @@ button.saving::before,
 }
 
 
-/* ===== V3.7.6 SAFE PLAYER CARD FIX ===== */
-/* Remove qualquer tentativa anterior de usar a foto como background do card */
-.player-card-full-photo,
-.player-card-full-photo.has-player-photo,
-.hero-player-card,
-.protagonist-card,
-.player-card,
-.hero-card-side{
-  background-image:none!important;
-}
-
-/* Mantém imagem normal, sem distorcer, sem completar artificialmente */
-.player-photo,
-.protagonist-photo,
-.photo-box{
-  overflow:hidden!important;
-  border-radius:24px!important;
-}
-
-.player-photo img,
-.protagonist-photo img,
-.photo-box img,
-#playerPhoto,
-#protagonistImage{
-  width:100%!important;
-  height:100%!important;
-  object-fit:cover!important;
-  object-position:center top!important;
-  display:block;
-}
-
-/* Nome sempre abaixo da imagem, não sobreposto em cima da foto */
-.player-info,
-.protagonist-info,
-.character-card-info,
-.card-name{
-  position:relative!important;
-  left:auto!important;
-  right:auto!important;
-  bottom:auto!important;
-  z-index:auto!important;
-}
-
-/* Cache warning */
+/* ===== V3.7.7 SUMMARY FIRST ===== */
 .status.warn,
 #status.warn,
 .status-message.warn{
   background:rgba(251,191,36,.12)!important;
   border-color:rgba(251,191,36,.32)!important;
   color:#fde68a!important;
+}
+
+
+/* ===== V3.7.8 PLAYER CARD OVERLAY FIX ===== */
+.player-overlay-side{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:270px!important;
+}
+
+/* remove os dois quadrados antigos quando o JS substitui o conteúdo */
+.player-overlay-side .player-card,
+.player-overlay-side .protagonist-card,
+.player-overlay-side .character-card,
+.player-overlay-side .photo-box,
+.player-overlay-side .player-photo{
+  display:none!important;
+}
+
+.player-overlay-card{
+  width:280px;
+  height:390px;
+  border-radius:28px;
+  overflow:hidden;
+  position:relative;
+  background:#0f172a;
+  border:1px solid rgba(245,158,11,.55);
+  box-shadow:0 24px 50px rgba(0,0,0,.28);
+}
+
+.player-overlay-img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center top;
+  display:block;
+}
+
+.player-overlay-empty{
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  color:#fff;
+  font-size:46px;
+  font-weight:1000;
+  background:#111827;
+}
+
+.player-overlay-gradient{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,rgba(15,23,42,0) 0%,rgba(15,23,42,0) 45%,rgba(15,23,42,.72) 76%,rgba(15,23,42,.96) 100%);
+  pointer-events:none;
+}
+
+.player-overlay-info{
+  position:absolute;
+  left:16px;
+  right:16px;
+  bottom:16px;
+  z-index:3;
+  text-align:center;
+  padding:14px 12px;
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(15,23,42,.40),rgba(15,23,42,.78));
+  backdrop-filter:blur(8px);
+}
+
+.player-overlay-info strong{
+  display:block;
+  color:#fff;
+  font-size:22px;
+  line-height:1.05;
+  text-transform:uppercase;
+}
+
+.player-overlay-info span{
+  display:block;
+  margin-top:7px;
+  color:#dbeafe;
+  font-size:12px;
+  font-weight:1000;
+  text-transform:uppercase;
+}
+
+@media(max-width:1100px){
+  .player-overlay-side{
+    min-width:0!important;
+  }
+  .player-overlay-card{
+    width:240px;
+    height:340px;
+  }
 }
