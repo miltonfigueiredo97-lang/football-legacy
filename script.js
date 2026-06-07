@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.75 ballon selector live refresh');
+console.log('Football Legacy script carregado v3.7.76 ballon selector stable');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -9529,12 +9529,16 @@ window.FL_prefillBallonFromExistingV3773 = FL_prefillBallonFromExistingV3773;
 window.FL_attachBallonPrefillListenersV3773 = FL_attachBallonPrefillListenersV3773;
 
 
-// ===== V3.7.74 BOLA DE OURO PREFILL TODAS AS POSIÇÕES =====
-// Corrige o preenchimento que só colocava a posição 1.
-// Agora preenche por colunas do formulário:
-// Jogador[], País[], Clube[], Idade[], Valor[]
+// ===== V3.7.76 BOLA DE OURO SELECTOR STABLE =====
+// Corrige travamento do seletor do Bola de Ouro.
+// Não usa listener de input global.
+// Não dispara change nos campos preenchidos.
+// Só atualiza depois que a temporada realmente muda.
 
-function FL_keyV3774(value){
+let FL_BALLON_FILLING_V3776 = false;
+let FL_BALLON_LAST_SEASON_V3776 = "";
+
+function FL_keyV3776(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -9542,14 +9546,13 @@ function FL_keyV3774(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_isBallonModalV3774(){
+function FL_isBallonModalV3776(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
-
   return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
 }
 
-function FL_normalizeSeasonV3774(value){
+function FL_normalizeSeasonV3776(value){
   const raw = String(value || "").trim();
 
   let m = raw.match(/-\s*(\d{4})$/);
@@ -9564,31 +9567,36 @@ function FL_normalizeSeasonV3774(value){
   return raw;
 }
 
-function FL_getBallonSeasonV3774(){
+function FL_getSeasonInputV3776(){
   const root = form || document;
-  const input =
+
+  return (
     root.querySelector("[name='temporada']") ||
     root.querySelector("[name='ano']") ||
     root.querySelector("#ballonSeason") ||
-    root.querySelector("select");
-
-  return FL_normalizeSeasonV3774(input?.value || "");
+    root.querySelector("select")
+  );
 }
 
-function FL_existingBallonRowsV3774(season){
-  const normalized = FL_normalizeSeasonV3774(season);
+function FL_getSeasonV3776(){
+  const input = FL_getSeasonInputV3776();
+  return FL_normalizeSeasonV3776(input?.value || "");
+}
+
+function FL_getSavedBallonRowsV3776(season){
+  const normalized = FL_normalizeSeasonV3776(season);
 
   return (db.BOLA_DE_OURO_CARREIRA || [])
     .filter(r => {
-      const a = FL_normalizeSeasonV3774(r.temporada);
-      const b = FL_normalizeSeasonV3774(r.ano);
+      const a = FL_normalizeSeasonV3776(r.temporada);
+      const b = FL_normalizeSeasonV3776(r.ano);
       return String(a) === String(normalized) || String(b) === String(normalized);
     })
     .sort((a,b) => Number(a.posicao || 999) - Number(b.posicao || 999));
 }
 
-function FL_fieldTypeV3774(input){
-  const key = FL_keyV3774([
+function FL_typeV3776(input){
+  const key = FL_keyV3776([
     input.name,
     input.id,
     input.placeholder,
@@ -9599,516 +9607,187 @@ function FL_fieldTypeV3774(input){
   if(input.type === "file") return "file";
   if(key.includes("temporada") || key === "ano" || key.includes("anoboladeouro")) return "season";
   if(key.includes("imagem") || key.includes("image") || key.includes("url")) return "image";
-
   if(key.includes("jogador") || key.includes("player") || key === "nome") return "jogador";
   if(key.includes("pais") || key.includes("nacionalidade") || key.includes("country")) return "pais";
   if(key.includes("clube") || key.includes("club") || key.includes("time") || key.includes("team")) return "clube";
   if(key.includes("idade") || key.includes("age")) return "idade";
   if(key.includes("valor") || key.includes("mercado") || key.includes("market") || key.includes("euro") || key.includes("90m")) return "valor";
-
   return "";
 }
 
-function FL_getBallonColumnInputsV3774(){
+function FL_getBallonColumnsV3776(){
   const root = form || document;
-
-  const result = {
-    jogador: [],
-    pais: [],
-    clube: [],
-    idade: [],
-    valor: []
-  };
+  const result = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
 
   const inputs = [...root.querySelectorAll("input,select,textarea")]
     .filter(input => input.type !== "file");
 
-  inputs.forEach(input => {
-    const type = FL_fieldTypeV3774(input);
+  inputs.forEach(input=>{
+    const type = FL_typeV3776(input);
     if(result[type]) result[type].push(input);
   });
 
-  // Fallback pela ordem visual se alguma coluna não foi reconhecida.
-  // Remove temporada/imagem, depois agrupa de 5 em 5:
-  // jogador, país, clube, idade, valor.
-  if(
-    result.jogador.length < 2 ||
-    result.pais.length < 2 ||
-    result.clube.length < 2 ||
-    result.idade.length < 2 ||
-    result.valor.length < 2
-  ){
-    const rowInputs = inputs.filter(input => {
-      const type = FL_fieldTypeV3774(input);
+  const needsFallback = Object.values(result).some(arr => arr.length < 10);
+
+  if(needsFallback){
+    const dataInputs = inputs.filter(input=>{
+      const type = FL_typeV3776(input);
       return type !== "season" && type !== "image" && type !== "file";
     });
 
-    const fallback = {
-      jogador: [],
-      pais: [],
-      clube: [],
-      idade: [],
-      valor: []
-    };
+    const fallback = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
 
-    for(let i=0; i<10; i++){
+    for(let i=0;i<10;i++){
       const base = i * 5;
-      if(rowInputs[base]) fallback.jogador.push(rowInputs[base]);
-      if(rowInputs[base+1]) fallback.pais.push(rowInputs[base+1]);
-      if(rowInputs[base+2]) fallback.clube.push(rowInputs[base+2]);
-      if(rowInputs[base+3]) fallback.idade.push(rowInputs[base+3]);
-      if(rowInputs[base+4]) fallback.valor.push(rowInputs[base+4]);
+      if(dataInputs[base]) fallback.jogador.push(dataInputs[base]);
+      if(dataInputs[base+1]) fallback.pais.push(dataInputs[base+1]);
+      if(dataInputs[base+2]) fallback.clube.push(dataInputs[base+2]);
+      if(dataInputs[base+3]) fallback.idade.push(dataInputs[base+3]);
+      if(dataInputs[base+4]) fallback.valor.push(dataInputs[base+4]);
     }
 
-    // Usa fallback só onde a detecção por placeholder falhou.
     Object.keys(result).forEach(k=>{
-      if(result[k].length < fallback[k].length) result[k] = fallback[k];
+      if(fallback[k].length > result[k].length) result[k] = fallback[k];
     });
   }
 
   return result;
 }
 
-function FL_setValueV3774(input, value){
+function FL_setSilentV3776(input, value){
   if(!input) return;
-
   input.value = value || "";
-  input.dispatchEvent(new Event("input", {bubbles:true}));
-  input.dispatchEvent(new Event("change", {bubbles:true}));
 }
 
-function FL_getImageInputV3774(){
-  const root = form || document;
+function FL_clearRowsV3776(){
+  const c = FL_getBallonColumnsV3776();
 
-  const candidates = [...root.querySelectorAll("input,select,textarea")]
-    .filter(input => input.type !== "file")
-    .filter(input => FL_fieldTypeV3774(input) === "image");
-
-  return candidates[0] || null;
-}
-
-function FL_prefillBallonAllPositionsV3774(){
-  try{
-    if(!FL_isBallonModalV3774()) return;
-
-    const season = FL_getBallonSeasonV3774();
-    if(!season) return;
-
-    const rows = FL_existingBallonRowsV3774(season);
-    if(!rows.length) return;
-
-    const columns = FL_getBallonColumnInputsV3774();
-
-    console.log("Bola de Ouro prefill todas posições v3.7.74:", {
-      season,
-      rows,
-      columns: {
-        jogador: columns.jogador.length,
-        pais: columns.pais.length,
-        clube: columns.clube.length,
-        idade: columns.idade.length,
-        valor: columns.valor.length
-      }
-    });
-
-    const image =
-      rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_destaque_url ||
-      rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_url ||
-      "";
-
-    const imageInput = FL_getImageInputV3774();
-    if(imageInput && image && !String(image).toLowerCase().includes("fakepath")){
-      FL_setValueV3774(imageInput, image);
-    }
-
-    rows.slice(0,10).forEach((record, index)=>{
-      FL_setValueV3774(columns.jogador[index], record.jogador || "");
-      FL_setValueV3774(columns.pais[index], record.pais || record.nacionalidade || "");
-      FL_setValueV3774(columns.clube[index], record.clube || "");
-      FL_setValueV3774(columns.idade[index], record.idade_na_premiacao || record.idade || "");
-      FL_setValueV3774(columns.valor[index], record.valor_mercado || "");
-    });
-
-    setStatus(`Ranking ${season} carregado para edição.`, "ok");
-  }catch(err){
-    console.warn("Falha prefill todas posições v3.7.74:", err);
+  for(let i=0;i<10;i++){
+    FL_setSilentV3776(c.jogador[i], "");
+    FL_setSilentV3776(c.pais[i], "");
+    FL_setSilentV3776(c.clube[i], "");
+    FL_setSilentV3776(c.idade[i], "");
+    FL_setSilentV3776(c.valor[i], "");
   }
 }
 
-function FL_attachBallonPrefillV3774(){
-  try{
-    if(!FL_isBallonModalV3774()) return;
-
-    const root = form || document;
-    const seasonInput =
-      root.querySelector("[name='temporada']") ||
-      root.querySelector("[name='ano']") ||
-      root.querySelector("#ballonSeason") ||
-      root.querySelector("select");
-
-    if(seasonInput && !seasonInput.dataset.prefillAllV3774){
-      seasonInput.dataset.prefillAllV3774 = "1";
-      seasonInput.addEventListener("change", () => setTimeout(FL_prefillBallonAllPositionsV3774, 150));
-      seasonInput.addEventListener("input", () => setTimeout(FL_prefillBallonAllPositionsV3774, 250));
-    }
-
-    setTimeout(FL_prefillBallonAllPositionsV3774, 250);
-    setTimeout(FL_prefillBallonAllPositionsV3774, 900);
-    setTimeout(FL_prefillBallonAllPositionsV3774, 1600);
-  }catch(err){
-    console.warn("Falha attach prefill v3.7.74:", err);
-  }
-}
-
-// A função antiga agora chama a nova.
-window.FL_prefillBallonFromExistingV3773 = FL_prefillBallonAllPositionsV3774;
-window.FL_prefillBallonAllPositionsV3774 = FL_prefillBallonAllPositionsV3774;
-
-const __renderAllOriginalV3774 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3774 && !window.__renderAllBallonPrefillAllWrappedV3774){
-  window.__renderAllBallonPrefillAllWrappedV3774 = true;
-
-  renderAll = function(){
-    const result = __renderAllOriginalV3774.apply(this, arguments);
-    setTimeout(FL_attachBallonPrefillV3774, 160);
-    setTimeout(FL_attachBallonPrefillV3774, 950);
-    return result;
-  };
-}
-
-document.addEventListener("click", function(){
-  setTimeout(FL_attachBallonPrefillV3774, 250);
-}, true);
-
-document.addEventListener("change", function(e){
-  if(FL_isBallonModalV3774()){
-    setTimeout(FL_prefillBallonAllPositionsV3774, 150);
-  }
-}, true);
-
-
-// ===== V3.7.75 BOLA DE OURO SELECTOR LIVE REFRESH =====
-// Corrige troca no seletor do Bola de Ouro:
-// quando muda a temporada, limpa tudo e preenche com os jogadores da temporada escolhida.
-
-let FL_LAST_BALLON_SEASON_V3775 = "";
-
-function FL_keyV3775(value){
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-z0-9]+/g,"");
-}
-
-function FL_isBallonModalV3775(){
-  const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
-  const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
-  return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
-}
-
-function FL_normalizeSeasonV3775(value){
-  const raw = String(value || "").trim();
-
-  let m = raw.match(/-\s*(\d{4})$/);
-  if(m) return m[1];
-
-  m = raw.match(/(\d{4})\s*\/\s*(\d{4})/);
-  if(m) return m[2];
-
-  m = raw.match(/(\d{4})/);
-  if(m) return m[1];
-
-  return raw;
-}
-
-function FL_getBallonSeasonInputV3775(){
+function FL_getImageInputV3776(){
   const root = form || document;
-
-  // Prioriza o campo maior do topo do modal.
-  const named =
-    root.querySelector("[name='temporada']") ||
-    root.querySelector("[name='ano']") ||
-    root.querySelector("#ballonSeason");
-
-  if(named) return named;
-
-  const selects = [...root.querySelectorAll("select,input")]
-    .filter(el => {
-      if(el.type === "file") return false;
-
-      const key = FL_keyV3775([
-        el.name,
-        el.id,
-        el.placeholder,
-        el.dataset?.field,
-        el.getAttribute("aria-label"),
-        el.previousElementSibling?.textContent
-      ].join(" "));
-
-      const value = String(el.value || "");
-      return (
-        key.includes("temporada") ||
-        key.includes("ano") ||
-        value.match(/\d{4}/)
-      );
-    });
-
-  return selects[0] || null;
-}
-
-function FL_getBallonSeasonV3775(){
-  const input = FL_getBallonSeasonInputV3775();
-  return FL_normalizeSeasonV3775(input?.value || "");
-}
-
-function FL_existingBallonRowsV3775(season){
-  const normalized = FL_normalizeSeasonV3775(season);
-
-  return (db.BOLA_DE_OURO_CARREIRA || [])
-    .filter(r => {
-      const a = FL_normalizeSeasonV3775(r.temporada);
-      const b = FL_normalizeSeasonV3775(r.ano);
-      return String(a) === String(normalized) || String(b) === String(normalized);
-    })
-    .sort((a,b) => Number(a.posicao || 999) - Number(b.posicao || 999));
-}
-
-function FL_fieldTypeV3775(input){
-  const key = FL_keyV3775([
-    input.name,
-    input.id,
-    input.placeholder,
-    input.dataset?.field,
-    input.getAttribute("aria-label")
-  ].join(" "));
-
-  if(input.type === "file") return "file";
-  if(key.includes("temporada") || key === "ano" || key.includes("anoboladeouro")) return "season";
-  if(key.includes("imagem") || key.includes("image") || key.includes("url")) return "image";
-
-  if(key.includes("jogador") || key.includes("player") || key === "nome") return "jogador";
-  if(key.includes("pais") || key.includes("nacionalidade") || key.includes("country")) return "pais";
-  if(key.includes("clube") || key.includes("club") || key.includes("time") || key.includes("team")) return "clube";
-  if(key.includes("idade") || key.includes("age")) return "idade";
-  if(key.includes("valor") || key.includes("mercado") || key.includes("market") || key.includes("euro") || key.includes("90m")) return "valor";
-
-  return "";
-}
-
-function FL_getBallonColumnInputsV3775(){
-  const root = form || document;
-
-  const result = {
-    jogador: [],
-    pais: [],
-    clube: [],
-    idade: [],
-    valor: []
-  };
-
   const inputs = [...root.querySelectorAll("input,select,textarea")]
     .filter(input => input.type !== "file");
 
-  inputs.forEach(input => {
-    const type = FL_fieldTypeV3775(input);
-    if(result[type]) result[type].push(input);
-  });
-
-  // Fallback pela ordem visual:
-  // temporada/imagem fora, depois grupos de 5.
-  if(
-    result.jogador.length < 10 ||
-    result.pais.length < 10 ||
-    result.clube.length < 10 ||
-    result.idade.length < 10 ||
-    result.valor.length < 10
-  ){
-    const rowInputs = inputs.filter(input => {
-      const type = FL_fieldTypeV3775(input);
-      return type !== "season" && type !== "image" && type !== "file";
-    });
-
-    const fallback = {
-      jogador: [],
-      pais: [],
-      clube: [],
-      idade: [],
-      valor: []
-    };
-
-    for(let i=0; i<10; i++){
-      const base = i * 5;
-      if(rowInputs[base]) fallback.jogador.push(rowInputs[base]);
-      if(rowInputs[base+1]) fallback.pais.push(rowInputs[base+1]);
-      if(rowInputs[base+2]) fallback.clube.push(rowInputs[base+2]);
-      if(rowInputs[base+3]) fallback.idade.push(rowInputs[base+3]);
-      if(rowInputs[base+4]) fallback.valor.push(rowInputs[base+4]);
-    }
-
-    Object.keys(result).forEach(k=>{
-      // se o fallback tiver mais linhas, ele é mais confiável para o modal atual
-      if(fallback[k].length >= result[k].length) result[k] = fallback[k];
-    });
-  }
-
-  return result;
+  return inputs.find(input => FL_typeV3776(input) === "image") || null;
 }
 
-function FL_setValueV3775(input, value){
-  if(!input) return;
-
-  input.value = value || "";
-  input.dispatchEvent(new Event("input", {bubbles:true}));
-  input.dispatchEvent(new Event("change", {bubbles:true}));
-}
-
-function FL_clearBallonRowsV3775(){
-  const columns = FL_getBallonColumnInputsV3775();
-
-  for(let i=0; i<10; i++){
-    FL_setValueV3775(columns.jogador[i], "");
-    FL_setValueV3775(columns.pais[i], "");
-    FL_setValueV3775(columns.clube[i], "");
-    FL_setValueV3775(columns.idade[i], "");
-    FL_setValueV3775(columns.valor[i], "");
-  }
-}
-
-function FL_getImageInputV3775(){
-  const root = form || document;
-
-  const candidates = [...root.querySelectorAll("input,select,textarea")]
-    .filter(input => input.type !== "file")
-    .filter(input => FL_fieldTypeV3775(input) === "image");
-
-  return candidates[0] || null;
-}
-
-function FL_setBallonImageV3775(value){
-  const input = FL_getImageInputV3775();
+function FL_setImageV3776(value){
+  const input = FL_getImageInputV3776();
   if(!input) return;
 
   const clean = String(value || "").toLowerCase().includes("fakepath") ? "" : value;
-  FL_setValueV3775(input, clean || "");
+  FL_setSilentV3776(input, clean || "");
 }
 
-function FL_prefillBallonSelectedSeasonV3775(force=false){
+function FL_loadBallonSeasonV3776(force=false){
   try{
-    if(!FL_isBallonModalV3775()) return;
+    if(!FL_isBallonModalV3776()) return;
 
-    const season = FL_getBallonSeasonV3775();
+    const season = FL_getSeasonV3776();
     if(!season) return;
 
-    if(!force && FL_LAST_BALLON_SEASON_V3775 === season) return;
-    FL_LAST_BALLON_SEASON_V3775 = season;
+    if(!force && FL_BALLON_LAST_SEASON_V3776 === season) return;
 
-    // Sempre limpa antes de preencher para não sobrar jogador da temporada anterior.
-    FL_clearBallonRowsV3775();
-    FL_setBallonImageV3775("");
+    FL_BALLON_LAST_SEASON_V3776 = season;
+    FL_BALLON_FILLING_V3776 = true;
 
-    const rows = FL_existingBallonRowsV3775(season);
+    const rows = FL_getSavedBallonRowsV3776(season);
+
+    // Só limpa depois de saber que a temporada mudou.
+    FL_clearRowsV3776();
+    FL_setImageV3776("");
 
     if(!rows.length){
+      FL_BALLON_FILLING_V3776 = false;
       setStatus(`Nenhum ranking salvo encontrado para ${season}.`, "ok");
       return;
     }
 
-    const columns = FL_getBallonColumnInputsV3775();
-
-    console.log("Bola de Ouro refresh selector v3.7.75:", {
-      season,
-      total: rows.length,
-      rows,
-      columns: {
-        jogador: columns.jogador.length,
-        pais: columns.pais.length,
-        clube: columns.clube.length,
-        idade: columns.idade.length,
-        valor: columns.valor.length
-      }
-    });
+    const c = FL_getBallonColumnsV3776();
 
     const image =
       rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_destaque_url ||
       rows.find(r => r.imagem_destaque_url || r.imagem_url)?.imagem_url ||
       "";
 
-    if(image) FL_setBallonImageV3775(image);
+    if(image) FL_setImageV3776(image);
 
-    rows.slice(0,10).forEach((record, index)=>{
-      FL_setValueV3775(columns.jogador[index], record.jogador || "");
-      FL_setValueV3775(columns.pais[index], record.pais || record.nacionalidade || "");
-      FL_setValueV3775(columns.clube[index], record.clube || "");
-      FL_setValueV3775(columns.idade[index], record.idade_na_premiacao || record.idade || "");
-      FL_setValueV3775(columns.valor[index], record.valor_mercado || "");
+    rows.slice(0,10).forEach((record,index)=>{
+      FL_setSilentV3776(c.jogador[index], record.jogador || "");
+      FL_setSilentV3776(c.pais[index], record.pais || record.nacionalidade || "");
+      FL_setSilentV3776(c.clube[index], record.clube || "");
+      FL_setSilentV3776(c.idade[index], record.idade_na_premiacao || record.idade || "");
+      FL_setSilentV3776(c.valor[index], record.valor_mercado || "");
     });
 
+    FL_BALLON_FILLING_V3776 = false;
     setStatus(`Ranking ${season} carregado para edição.`, "ok");
   }catch(err){
-    console.warn("Falha refresh selector Bola de Ouro v3.7.75:", err);
+    FL_BALLON_FILLING_V3776 = false;
+    console.warn("Falha ao carregar Bola de Ouro v3.7.76:", err);
   }
 }
 
-function FL_attachBallonSelectorRefreshV3775(){
+function FL_attachBallonStableSelectorV3776(){
   try{
-    if(!FL_isBallonModalV3775()) return;
+    if(!FL_isBallonModalV3776()) return;
 
-    const seasonInput = FL_getBallonSeasonInputV3775();
-    if(!seasonInput) return;
+    const input = FL_getSeasonInputV3776();
+    if(!input) return;
 
-    if(!seasonInput.dataset.refreshBallonV3775){
-      seasonInput.dataset.refreshBallonV3775 = "1";
+    if(!input.dataset.stableBallonV3776){
+      input.dataset.stableBallonV3776 = "1";
 
-      seasonInput.addEventListener("change", () => {
-        FL_LAST_BALLON_SEASON_V3775 = "";
-        setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 80);
-        setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 300);
+      // Só change. Nada de input, para não travar o dropdown.
+      input.addEventListener("change", ()=>{
+        if(FL_BALLON_FILLING_V3776) return;
+
+        setTimeout(()=>FL_loadBallonSeasonV3776(true), 120);
       });
 
-      seasonInput.addEventListener("input", () => {
-        FL_LAST_BALLON_SEASON_V3775 = "";
-        setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 180);
+      // Blur ajuda quando o navegador não dispara change no datalist em alguns casos.
+      input.addEventListener("blur", ()=>{
+        if(FL_BALLON_FILLING_V3776) return;
+
+        setTimeout(()=>FL_loadBallonSeasonV3776(true), 180);
       });
     }
 
-    // Ao abrir o modal, também carrega a temporada inicial.
-    setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 250);
-    setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(false), 1000);
+    // Ao abrir o modal, carrega uma vez.
+    setTimeout(()=>FL_loadBallonSeasonV3776(true), 350);
   }catch(err){
-    console.warn("Falha attach selector refresh v3.7.75:", err);
+    console.warn("Falha attach seletor estável v3.7.76:", err);
   }
 }
 
-// Sobrescreve funções antigas para usar a nova.
-window.FL_prefillBallonFromExistingV3773 = function(){ FL_prefillBallonSelectedSeasonV3775(true); };
-window.FL_prefillBallonAllPositionsV3774 = function(){ FL_prefillBallonSelectedSeasonV3775(true); };
-window.FL_attachBallonPrefillV3774 = FL_attachBallonSelectorRefreshV3775;
-window.FL_prefillBallonSelectedSeasonV3775 = FL_prefillBallonSelectedSeasonV3775;
+// Neutraliza listeners antigos problemáticos.
+window.FL_prefillBallonFromExistingV3773 = function(){ FL_loadBallonSeasonV3776(true); };
+window.FL_prefillBallonAllPositionsV3774 = function(){ FL_loadBallonSeasonV3776(true); };
+window.FL_prefillBallonSelectedSeasonV3775 = function(){ FL_loadBallonSeasonV3776(true); };
+window.FL_attachBallonPrefillV3774 = FL_attachBallonStableSelectorV3776;
+window.FL_attachBallonSelectorRefreshV3775 = FL_attachBallonStableSelectorV3776;
 
-const __renderAllOriginalV3775 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3775 && !window.__renderAllBallonSelectorRefreshWrappedV3775){
-  window.__renderAllBallonSelectorRefreshWrappedV3775 = true;
-
+const __renderAllOriginalV3776 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3776 && !window.__renderAllBallonStableWrappedV3776){
+  window.__renderAllBallonStableWrappedV3776 = true;
   renderAll = function(){
-    const result = __renderAllOriginalV3775.apply(this, arguments);
-    setTimeout(FL_attachBallonSelectorRefreshV3775, 150);
-    setTimeout(FL_attachBallonSelectorRefreshV3775, 900);
+    const result = __renderAllOriginalV3776.apply(this, arguments);
+    setTimeout(FL_attachBallonStableSelectorV3776, 180);
     return result;
   };
 }
 
 document.addEventListener("click", function(){
-  setTimeout(FL_attachBallonSelectorRefreshV3775, 250);
+  setTimeout(FL_attachBallonStableSelectorV3776, 250);
 }, true);
 
-document.addEventListener("change", function(e){
-  if(FL_isBallonModalV3775()){
-    const seasonInput = FL_getBallonSeasonInputV3775();
-    if(e.target === seasonInput){
-      FL_LAST_BALLON_SEASON_V3775 = "";
-      setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 80);
-      setTimeout(()=>FL_prefillBallonSelectedSeasonV3775(true), 300);
-    }
-  }
-}, true);
+window.FL_loadBallonSeasonV3776 = FL_loadBallonSeasonV3776;
+window.FL_attachBallonStableSelectorV3776 = FL_attachBallonStableSelectorV3776;
