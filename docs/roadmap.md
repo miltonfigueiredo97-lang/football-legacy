@@ -1,3 +1,3 @@
-# Football Legacy V3.7.14
+# Football Legacy V3.7.18
 
-Força Supercopa da UEFA para clubes europeus detectando país, liga ou clube conhecido. Corrige caso AC Milan/Italian Serie A não mostre Supercopa da UEFA.
+Ajusta BOLA_DE_OURO_CARREIRA para salvar clube na coluna L, preservando observacao na K. Requer Apps Script v3.5.3.

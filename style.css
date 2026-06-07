@@ -1552,3 +1552,67 @@ button.saving::before,
     height:20px;
   }
 }
+
+
+/* ===== V3.7.16 BOLA DE OURO CLUBE FIELD ===== */
+.ballon-player-cell{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  max-width:100%;
+}
+
+.ballon-player-name{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.ballon-club-badge{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.35));
+}
+
+#ballonClubSelect,
+#ballonClubManual{
+  width:100%;
+}
+
+
+/* ===== V3.7.17 BOLA DE OURO NEW RANKING CLEAN ===== */
+.ballon-rank-grid-with-club{
+  display:grid;
+  grid-template-columns:52px minmax(220px,1.4fr) minmax(150px,.9fr) minmax(160px,.9fr) minmax(92px,.45fr) minmax(140px,.65fr);
+  gap:8px;
+  align-items:center;
+}
+
+.ballon-rank-grid-with-club input{
+  min-width:0;
+}
+
+.ballon-rank-head{
+  color:#fef08a;
+  font-size:12px;
+  font-weight:1000;
+  text-transform:uppercase;
+}
+
+.ballon-rank-pos{
+  color:#fff;
+  font-weight:1000;
+  font-size:18px;
+}
+
+@media(max-width:900px){
+  .ballon-rank-grid-with-club{
+    grid-template-columns:42px 1fr;
+  }
+  .ballon-rank-head:nth-child(n+3){
+    display:none;
+  }
+}

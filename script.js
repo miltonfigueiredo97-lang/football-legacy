@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.14 uefa supercup force');
+console.log('Football Legacy script carregado v3.7.18 ballon clube col L');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -720,7 +720,7 @@ function renderBolaOuro(){
     </div>
     <div>${r.idade||"-"}</div>
     <div>${r.valor_mercado||"-"}</div>
-    <div class="ballon-actions"><button onclick="openForm('bolaouro','${r.id}')">Editar</button></div>
+    <div class="ballon-actions"><button onclick="openBallonRankingForm('${r.id}')">Editar</button></div>
   </div>`).join("")+
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
@@ -4474,5 +4474,993 @@ function selectSeasonTeam(team){
   }
 
   renderCompetitionSuggestions(team);
+}
+
+
+
+// ===== V3.7.15 FIX SALVAR EDIÇÃO DE TEMPORADA =====
+function getCurrentSelectedCompetitionsFromModal(){
+  const checked = getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions() : [];
+  return [...new Set(checked.filter(Boolean))];
+}
+
+async function saveSeasonFlow(data, button, existing=null){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+
+  if(!temporada) throw new Error("Informe o início no time ou a temporada.");
+
+  // CORREÇÃO: sempre pega o que está marcado AGORA no modal.
+  const comps = getCurrentSelectedCompetitionsFromModal();
+
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  setButtonSaving(button);
+  setStatus("Salvando edição da temporada...");
+
+  let clube = getTable("CLUBES").find(c =>
+    sameScope(c.nome, selectedSeasonTeam.name) ||
+    String(c.nome || "").toLowerCase() === String(selectedSeasonTeam.name || "").toLowerCase()
+  );
+
+  if(!clube){
+    const clubeJson = await apiPost({
+      action:"create",
+      table:"CLUBES",
+      record:{
+        nome:selectedSeasonTeam.name,
+        pais:selectedSeasonTeam.country || "",
+        escudo:selectedSeasonTeam.badge || "",
+        estadio:""
+      }
+    });
+
+    if(!clubeJson.ok) throw new Error(clubeJson.error || "Erro ao criar clube.");
+    clube = clubeJson.data;
+  }
+
+  const seasonRecord = {
+    carreira_id:active.carreira_id,
+    temporada_base_id: existing?.temporada_base_id || "",
+    temporada,
+    ordem_na_carreira: existing?.ordem_na_carreira || "",
+    clube_id:clube.id,
+    clube_nome:selectedSeasonTeam.name,
+    escudo:selectedSeasonTeam.badge || clube.escudo || "",
+    liga:selectedSeasonTeam.league || existing?.liga || "",
+    competicoes:comps.join(", "),
+    status:data.status || existing?.status || "em andamento",
+    data_inicio:data.data_inicio || "",
+    data_fim:data.data_fim || ""
+  };
+
+  const seasonPayload = existing
+    ? {action:"update", table:"CARREIRA_TEMPORADAS", id:existing.id, record:seasonRecord}
+    : {action:"create", table:"CARREIRA_TEMPORADAS", record:seasonRecord};
+
+  const tempJson = await apiPost(seasonPayload);
+  if(!tempJson.ok) throw new Error(tempJson.error || "Erro ao salvar passagem.");
+
+  const savedSeason = tempJson.data || existing || {};
+  const carreiraTemporadaId = savedSeason.id || existing?.id;
+  if(!carreiraTemporadaId) throw new Error("Não consegui identificar o ID da temporada salva.");
+
+  const oldStatsAll = getTable("ESTATISTICAS_CARREIRA").filter(s =>
+    String(s.carreira_temporada_id) === String(carreiraTemporadaId) &&
+    String(s.personagem_id) === String(active.protagonista_id)
+  );
+
+  // Remove estatísticas de competições desmarcadas.
+  for(const old of oldStatsAll){
+    const oldComp = old.competicao || compName(old.competicao_id) || "";
+    if(oldComp && !comps.some(c=>sameScope(c, oldComp))){
+      try{
+        await apiPost({action:"delete", table:"ESTATISTICAS_CARREIRA", id:old.id});
+      }catch(err){
+        console.warn("Não consegui apagar estatística removida:", oldComp, err);
+      }
+    }
+  }
+
+  for(const compNameText of comps){
+    let comp = getTable("COMPETICOES").find(c => sameScope(c.nome, compNameText));
+
+    if(!comp){
+      const compJson = await apiPost({
+        action:"create",
+        table:"COMPETICOES",
+        record:{nome:compNameText}
+      });
+
+      if(!compJson.ok) throw new Error(compJson.error || "Erro ao criar competição.");
+      comp = compJson.data;
+    }
+
+    const key = escapeName(compNameText);
+    const oldStats = oldStatsAll.find(s => sameScope(s.competicao || compName(s.competicao_id), compNameText));
+
+    const statRecord = {
+      carreira_id:active.carreira_id,
+      carreira_temporada_id:carreiraTemporadaId,
+      personagem_id:active.protagonista_id,
+      competicao_id:comp.id,
+      competicao:compNameText,
+      jogos:data[`jogos_${key}`] || "",
+      gols:data[`gols_${key}`] || "",
+      assistencias:data[`assistencias_${key}`] || "",
+      cartoes:data[`cartoes_${key}`] || "",
+      nota_geral:data[`media_geral_${key}`] || "",
+      clube_id:clube.id,
+      clube_nome:selectedSeasonTeam.name
+    };
+
+    const statPayload = oldStats
+      ? {action:"update", table:"ESTATISTICAS_CARREIRA", id:oldStats.id, record:statRecord}
+      : {action:"create", table:"ESTATISTICAS_CARREIRA", record:statRecord};
+
+    const statJson = await apiPost(statPayload);
+    if(!statJson.ok) throw new Error(statJson.error || "Erro ao salvar estatística de " + compNameText);
+  }
+
+  active.temporada = temporada;
+  saveActive();
+
+  return {id:carreiraTemporadaId, temporada, competicoes:comps};
+}
+
+async function saveSeasonTitlesFlow(data, existing=null){
+  // CORREÇÃO: sempre usa os checks atuais, não o estado antigo do modal.
+  const comps = getCurrentSelectedCompetitionsFromModal();
+  if(!comps.length) return;
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+
+  const seasonRecord = existing || getCareerSeasonRecords()
+    .filter(s=>String(s.carreira_id)===String(active.carreira_id))
+    .sort((a,b)=>num(b.id)-num(a.id))
+    .find(s =>
+      String(s.temporada)===String(temporada) &&
+      sameScope(s.clube_nome, selectedSeasonTeam?.name)
+    );
+
+  const carreiraTemporadaId = existing?.id || seasonRecord?.id || "";
+  if(!carreiraTemporadaId) return;
+
+  const oldTitlesAll = getTable("CAMPEOES_CARREIRA").filter(t =>
+    String(t.carreira_temporada_id) === String(carreiraTemporadaId)
+  );
+
+  // Apaga registros de título de competições que foram desmarcadas.
+  for(const old of oldTitlesAll){
+    const oldComp = old.competicao || compName(old.competicao_id) || "";
+    if(oldComp && !comps.some(c=>sameScope(c, oldComp))){
+      try{
+        await apiPost({action:"delete", table:"CAMPEOES_CARREIRA", id:old.id});
+      }catch(err){
+        console.warn("Não consegui apagar título removido:", oldComp, err);
+      }
+    }
+  }
+
+  for(const comp of comps){
+    const key = escapeName(comp);
+    const won = !!data[`titulo_${key}`];
+
+    const campeao = data[`campeao_${key}`] || (won ? selectedSeasonTeam.name : "");
+    const artilheiro = data[`artilheiro_${key}`] || "";
+    const assist = data[`assist_${key}`] || "";
+    const melhor = data[`melhor_${key}`] || "";
+
+    const old = oldTitlesAll.find(t => sameScope(t.competicao || compName(t.competicao_id), comp));
+
+    // Se existe registro antigo e agora está tudo vazio, remove.
+    if(old && !won && !campeao && !artilheiro && !assist && !melhor){
+      await apiPost({action:"delete", table:"CAMPEOES_CARREIRA", id:old.id});
+      continue;
+    }
+
+    if(!won && !campeao && !artilheiro && !assist && !melhor) continue;
+
+    let compObj = getTable("COMPETICOES").find(c=>sameScope(c.nome, comp));
+
+    if(!compObj){
+      const compJson = await apiPost({action:"create", table:"COMPETICOES", record:{nome:comp}});
+      if(compJson.ok) compObj = compJson.data;
+    }
+
+    const record = {
+      carreira_id: active.carreira_id,
+      carreira_temporada_id: carreiraTemporadaId,
+      temporada,
+      competicao_id: compObj?.id || "",
+      competicao: comp,
+      clube: campeao,
+      campeao: campeao,
+      artilheiro,
+      lider_assistencias: assist,
+      melhor_jogador: melhor,
+      status: won ? "titulo_ganho" : "registro_geral"
+    };
+
+    const payload = old
+      ? {action:"update", table:"CAMPEOES_CARREIRA", id:old.id, record}
+      : {action:"create", table:"CAMPEOES_CARREIRA", record};
+
+    const res = await apiPost(payload);
+    if(!res.ok) throw new Error(res.error || "Erro ao salvar título/campeão de " + comp);
+  }
+}
+
+
+
+// ===== V3.7.16 BOLA DE OURO: CLUBE DO JOGADOR =====
+function getBallonRowClub(row){
+  return row.clube || row.club || row.time || row.equipe || "";
+}
+
+function getClubOptionsForSelect(selected=""){
+  const clubs = getTable("CLUBES");
+  const unique = [];
+  const seen = new Set();
+
+  clubs.forEach(c=>{
+    const name = c.nome || "";
+    if(!name) return;
+    const key = normalizeClubKey(name);
+    if(seen.has(key)) return;
+    seen.add(key);
+    unique.push({nome:name, escudo:c.escudo || ""});
+  });
+
+  return `
+    <option value="">Selecione ou digite manualmente</option>
+    ${unique.map(c=>`<option value="${escapeAttr(c.nome)}" ${sameScope(c.nome, selected) ? "selected" : ""}>${escapeHtml(c.nome)}</option>`).join("")}
+  `;
+}
+
+function syncClubManualFromSelect(){
+  const sel = $("ballonClubSelect");
+  const input = $("ballonClubManual");
+  if(sel && input && sel.value){
+    input.value = sel.value;
+  }
+}
+
+function getBallonClubFromForm(data){
+  return data.clube || data.club || data.time || "";
+}
+
+function renderBallonPlayerCell(row, sourceLabel=""){
+  const badge = clubBadgeForBallon(row);
+  const name = row.jogador || row.player || "-";
+  const club = getBallonRowClub(row);
+  return `
+    <span class="ballon-player-cell">
+      <span class="ballon-player-name">${escapeHtml(name)}</span>
+      ${badge ? `<img class="ballon-club-badge" src="${escapeAttr(badge)}" title="${escapeAttr(club)}" onerror="this.remove()">` : ""}
+      ${sourceLabel ? `<em class="source-pill">${escapeHtml(sourceLabel)}</em>` : ""}
+    </span>
+  `;
+}
+
+// Reforça badge: usa coluna H/clube da base e campo clube dos rankings criados.
+function clubBadgeForBallon(row){
+  const raw = getBallonRowClub(row);
+  if(!raw) return "";
+
+  const firstClub = String(raw).split("/")[0].split(",")[0].trim();
+  const allClubs = getTable("CLUBES");
+
+  const fromDb = allClubs.find(c =>
+    sameScope(c.nome, firstClub) ||
+    sameScope(c.nome, raw) ||
+    sameScope(firstClub, c.nome)
+  );
+
+  return (fromDb && fromDb.escudo) ? fromDb.escudo : clubBadgeStatic(firstClub || raw);
+}
+
+// Abre/edita ranking da carreira com campo clube.
+function openBallonRankingForm(existingId=null){
+  const carreira = getActiveCareer();
+  if(!carreira){
+    alert("Selecione uma carreira antes.");
+    return;
+  }
+
+  const existing = existingId
+    ? getTable("BOLA_DE_OURO_CARREIRA").find(r=>String(r.id)===String(existingId))
+    : null;
+
+  const temporadaAtual = active.temporada || getCurrentSeason(getProtagonistStats()) || "";
+  const selectedClub = getBallonRowClub(existing || {});
+
+  modalTitle.textContent = existing ? "Editar ranking Bola de Ouro" : "Adicionar ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+
+  form.innerHTML = `
+    <div class="form-field">
+      <label>Temporada</label>
+      <input name="temporada" value="${escapeAttr(existing?.temporada || temporadaAtual)}" placeholder="Ex: 2027/2028">
+    </div>
+
+    <div class="form-field">
+      <label>Ano</label>
+      <input name="ano" type="number" value="${escapeAttr(existing?.ano || extractYearFromSeason(existing?.temporada || temporadaAtual))}" placeholder="Ex: 2028">
+    </div>
+
+    <div class="form-field">
+      <label>Posição</label>
+      <input name="posicao" type="number" min="1" max="10" value="${escapeAttr(existing?.posicao || "")}" placeholder="1 a 10">
+    </div>
+
+    <div class="form-field">
+      <label>Jogador</label>
+      <input name="jogador" value="${escapeAttr(existing?.jogador || "")}" placeholder="Nome do jogador">
+    </div>
+
+    <div class="form-field">
+      <label>País</label>
+      <input name="pais" value="${escapeAttr(existing?.pais || "")}" placeholder="Ex: Brasil">
+    </div>
+
+    <div class="form-field">
+      <label>Clube</label>
+      <select id="ballonClubSelect" onchange="syncClubManualFromSelect()">
+        ${getClubOptionsForSelect(selectedClub)}
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>Clube manual</label>
+      <input id="ballonClubManual" name="clube" value="${escapeAttr(selectedClub)}" placeholder="Ex: AC Milan">
+    </div>
+
+    <div class="form-field">
+      <label>Idade</label>
+      <input name="idade_na_premiacao" type="number" value="${escapeAttr(existing?.idade_na_premiacao || existing?.idade || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Valor de mercado</label>
+      <input name="valor_mercado" value="${escapeAttr(existing?.valor_mercado || existing?.valor || "")}" placeholder="Ex: €90M">
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem URL</label>
+      <input name="imagem_url" value="${escapeAttr(existing?.imagem_url || "")}" placeholder="URL de imagem de fundo">
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar ranking"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const record = {
+        carreira_id: active.carreira_id,
+        temporada: data.temporada || "",
+        ano: data.ano || extractYearFromSeason(data.temporada || ""),
+        posicao: data.posicao || "",
+        jogador: data.jogador || "",
+        pais: data.pais || "",
+        clube: data.clube || "",
+        idade_na_premiacao: data.idade_na_premiacao || "",
+        valor_mercado: data.valor_mercado || "",
+        imagem_url: data.imagem_url || ""
+      };
+
+      const payload = existing
+        ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record}
+        : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record};
+
+      const res = await apiPost(payload);
+      if(!res.ok) throw new Error(res.error || "Erro ao salvar ranking.");
+
+      closeModal();
+      await loadData();
+      setStatus("Ranking salvo com clube do jogador.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+function extractYearFromSeason(season){
+  const nums = String(season || "").match(/\d{4}/g);
+  if(!nums || !nums.length) return "";
+  return nums.length > 1 ? nums[1] : nums[0];
+}
+
+// Compatibilidade com nomes antigos de função/botão.
+function openBallonForm(id=null){ openBallonRankingForm(id); }
+function openBolaOuroForm(id=null){ openBallonRankingForm(id); }
+function editBallonRanking(id){ openBallonRankingForm(id); }
+function editBolaOuroRanking(id){ openBallonRankingForm(id); }
+
+window.openBallonRankingForm = openBallonRankingForm;
+window.openBallonForm = openBallonForm;
+window.openBolaOuroForm = openBolaOuroForm;
+window.editBallonRanking = editBallonRanking;
+window.editBolaOuroRanking = editBolaOuroRanking;
+window.syncClubManualFromSelect = syncClubManualFromSelect;
+
+
+
+// ===== V3.7.17 BOLA DE OURO: NOVO RANKING LIMPO + CLUBE EM LOTE =====
+function getBallonAvailableSeasons(){
+  const base = getTable("TEMPORADAS_BASE").map(t=>t.temporada).filter(Boolean);
+  const career = getTable("CARREIRA_TEMPORADAS")
+    .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
+    .map(t=>t.temporada)
+    .filter(Boolean);
+
+  const careerBallon = getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
+    .map(r=>r.temporada)
+    .filter(Boolean);
+
+  return [...new Set([...career, ...careerBallon, ...base])]
+    .sort((a,b)=>compareSeasonsDesc(a,b));
+}
+
+function openBallonBatchForm(options={}){
+  const carreira = getActiveCareer();
+
+  if(!carreira){
+    alert("Selecione uma carreira antes.");
+    return;
+  }
+
+  const editSeason = options.editSeason || "";
+  const isEdit = !!options.editExisting;
+
+  // CORREÇÃO PRINCIPAL:
+  // +Ranking abre limpo. Só carrega ranking antigo quando chamar explicitamente como edição.
+  const initialSeason = editSeason || active.temporada || getCurrentSeason(getProtagonistStats()) || "";
+  const existingRows = isEdit && initialSeason
+    ? getTable("BOLA_DE_OURO_CARREIRA")
+        .filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(r.temporada)===String(initialSeason))
+    : [];
+
+  const byPos = {};
+  existingRows.forEach(r=>{
+    byPos[String(r.posicao)] = r;
+  });
+
+  const seasons = getBallonAvailableSeasons();
+  if(initialSeason && !seasons.includes(initialSeason)) seasons.unshift(initialSeason);
+
+  modalTitle.textContent = isEdit ? "Editar ranking Bola de Ouro" : "Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  modalBox.classList.add("ballon-rank-modal");
+  form.className = "ballon-batch-form";
+
+  const imageUrl = existingRows.find(r=>r.imagem_url)?.imagem_url || "";
+
+  form.innerHTML = `
+    <div class="form-field full">
+      <label>Temporada</label>
+      <select name="temporada" id="ballonBatchSeason">
+        ${seasons.map(s=>`<option value="${escapeAttr(s)}" ${s===initialSeason?"selected":""}>${escapeHtml(s)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem do vencedor</label>
+      <div class="file-row">
+        <input name="imagem_url" value="${escapeAttr(imageUrl)}" placeholder="URL da imagem de fundo do vencedor">
+        <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
+      </div>
+      <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
+    </div>
+
+    <div class="ballon-rank-grid ballon-rank-grid-with-club">
+      <div class="ballon-rank-head">#</div>
+      <div class="ballon-rank-head">Jogador</div>
+      <div class="ballon-rank-head">País</div>
+      <div class="ballon-rank-head">Clube</div>
+      <div class="ballon-rank-head">Idade</div>
+      <div class="ballon-rank-head">Valor</div>
+
+      ${Array.from({length:10},(_,i)=>{
+        const pos = i+1;
+        const old = byPos[String(pos)] || {};
+        return `
+          <div class="ballon-rank-pos">${pos}</div>
+          <input name="jogador_${pos}" value="${escapeAttr(old.jogador || "")}" placeholder="Jogador">
+          <input name="pais_${pos}" value="${escapeAttr(old.pais || "")}" placeholder="País, código ou emoji">
+          <input name="clube_${pos}" value="${escapeAttr(old.clube || old.club || old.time || "")}" placeholder="Clube">
+          <input name="idade_${pos}" type="number" value="${escapeAttr(old.idade_na_premiacao || old.idade || "")}" placeholder="Idade">
+          <input name="valor_${pos}" value="${escapeAttr(old.valor_mercado || old.valor || "")}" placeholder="Ex: €90M">
+        `;
+      }).join("")}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const temporada = data.temporada || "";
+      const ano = extractYearFromSeason(temporada);
+
+      if(!temporada) throw new Error("Selecione uma temporada.");
+
+      // Se for edição explícita, atualiza linhas antigas daquela temporada.
+      // Se for novo, NÃO apaga nem sobrescreve ranking antigo.
+      const oldRows = isEdit
+        ? getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(r.temporada)===String(temporada))
+        : [];
+
+      for(let pos=1; pos<=10; pos++){
+        const jogador = data[`jogador_${pos}`] || "";
+        const pais = data[`pais_${pos}`] || "";
+        const clube = data[`clube_${pos}`] || "";
+        const idade = data[`idade_${pos}`] || "";
+        const valor = data[`valor_${pos}`] || "";
+
+        if(!jogador && !pais && !clube && !idade && !valor) continue;
+
+        const existing = oldRows.find(r=>String(r.posicao)===String(pos));
+
+        const record = {
+          carreira_id: active.carreira_id,
+          temporada,
+          ano,
+          posicao: pos,
+          jogador,
+          pais,
+          clube,
+          idade_na_premiacao: idade,
+          valor_mercado: valor,
+          imagem_url: pos === 1 ? (data.imagem_url || "") : ""
+        };
+
+        const payload = existing
+          ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record}
+          : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record};
+
+        const res = await apiPost(payload);
+        if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + pos);
+      }
+
+      closeModal();
+      await loadData();
+      setStatus(isEdit ? "Ranking atualizado com sucesso." : "Novo ranking criado com sucesso.", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+function openNewBallonRanking(){
+  openBallonBatchForm({editExisting:false});
+}
+
+function openEditBallonRankingSeason(season){
+  openBallonBatchForm({editExisting:true, editSeason:season});
+}
+
+// Compatibilidade com botões antigos.
+function openBallonRankingForm(id=null){
+  if(id){
+    return openBallonFormSingle(id);
+  }
+  return openNewBallonRanking();
+}
+
+function openBolaOuroRankingForm(id=null){
+  return openBallonRankingForm(id);
+}
+
+// Formulário individual antigo preservado como fallback para botão editar de uma linha.
+function openBallonFormSingle(existingId=null){
+  const existing = existingId
+    ? getTable("BOLA_DE_OURO_CARREIRA").find(r=>String(r.id)===String(existingId))
+    : null;
+
+  if(!existing){
+    return openNewBallonRanking();
+  }
+
+  modalTitle.textContent = "Editar jogador do ranking";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+
+  const selectedClub = getBallonRowClub(existing || {});
+
+  form.innerHTML = `
+    <div class="form-field">
+      <label>Temporada</label>
+      <input name="temporada" value="${escapeAttr(existing.temporada || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Posição</label>
+      <input name="posicao" type="number" min="1" max="10" value="${escapeAttr(existing.posicao || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Jogador</label>
+      <input name="jogador" value="${escapeAttr(existing.jogador || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>País</label>
+      <input name="pais" value="${escapeAttr(existing.pais || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Clube</label>
+      <input name="clube" value="${escapeAttr(selectedClub)}" placeholder="Ex: Barcelona">
+    </div>
+
+    <div class="form-field">
+      <label>Idade</label>
+      <input name="idade_na_premiacao" type="number" value="${escapeAttr(existing.idade_na_premiacao || existing.idade || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Valor de mercado</label>
+      <input name="valor_mercado" value="${escapeAttr(existing.valor_mercado || existing.valor || "")}">
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem URL</label>
+      <input name="imagem_url" value="${escapeAttr(existing.imagem_url || "")}">
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Salvar edição</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const record = {
+        carreira_id: active.carreira_id,
+        temporada: data.temporada || "",
+        ano: extractYearFromSeason(data.temporada || ""),
+        posicao: data.posicao || "",
+        jogador: data.jogador || "",
+        pais: data.pais || "",
+        clube: data.clube || "",
+        idade_na_premiacao: data.idade_na_premiacao || "",
+        valor_mercado: data.valor_mercado || "",
+        imagem_url: data.imagem_url || ""
+      };
+
+      const res = await apiPost({action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record});
+      if(!res.ok) throw new Error(res.error || "Erro ao salvar.");
+
+      closeModal();
+      await loadData();
+      setStatus("Jogador do ranking atualizado.", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar jogador: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+window.openBallonBatchForm = openBallonBatchForm;
+window.openNewBallonRanking = openNewBallonRanking;
+window.openEditBallonRankingSeason = openEditBallonRankingSeason;
+window.openBallonRankingForm = openBallonRankingForm;
+window.openBolaOuroRankingForm = openBolaOuroRankingForm;
+window.openBallonFormSingle = openBallonFormSingle;
+
+
+
+// ===== V3.7.18 BOLA_DE_OURO_CARREIRA CLUBE COLUNA L =====
+// A ordem da aba é:
+// id, carreira_id, temporada, ano, posicao, jogador, pais,
+// idade_na_premiacao, valor_mercado, imagem_url, observacao, clube
+
+function normalizeBallonCareerRecord(record){
+  return {
+    carreira_id: record.carreira_id || active.carreira_id || "",
+    temporada: record.temporada || "",
+    ano: record.ano || extractYearFromSeason(record.temporada || ""),
+    posicao: record.posicao || "",
+    jogador: record.jogador || "",
+    pais: record.pais || "",
+    idade_na_premiacao: record.idade_na_premiacao || record.idade || "",
+    valor_mercado: record.valor_mercado || record.valor || "",
+    imagem_url: record.imagem_url || "",
+    observacao: record.observacao || "",
+    clube: record.clube || record.club || record.time || ""
+  };
+}
+
+function getBallonRowClub(row){
+  return row.clube || row.club || row.time || row.equipe || "";
+}
+
+// Reaplica salvamento em lote com clube na propriedade final `clube`.
+function openBallonBatchForm(options={}){
+  const carreira = getActiveCareer();
+
+  if(!carreira){
+    alert("Selecione uma carreira antes.");
+    return;
+  }
+
+  const editSeason = options.editSeason || "";
+  const isEdit = !!options.editExisting;
+
+  const initialSeason = editSeason || active.temporada || getCurrentSeason(getProtagonistStats()) || "";
+  const existingRows = isEdit && initialSeason
+    ? getTable("BOLA_DE_OURO_CARREIRA")
+        .filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(r.temporada)===String(initialSeason))
+    : [];
+
+  const byPos = {};
+  existingRows.forEach(r=>{
+    byPos[String(r.posicao)] = r;
+  });
+
+  const seasons = getBallonAvailableSeasons();
+  if(initialSeason && !seasons.includes(initialSeason)) seasons.unshift(initialSeason);
+
+  modalTitle.textContent = isEdit ? "Editar ranking Bola de Ouro" : "Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  modalBox.classList.add("ballon-rank-modal");
+  form.className = "ballon-batch-form";
+
+  const imageUrl = existingRows.find(r=>r.imagem_url)?.imagem_url || "";
+
+  form.innerHTML = `
+    <div class="form-field full">
+      <label>Temporada</label>
+      <select name="temporada" id="ballonBatchSeason">
+        ${seasons.map(s=>`<option value="${escapeAttr(s)}" ${s===initialSeason?"selected":""}>${escapeHtml(s)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem do vencedor</label>
+      <div class="file-row">
+        <input name="imagem_url" value="${escapeAttr(imageUrl)}" placeholder="URL da imagem de fundo do vencedor">
+        <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
+      </div>
+      <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
+    </div>
+
+    <div class="ballon-rank-grid ballon-rank-grid-with-club">
+      <div class="ballon-rank-head">#</div>
+      <div class="ballon-rank-head">Jogador</div>
+      <div class="ballon-rank-head">País</div>
+      <div class="ballon-rank-head">Clube</div>
+      <div class="ballon-rank-head">Idade</div>
+      <div class="ballon-rank-head">Valor</div>
+
+      ${Array.from({length:10},(_,i)=>{
+        const pos = i+1;
+        const old = byPos[String(pos)] || {};
+        return `
+          <div class="ballon-rank-pos">${pos}</div>
+          <input name="jogador_${pos}" value="${escapeAttr(old.jogador || "")}" placeholder="Jogador">
+          <input name="pais_${pos}" value="${escapeAttr(old.pais || "")}" placeholder="País, código ou emoji">
+          <input name="clube_${pos}" value="${escapeAttr(getBallonRowClub(old))}" placeholder="Clube">
+          <input name="idade_${pos}" type="number" value="${escapeAttr(old.idade_na_premiacao || old.idade || "")}" placeholder="Idade">
+          <input name="valor_${pos}" value="${escapeAttr(old.valor_mercado || old.valor || "")}" placeholder="Ex: €90M">
+        `;
+      }).join("")}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const temporada = data.temporada || "";
+      const ano = extractYearFromSeason(temporada);
+
+      if(!temporada) throw new Error("Selecione uma temporada.");
+
+      const oldRows = isEdit
+        ? getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(r.temporada)===String(temporada))
+        : [];
+
+      for(let pos=1; pos<=10; pos++){
+        const raw = {
+          carreira_id: active.carreira_id,
+          temporada,
+          ano,
+          posicao: pos,
+          jogador: data[`jogador_${pos}`] || "",
+          pais: data[`pais_${pos}`] || "",
+          idade_na_premiacao: data[`idade_${pos}`] || "",
+          valor_mercado: data[`valor_${pos}`] || "",
+          imagem_url: pos === 1 ? (data.imagem_url || "") : "",
+          observacao: "",
+          clube: data[`clube_${pos}`] || ""
+        };
+
+        if(!raw.jogador && !raw.pais && !raw.clube && !raw.idade_na_premiacao && !raw.valor_mercado) continue;
+
+        const record = normalizeBallonCareerRecord(raw);
+        const existing = oldRows.find(r=>String(r.posicao)===String(pos));
+
+        const payload = existing
+          ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record}
+          : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record};
+
+        const res = await apiPost(payload);
+        if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + pos);
+      }
+
+      closeModal();
+      await loadData();
+      setStatus(isEdit ? "Ranking atualizado com clube na coluna L." : "Novo ranking criado com clube na coluna L.", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+function openBallonFormSingle(existingId=null){
+  const existing = existingId
+    ? getTable("BOLA_DE_OURO_CARREIRA").find(r=>String(r.id)===String(existingId))
+    : null;
+
+  if(!existing){
+    return openNewBallonRanking();
+  }
+
+  modalTitle.textContent = "Editar jogador do ranking";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+
+  form.innerHTML = `
+    <div class="form-field">
+      <label>Temporada</label>
+      <input name="temporada" value="${escapeAttr(existing.temporada || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Posição</label>
+      <input name="posicao" type="number" min="1" max="10" value="${escapeAttr(existing.posicao || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Jogador</label>
+      <input name="jogador" value="${escapeAttr(existing.jogador || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>País</label>
+      <input name="pais" value="${escapeAttr(existing.pais || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Idade</label>
+      <input name="idade_na_premiacao" type="number" value="${escapeAttr(existing.idade_na_premiacao || existing.idade || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Valor de mercado</label>
+      <input name="valor_mercado" value="${escapeAttr(existing.valor_mercado || existing.valor || "")}">
+    </div>
+
+    <div class="form-field">
+      <label>Clube</label>
+      <input name="clube" value="${escapeAttr(getBallonRowClub(existing))}" placeholder="Ex: Barcelona">
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem URL</label>
+      <input name="imagem_url" value="${escapeAttr(existing.imagem_url || "")}">
+    </div>
+
+    <div class="form-field full">
+      <label>Observação</label>
+      <input name="observacao" value="${escapeAttr(existing.observacao || "")}">
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Salvar edição</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const record = normalizeBallonCareerRecord({
+        carreira_id: active.carreira_id,
+        temporada: data.temporada || "",
+        ano: extractYearFromSeason(data.temporada || ""),
+        posicao: data.posicao || "",
+        jogador: data.jogador || "",
+        pais: data.pais || "",
+        idade_na_premiacao: data.idade_na_premiacao || "",
+        valor_mercado: data.valor_mercado || "",
+        imagem_url: data.imagem_url || "",
+        observacao: data.observacao || "",
+        clube: data.clube || ""
+      });
+
+      const res = await apiPost({action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record});
+      if(!res.ok) throw new Error(res.error || "Erro ao salvar.");
+
+      closeModal();
+      await loadData();
+      setStatus("Jogador do ranking atualizado.", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar jogador: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
 }
 
