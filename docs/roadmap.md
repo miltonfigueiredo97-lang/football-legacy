@@ -1,3 +1,3 @@
-# Football Legacy V3.7.73
+# Football Legacy V3.7.74
 
-Adiciona preenchimento automático do modal Novo ranking Bola de Ouro quando a temporada/ano já existe em BOLA_DE_OURO_CARREIRA. Também desativa limpeza agressiva de card do jogador ao trocar de aba para reduzir bug de tela vazia/piscada. Sem alteração visual.
+Corrige o preenchimento do modal Bola de Ouro para carregar todas as posições existentes, não apenas a primeira. O preenchimento agora usa colunas de inputs: Jogador[], País[], Clube[], Idade[] e Valor[]. Sem alteração visual.
