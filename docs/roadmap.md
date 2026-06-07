@@ -1,3 +1,3 @@
-# Football Legacy V3.7.45
+# Football Legacy V3.7.46
 
-Adiciona idade por temporada no Resumo usando coluna H de PERSONAGENS. Calcula idade no começo da temporada por data_inicio ou pelo primeiro ano da temporada. Injeta campo de data de nascimento/idade no editar personagem e envia como data_nascimento/idade.
+Corrige campo de idade/data nascimento no modal genérico 'Editar registro' detectando formulário de PERSONAGENS pelos campos nome/posição/nacionalidade. Remove texto de datas dos cards de temporadas jogadas e injeta idade calculada no início da temporada logo após o escudo.

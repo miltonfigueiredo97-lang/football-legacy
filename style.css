@@ -1889,3 +1889,27 @@ button[disabled],
   font-size:12px;
   font-weight:700;
 }
+
+
+/* ===== V3.7.46 IDADE PERSONAGEM + TEMPORADA LIMPA ===== */
+.season-age-badge-v3746{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:10px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(251,191,36,.14);
+  border:1px solid rgba(251,191,36,.38);
+  color:#fbbf24;
+  font-size:12px;
+  font-weight:1000;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+
+.personagem-age-field-v3746 small{
+  color:#9fb0c7;
+  font-size:12px;
+  font-weight:700;
+}

@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.45 age by season personagem col H');
+console.log('Football Legacy script carregado v3.7.46 age field and season card clean');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -8094,4 +8094,285 @@ document.addEventListener("click", function(e){
 
 window.injectSeasonAgeBadgesV3745 = injectSeasonAgeBadgesV3745;
 window.calculateAgeAtSeasonStartV3745 = calculateAgeAtSeasonStartV3745;
+
+
+
+// ===== V3.7.46 CAMPO IDADE PERSONAGEM + LIMPEZA CARD TEMPORADA =====
+// Corrige:
+// - Modal aparece como "Editar registro", então detecta personagem pelos campos.
+// - Injeta Data de nascimento / idade no editar personagem.
+// - Remove texto "2033-08-01 até 2034-07-01" do card.
+// - Mostra idade logo após o escudo.
+
+function isPersonagemFormV3746(){
+  if(!form) return false;
+
+  const text = (modalTitle?.textContent || "").toLowerCase();
+  if(text.includes("personagem")) return true;
+
+  const names = [...form.querySelectorAll("input, select, textarea")]
+    .map(i=>String(i.name || "").toLowerCase());
+
+  const hasNome = names.includes("nome");
+  const hasPosicao = names.includes("posicao");
+  const hasNacionalidade = names.includes("nacionalidade");
+  const hasCarreira = names.includes("carreira_id");
+
+  // PERSONAGENS tem carreira_id + nome + posição + nacionalidade.
+  return hasNome && hasPosicao && hasNacionalidade && hasCarreira;
+}
+
+function getPersonagemIdFromOpenFormV3746(){
+  try{
+    const idInput = form?.querySelector("[name='id']");
+    if(idInput?.value) return idInput.value;
+
+    const active = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+    return active?.id || "";
+  }catch(err){
+    return "";
+  }
+}
+
+function getEditingPersonagemV3746(){
+  const id = getPersonagemIdFromOpenFormV3746();
+
+  if(id){
+    const found = getTable("PERSONAGENS").find(p=>String(p.id)===String(id));
+    if(found) return found;
+  }
+
+  return typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+}
+
+function getPersonagemBirthValueV3746(personagem){
+  if(!personagem) return "";
+
+  return (
+    personagem.idade ||
+    personagem.data_nascimento ||
+    personagem.nascimento ||
+    personagem.aniversario ||
+    personagem.data_aniversario ||
+    personagem["idade"] ||
+    personagem["data_nascimento"] ||
+    ""
+  );
+}
+
+function injectPersonagemBirthFieldV3746(){
+  try{
+    if(!form || !modal?.classList?.contains("active")) return;
+    if(!isPersonagemFormV3746()) return;
+    if(form.querySelector("[name='idade']") || form.querySelector("[name='data_nascimento']")) return;
+
+    const personagem = getEditingPersonagemV3746();
+    const value = getPersonagemBirthValueV3746(personagem);
+
+    const html = `
+      <div class="form-field personagem-age-field-v3746">
+        <label>Data de nascimento / idade</label>
+        <input name="idade" value="${escapeAttr(value || "")}" placeholder="Ex: 20/11/1997 ou 18">
+        <small>Coluna H de PERSONAGENS. Para calcular idade por temporada, use data completa.</small>
+      </div>
+    `;
+
+    const nacionalidade = form.querySelector("[name='nacionalidade']");
+    const field = nacionalidade?.closest(".form-field");
+
+    if(field) field.insertAdjacentHTML("afterend", html);
+    else form.insertAdjacentHTML("beforeend", html);
+  }catch(err){
+    console.warn("Falha ao inserir campo idade/data nascimento:", err);
+  }
+}
+
+// Captura toda abertura de modal e tenta injetar o campo quando for PERSONAGENS.
+const __openFormOriginalV3746 = typeof openForm === "function" ? openForm : null;
+if(__openFormOriginalV3746 && !window.__openFormAgeWrappedV3746){
+  window.__openFormAgeWrappedV3746 = true;
+  openForm = function(){
+    const result = __openFormOriginalV3746.apply(this, arguments);
+    setTimeout(injectPersonagemBirthFieldV3746, 120);
+    setTimeout(injectPersonagemBirthFieldV3746, 350);
+    return result;
+  };
+}
+
+document.addEventListener("click", function(){
+  setTimeout(injectPersonagemBirthFieldV3746, 150);
+}, true);
+
+// Garante que o valor vá no payload.
+const __apiPostOriginalV3746 = typeof apiPost === "function" ? apiPost : null;
+if(__apiPostOriginalV3746 && !window.__apiPostAgeWrappedV3746){
+  window.__apiPostAgeWrappedV3746 = true;
+  apiPost = async function(payload){
+    try{
+      if(payload && payload.table === "PERSONAGENS" && payload.record){
+        const input = form?.querySelector("[name='idade'], [name='data_nascimento']");
+        if(input){
+          payload.record.idade = input.value || "";
+          payload.record.data_nascimento = input.value || "";
+        }
+      }
+    }catch(err){}
+    return await __apiPostOriginalV3746(payload);
+  };
+}
+
+function parseDateOrAgeV3746(value){
+  const raw = String(value || "").trim();
+  if(!raw) return null;
+
+  if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
+
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[3]), month:Number(m[2]), day:Number(m[1])};
+
+  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
+  if(m) return {year:Number(m[2]), month:Number(m[1]), day:1};
+
+  m = raw.match(/^(\d{4})$/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function getSeasonStartPartsV3746(season){
+  const start = String(season?.data_inicio || "").trim();
+
+  let m = start.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  const temp = String(season?.temporada || "").trim();
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return {year:Number(m[1]), month:8, day:1};
+
+  m = temp.match(/(\d{4})/);
+  if(m) return {year:Number(m[1]), month:1, day:1};
+
+  return null;
+}
+
+function calcAgeAtSeasonV3746(season){
+  const personagem = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
+  const birthRaw = getPersonagemBirthValueV3746(personagem);
+  const birth = parseDateOrAgeV3746(birthRaw);
+  const start = getSeasonStartPartsV3746(season);
+
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+  if(!start) return "";
+
+  let age = start.year - birth.year;
+  if(start.month < birth.month || (start.month === birth.month && start.day < birth.day)) age--;
+
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+function cleanSeasonDateTextV3746(card, season){
+  try{
+    const inicio = String(season.data_inicio || "").trim();
+    const fim = String(season.data_fim || "").trim();
+
+    const patterns = [];
+
+    if(inicio && fim){
+      patterns.push(`${inicio} até ${fim}`);
+      patterns.push(`${inicio} ate ${fim}`);
+    }
+
+    if(inicio) patterns.push(inicio);
+    if(fim) patterns.push(fim);
+
+    // Remove de nós de texto simples, preservando números/labels.
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node=>{
+      let txt = node.nodeValue || "";
+      let changed = false;
+
+      patterns.forEach(p=>{
+        if(p && txt.includes(p)){
+          txt = txt.replace(p, "").replace(/\s*•\s*$/, "").replace(/^\s*•\s*/, "");
+          changed = true;
+        }
+      });
+
+      // Remove padrão genérico yyyy-mm-dd até yyyy-mm-dd
+      const newTxt = txt.replace(/\d{4}-\d{2}(?:-\d{2})?\s+at[eé]\s+\d{4}-\d{2}(?:-\d{2})?/gi, "").trim();
+      if(newTxt !== txt){
+        txt = newTxt;
+        changed = true;
+      }
+
+      if(changed) node.nodeValue = txt;
+    });
+  }catch(err){}
+}
+
+function injectAgeOnSeasonCardsV3746(){
+  try{
+    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
+    if(!seasons.length) return;
+
+    const candidates = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card")]
+      .filter(card=>{
+        const txt = card.textContent || "";
+        return /jogos|gols|assist|editar/i.test(txt) && seasons.some(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
+      });
+
+    candidates.forEach(card=>{
+      const txt = card.textContent || "";
+      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
+      if(!season) return;
+
+      cleanSeasonDateTextV3746(card, season);
+
+      if(card.querySelector(".season-age-badge-v3746")) return;
+
+      const age = calcAgeAtSeasonV3746(season);
+      if(age === "" || age === null || age === undefined) return;
+
+      const badge = document.createElement("span");
+      badge.className = "season-age-badge-v3746";
+      badge.textContent = `${age} anos`;
+
+      const img = card.querySelector("img");
+      if(img){
+        img.insertAdjacentElement("afterend", badge);
+      }else{
+        const title = card.querySelector("h3, h4, strong");
+        if(title) title.insertAdjacentElement("beforebegin", badge);
+      }
+    });
+  }catch(err){
+    console.warn("Falha ao aplicar idade nos cards:", err);
+  }
+}
+
+const __renderAllOriginalV3746 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3746 && !window.__renderAllAgeWrappedV3746){
+  window.__renderAllAgeWrappedV3746 = true;
+  renderAll = function(){
+    const result = __renderAllOriginalV3746.apply(this, arguments);
+    setTimeout(injectAgeOnSeasonCardsV3746, 120);
+    setTimeout(injectAgeOnSeasonCardsV3746, 500);
+    return result;
+  };
+}
+
+setInterval(()=>{
+  if(document.visibilityState === "visible") injectAgeOnSeasonCardsV3746();
+}, 2000);
+
+window.injectPersonagemBirthFieldV3746 = injectPersonagemBirthFieldV3746;
+window.injectAgeOnSeasonCardsV3746 = injectAgeOnSeasonCardsV3746;
 
