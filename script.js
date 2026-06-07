@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.18 ballon clube col L');
+console.log('Football Legacy script carregado v3.7.19 ballon year season key');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -5463,4 +5463,290 @@ function openBallonFormSingle(existingId=null){
 
   modal.classList.add("active");
 }
+
+
+
+// ===== V3.7.19 BOLA DE OURO POR ANO, NÃO INTERVALO =====
+function getBallonYear(rowOrValue){
+  if(rowOrValue && typeof rowOrValue === "object"){
+    if(rowOrValue.ano) return String(rowOrValue.ano);
+    if(rowOrValue.temporada_base_id){
+      const tb = getTable("TEMPORADAS_BASE").find(t=>String(t.id)===String(rowOrValue.temporada_base_id));
+      if(tb?.ano) return String(tb.ano);
+      if(tb?.temporada) return extractBallonYear(tb.temporada);
+    }
+    return extractBallonYear(rowOrValue.temporada || rowOrValue.season || "");
+  }
+
+  return extractBallonYear(rowOrValue);
+}
+
+function extractBallonYear(value){
+  const text = String(value || "");
+  const years = text.match(/\d{4}/g);
+  if(!years || !years.length) return "";
+  // Bola de Ouro é a premiação do ano final: 2025/2026 => 2026.
+  return years.length > 1 ? years[years.length - 1] : years[0];
+}
+
+function getBallonAvailableSeasons(){
+  const years = [];
+
+  getTable("BOLA_DE_OURO_BASE").forEach(r=>{
+    const y = getBallonYear(r);
+    if(y) years.push(y);
+  });
+
+  getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
+    .forEach(r=>{
+      const y = getBallonYear(r);
+      if(y) years.push(y);
+    });
+
+  getTable("TEMPORADAS_BASE").forEach(t=>{
+    const y = getBallonYear(t);
+    if(y) years.push(y);
+  });
+
+  getTable("CARREIRA_TEMPORADAS")
+    .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
+    .forEach(t=>{
+      const y = getBallonYear(t);
+      if(y) years.push(y);
+    });
+
+  return [...new Set(years.filter(Boolean))]
+    .sort((a,b)=>Number(b)-Number(a));
+}
+
+function normalizeBallonCareerRecord(record){
+  const year = getBallonYear(record.ano || record.temporada || "");
+  return {
+    carreira_id: record.carreira_id || active.carreira_id || "",
+    // CORREÇÃO: na Bola de Ouro, temporada vira ano da premiação.
+    temporada: year,
+    ano: year,
+    posicao: record.posicao || "",
+    jogador: record.jogador || "",
+    pais: record.pais || "",
+    idade_na_premiacao: record.idade_na_premiacao || record.idade || "",
+    valor_mercado: record.valor_mercado || record.valor || "",
+    imagem_url: record.imagem_url || "",
+    observacao: record.observacao || "",
+    clube: record.clube || record.club || record.time || ""
+  };
+}
+
+function getBallonRowsForYear(year){
+  const y = String(year || "");
+
+  const baseRows = getTable("BOLA_DE_OURO_BASE")
+    .filter(r=>String(getBallonYear(r))===y)
+    .map(r=>Object.assign({__source:"base"}, r));
+
+  const careerRows = getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
+    .filter(r=>String(getBallonYear(r))===y)
+    .map(r=>Object.assign({__source:"career"}, r));
+
+  // Se existir carreira para a mesma posição/ano, ela vence a base.
+  const byPos = new Map();
+
+  baseRows.forEach(r=>{
+    byPos.set(String(r.posicao), r);
+  });
+
+  careerRows.forEach(r=>{
+    byPos.set(String(r.posicao), r);
+  });
+
+  return [...byPos.values()]
+    .sort((a,b)=>num(a.posicao)-num(b.posicao));
+}
+
+function openBallonBatchForm(options={}){
+  const carreira = getActiveCareer();
+
+  if(!carreira){
+    alert("Selecione uma carreira antes.");
+    return;
+  }
+
+  const editSeason = getBallonYear(options.editSeason || "");
+  const isEdit = !!options.editExisting;
+
+  const initialSeason = editSeason || getBallonYear(active.temporada || getCurrentSeason(getProtagonistStats()) || "");
+  const existingRows = isEdit && initialSeason
+    ? getTable("BOLA_DE_OURO_CARREIRA")
+        .filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(getBallonYear(r))===String(initialSeason))
+    : [];
+
+  const byPos = {};
+  existingRows.forEach(r=>{
+    byPos[String(r.posicao)] = r;
+  });
+
+  const seasons = getBallonAvailableSeasons();
+  if(initialSeason && !seasons.includes(String(initialSeason))) seasons.unshift(String(initialSeason));
+
+  modalTitle.textContent = isEdit ? "Editar ranking Bola de Ouro" : "Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  modalBox.classList.add("ballon-rank-modal");
+  form.className = "ballon-batch-form";
+
+  const imageUrl = existingRows.find(r=>r.imagem_url)?.imagem_url || "";
+
+  form.innerHTML = `
+    <div class="form-field full">
+      <label>Ano da Bola de Ouro</label>
+      <select name="temporada" id="ballonBatchSeason">
+        ${seasons.map(s=>`<option value="${escapeAttr(s)}" ${String(s)===String(initialSeason)?"selected":""}>${escapeHtml(s)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem do vencedor</label>
+      <div class="file-row">
+        <input name="imagem_url" value="${escapeAttr(imageUrl)}" placeholder="URL da imagem de fundo do vencedor">
+        <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
+      </div>
+      <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
+    </div>
+
+    <div class="ballon-rank-grid ballon-rank-grid-with-club">
+      <div class="ballon-rank-head">#</div>
+      <div class="ballon-rank-head">Jogador</div>
+      <div class="ballon-rank-head">País</div>
+      <div class="ballon-rank-head">Clube</div>
+      <div class="ballon-rank-head">Idade</div>
+      <div class="ballon-rank-head">Valor</div>
+
+      ${Array.from({length:10},(_,i)=>{
+        const pos = i+1;
+        const old = byPos[String(pos)] || {};
+        return `
+          <div class="ballon-rank-pos">${pos}</div>
+          <input name="jogador_${pos}" value="${escapeAttr(old.jogador || "")}" placeholder="Jogador">
+          <input name="pais_${pos}" value="${escapeAttr(old.pais || "")}" placeholder="País, código ou emoji">
+          <input name="clube_${pos}" value="${escapeAttr(getBallonRowClub(old))}" placeholder="Clube">
+          <input name="idade_${pos}" type="number" value="${escapeAttr(old.idade_na_premiacao || old.idade || "")}" placeholder="Idade">
+          <input name="valor_${pos}" value="${escapeAttr(old.valor_mercado || old.valor || "")}" placeholder="Ex: €90M">
+        `;
+      }).join("")}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const year = getBallonYear(data.temporada);
+
+      if(!year) throw new Error("Selecione o ano da Bola de Ouro.");
+
+      const oldRows = isEdit
+        ? getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(getBallonYear(r))===String(year))
+        : [];
+
+      for(let pos=1; pos<=10; pos++){
+        const raw = {
+          carreira_id: active.carreira_id,
+          temporada: year,
+          ano: year,
+          posicao: pos,
+          jogador: data[`jogador_${pos}`] || "",
+          pais: data[`pais_${pos}`] || "",
+          idade_na_premiacao: data[`idade_${pos}`] || "",
+          valor_mercado: data[`valor_${pos}`] || "",
+          imagem_url: pos === 1 ? (data.imagem_url || "") : "",
+          observacao: "",
+          clube: data[`clube_${pos}`] || ""
+        };
+
+        if(!raw.jogador && !raw.pais && !raw.clube && !raw.idade_na_premiacao && !raw.valor_mercado) continue;
+
+        const record = normalizeBallonCareerRecord(raw);
+        const existing = oldRows.find(r=>String(r.posicao)===String(pos));
+
+        const payload = existing
+          ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record}
+          : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record};
+
+        const res = await apiPost(payload);
+        if(!res.ok) throw new Error(res.error || "Erro ao salvar posição " + pos);
+      }
+
+      closeModal();
+      await loadData();
+      setStatus(isEdit ? "Ranking atualizado no ano " + year + "." : "Novo ranking criado no ano " + year + ".", "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+// Tenta substituir o seletor visual da Bola de Ouro para mostrar anos.
+function renderBallonYearSelect(){
+  const select = $("ballonSeasonSelect") || $("bolaOuroSeasonSelect") || document.querySelector("#bolaouro select") || document.querySelector("#ballonSeason");
+  if(!select) return;
+
+  const current = getBallonYear(select.value || active.ballonYear || active.temporada || "");
+  const years = getBallonAvailableSeasons();
+
+  select.innerHTML = years.map(y=>`<option value="${escapeAttr(y)}" ${String(y)===String(current) ? "selected" : ""}>${escapeHtml(y)}</option>`).join("");
+
+  if(!select.value && years.length) select.value = years[0];
+
+  active.ballonYear = select.value;
+  saveActive();
+
+  select.onchange = ()=>{
+    active.ballonYear = getBallonYear(select.value);
+    saveActive();
+    if(typeof renderBolaOuro === "function") renderBolaOuro();
+  };
+}
+
+// Depois de renderizar Bola de Ouro, força o select para ano.
+const __oldRenderBolaOuroV3719 = typeof renderBolaOuro === "function" ? renderBolaOuro : null;
+function renderBolaOuro(){
+  if(__oldRenderBolaOuroV3719){
+    __oldRenderBolaOuroV3719();
+  }
+  renderBallonYearSelect();
+
+  // Corrige textos 2025/2026 que sobraram no cabeçalho, quando possível.
+  const root = $("bolaouro") || document.querySelector("#bolaouro") || document;
+  const selectedYear = active.ballonYear || getBallonYear(document.querySelector("#bolaouro select")?.value || "");
+  if(root && selectedYear){
+    root.querySelectorAll("*").forEach(el=>{
+      if(el.children.length) return;
+      const txt = el.textContent || "";
+      if(/\d{4}\/\d{4}/.test(txt)){
+        el.textContent = txt.replace(/\d{4}\/(\d{4})/g, "$1");
+      }
+    });
+  }
+}
+
+window.getBallonYear = getBallonYear;
+window.extractBallonYear = extractBallonYear;
+window.getBallonRowsForYear = getBallonRowsForYear;
+window.renderBallonYearSelect = renderBallonYearSelect;
 
