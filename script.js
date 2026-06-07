@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.98 top11 edit player created');
+console.log('Football Legacy script carregado v3.7.99 top11 importar imagem criado');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -17874,4 +17874,258 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
   window.FL_openCreateTop11V3798 = openCreateTop11WithCreated;
   window.FL_openCreateTop11V3795 = openCreateTop11WithCreated;
   window.FL_openCreateTop11V3790 = openCreateTop11WithCreated;
+})();
+
+
+// ===== V3.7.99 — TOP11 CRIADO COM BOTÃO IMPORTAR IMAGEM =====
+// Não precisa colar URL manualmente.
+// O botão Importar abre seletor de arquivo, envia para Cloudinary e preenche foto_url automaticamente.
+// Funciona em:
+// - editar jogador do Top 11;
+// - + Top 11 novo.
+
+(function(){
+  function esc(v){
+    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
+    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+  }
+
+  function attr(v){
+    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
+    return String(v ?? "").replace(/"/g,"&quot;");
+  }
+
+  function initials(name){
+    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+  }
+
+  async function uploadTop11ImageToCloudinary(file){
+    if(!file) return "";
+
+    if(typeof CLOUD_NAME === "undefined" || typeof CLOUDINARY_UPLOAD_PRESET === "undefined"){
+      throw new Error("Cloudinary não configurado no dashboard.");
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    setStatus("Importando imagem do jogador...", "loading");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+      method: "POST",
+      body: fd
+    });
+
+    const json = await res.json();
+
+    if(!json.secure_url){
+      throw new Error(json.error?.message || "Erro ao importar imagem.");
+    }
+
+    setStatus("Imagem importada.", "ok");
+    return json.secure_url;
+  }
+
+  function previewInto(previewEl, url, name){
+    if(!previewEl) return;
+
+    if(url){
+      previewEl.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='Imagem inválida'">`;
+    }else{
+      previewEl.innerHTML = `<span>${esc(initials(name || "J"))}</span>`;
+    }
+  }
+
+  async function handleTop11Import(inputEl, targetInput, previewEl, nameInput){
+    const file = inputEl.files && inputEl.files[0];
+    if(!file || !targetInput) return;
+
+    try{
+      const url = await uploadTop11ImageToCloudinary(file);
+      targetInput.value = url;
+
+      const createdSelect =
+        targetInput.closest("form")?.querySelector(`[name="criado"]`) ||
+        targetInput.closest(".top11-create-row-v3787,.top11-create-row-v3788")?.querySelector(`[name^="criado_"]`);
+
+      if(createdSelect) createdSelect.value = "SIM";
+
+      const playerName = nameInput ? nameInput.value : "";
+      previewInto(previewEl, url, playerName);
+
+      targetInput.dispatchEvent(new Event("input", {bubbles:true}));
+      targetInput.dispatchEvent(new Event("change", {bubbles:true}));
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao importar imagem: " + err.message, "error");
+    }finally{
+      inputEl.value = "";
+    }
+  }
+
+  function enhanceEditPlayerModal(){
+    const modal = document.getElementById("fl-top11-player-edit-modal-v3798");
+    if(!modal || modal.dataset.importV3799 === "1") return;
+
+    const form = modal.querySelector("#fl-top11-player-edit-form-v3798");
+    if(!form) return;
+
+    modal.dataset.importV3799 = "1";
+
+    const fotoInput = form.querySelector(`[name="foto_url"]`);
+    const nameInput = form.querySelector(`[name="jogador"]`);
+    const preview = modal.querySelector("#fl-top11-player-preview-v3798");
+
+    if(!fotoInput) return;
+
+    fotoInput.placeholder = "URL gerada automaticamente ao importar";
+    fotoInput.readOnly = true;
+    fotoInput.classList.add("top11-auto-url-v3799");
+
+    const oldUrlRow = fotoInput.closest(".fl-url-row-v3798");
+    const oldButton = oldUrlRow?.querySelector("button");
+
+    if(oldButton){
+      oldButton.textContent = "Importar";
+      oldButton.onclick = null;
+      oldButton.setAttribute("type", "button");
+      oldButton.classList.add("top11-import-btn-v3799");
+    }
+
+    let file = form.querySelector("#fl_top11_edit_file_v3799");
+    if(!file){
+      file = document.createElement("input");
+      file.type = "file";
+      file.id = "fl_top11_edit_file_v3799";
+      file.accept = "image/png,image/jpeg,image/webp";
+      file.style.display = "none";
+      form.appendChild(file);
+    }
+
+    const importButton = oldButton || document.createElement("button");
+    importButton.type = "button";
+    importButton.textContent = "Importar";
+    importButton.classList.add("top11-import-btn-v3799");
+
+    if(!oldButton){
+      const row = document.createElement("div");
+      row.className = "fl-url-row-v3798";
+      fotoInput.parentNode.insertBefore(row, fotoInput);
+      row.appendChild(fotoInput);
+      row.appendChild(importButton);
+    }
+
+    importButton.onclick = () => file.click();
+    file.onchange = () => handleTop11Import(file, fotoInput, preview, nameInput);
+
+    const label = fotoInput.closest("label");
+    if(label && label.childNodes && label.childNodes[0]){
+      label.childNodes[0].textContent = "Imagem do jogador";
+    }
+
+    const createdSelect = form.querySelector(`[name="criado"]`);
+    if(createdSelect){
+      createdSelect.addEventListener("change", () => {
+        if(createdSelect.value === "SIM" && !fotoInput.value){
+          setStatus("Jogador criado marcado. Importe a imagem pelo botão Importar.", "ok");
+        }
+      });
+    }
+  }
+
+  function enhanceCreateTop11Modal(){
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form) return;
+
+    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+
+    rows.forEach((row, idx)=>{
+      const fotoInput = row.querySelector(`[name="foto_url_${idx}"]`);
+      if(!fotoInput || fotoInput.dataset.importV3799 === "1") return;
+
+      fotoInput.dataset.importV3799 = "1";
+      fotoInput.placeholder = "URL gerada ao importar";
+      fotoInput.readOnly = true;
+      fotoInput.classList.add("top11-auto-url-v3799");
+
+      let file = row.querySelector(`#fl_top11_create_file_${idx}_v3799`);
+      if(!file){
+        file = document.createElement("input");
+        file.type = "file";
+        file.id = `fl_top11_create_file_${idx}_v3799`;
+        file.accept = "image/png,image/jpeg,image/webp";
+        file.style.display = "none";
+        row.appendChild(file);
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Importar";
+      btn.className = "top11-import-btn-v3799";
+      btn.onclick = () => file.click();
+
+      fotoInput.insertAdjacentElement("afterend", btn);
+
+      file.onchange = () => {
+        const nameInput = row.querySelector(`[name="jogador_${idx}"]`);
+        const createdSelect = row.querySelector(`[name="criado_${idx}"]`);
+        if(createdSelect) createdSelect.value = "SIM";
+        handleTop11Import(file, fotoInput, null, nameInput);
+      };
+    });
+  }
+
+  // Reaproveita abertura existente, mas transforma o modal depois de abrir.
+  const originalOpenCreate =
+    window.FL_openCreateTop11V3798 ||
+    window.FL_openCreateTop11V3795 ||
+    window.FL_openCreateTop11V3790 ||
+    window.FL_openCreateTop11V3788 ||
+    window.FL_openCreateTop11V3787 ||
+    null;
+
+  function openCreateTop11WithImport(){
+    if(originalOpenCreate) originalOpenCreate();
+    setTimeout(enhanceCreateTop11Modal, 120);
+    setTimeout(enhanceCreateTop11Modal, 350);
+    setTimeout(enhanceCreateTop11Modal, 800);
+  }
+
+  // Observa DOM para quando os modais forem criados por funções antigas.
+  const observer = new MutationObserver(() => {
+    enhanceEditPlayerModal();
+    enhanceCreateTop11Modal();
+  });
+
+  observer.observe(document.body, {childList:true, subtree:true});
+
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest("button");
+    if(btn && /\+\s*top\s*11/i.test(btn.textContent || "")){
+      setTimeout(enhanceCreateTop11Modal, 180);
+      setTimeout(enhanceCreateTop11Modal, 500);
+    }
+
+    const card = e.target.closest(".top11-player-v3796");
+    if(card){
+      setTimeout(enhanceEditPlayerModal, 120);
+      setTimeout(enhanceEditPlayerModal, 350);
+    }
+  }, true);
+
+  window.FL_uploadTop11ImageToCloudinaryV3799 = uploadTop11ImageToCloudinary;
+  window.FL_enhanceEditPlayerModalV3799 = enhanceEditPlayerModal;
+  window.FL_enhanceCreateTop11ModalV3799 = enhanceCreateTop11Modal;
+  window.FL_openCreateTop11V3799 = openCreateTop11WithImport;
+  window.FL_openCreateTop11V3798 = openCreateTop11WithImport;
+  window.FL_openCreateTop11V3795 = openCreateTop11WithImport;
+  window.FL_openCreateTop11V3790 = openCreateTop11WithImport;
+
+  setTimeout(enhanceEditPlayerModal, 500);
+  setTimeout(enhanceCreateTop11Modal, 500);
 })();
