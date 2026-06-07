@@ -1,3 +1,3 @@
-# Football Legacy V3.7.76
+# Football Legacy V3.7.77
 
-Corrige o seletor do Bola de Ouro removendo listeners de input/change globais que travavam o dropdown. Agora o preenchimento ocorre apenas em change/blur da temporada, sem disparar change nos campos preenchidos. Sem alteração visual.
+Corrige o Bola de Ouro para não sobrescrever edições manuais. O modal carrega ao abrir/trocar temporada, mas depois que o usuário edita qualquer campo, o auto-preenchimento não roda de novo até a temporada mudar.
