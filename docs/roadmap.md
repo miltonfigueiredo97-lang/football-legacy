@@ -1,3 +1,3 @@
-# Football Legacy V3.7.12
+# Football Legacy V3.7.13
 
-Adiciona Intercontinental de Clubes junto do Mundial de Clubes nas sugestões de competições ao criar temporada e nos títulos gerais.
+Corrige RangeError Maximum call stack size exceeded causado pela v3.7.12. Remove wrapper recursivo de competitionSuggestions e mantém Mundial de Clubes + Intercontinental de Clubes + Supercopa da UEFA.

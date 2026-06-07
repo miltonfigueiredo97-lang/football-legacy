@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.12 intercontinental clubes');
+console.log('Football Legacy script carregado v3.7.13 fix competition recursion');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -4170,16 +4170,60 @@ function competitionSuggestions(team){
 }
 
 
-// ===== V3.7.12 GARANTIA INTERCONTINENTAL DE CLUBES =====
-if(typeof MAIN_SEASON_TITLES !== "undefined" && !MAIN_SEASON_TITLES.includes("Intercontinental de Clubes")){
-  MAIN_SEASON_TITLES.splice(MAIN_SEASON_TITLES.indexOf("Mundial de Clubes") + 1, 0, "Intercontinental de Clubes");
-}
-
-const __oldCompetitionSuggestionsV3712 = typeof competitionSuggestions === "function" ? competitionSuggestions : null;
+// ===== V3.7.13 COMPETITION SUGGESTIONS SAFE =====
 function competitionSuggestions(team){
-  const list = __oldCompetitionSuggestionsV3712 ? __oldCompetitionSuggestionsV3712(team) : [];
-  if(!list.includes("Mundial de Clubes")) list.push("Mundial de Clubes");
-  if(!list.includes("Intercontinental de Clubes")) list.push("Intercontinental de Clubes");
+  const list = [];
+
+  if(team && team.league) list.push(team.league);
+
+  const country = String(team?.country || "").toLowerCase();
+
+  const europeCountries = [
+    "england","spain","italy","germany","france","portugal","netherlands",
+    "belgium","scotland","turkey","austria","switzerland","ukraine",
+    "russia","greece","denmark","sweden","norway","croatia","serbia",
+    "czech","poland"
+  ];
+
+  const isEuropean = europeCountries.some(c=>country.includes(c));
+
+  if(country.includes("england")){
+    list.push("FA Cup","Carabao Cup","Community Shield");
+  }else if(country.includes("spain")){
+    list.push("Copa del Rey","Supercopa de España");
+  }else if(country.includes("italy")){
+    list.push("Coppa Italia","Supercoppa Italiana");
+  }else if(country.includes("germany")){
+    list.push("DFB-Pokal","DFL-Supercup");
+  }else if(country.includes("france")){
+    list.push("Coupe de France","Trophée des Champions");
+  }else if(country.includes("brazil")){
+    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+  }else if(country.includes("portugal")){
+    list.push("Taça de Portugal","Taça da Liga","Supertaça");
+  }else if(country.includes("netherlands")){
+    list.push("KNVB Cup","Johan Cruyff Shield");
+  }
+
+  if(isEuropean){
+    list.push(
+      "Champions League",
+      "Europa League",
+      "Conference League",
+      "Supercopa da UEFA",
+      "Mundial de Clubes",
+      "Intercontinental de Clubes"
+    );
+  }else{
+    list.push(
+      "Champions League",
+      "Europa League",
+      "Conference League",
+      "Mundial de Clubes",
+      "Intercontinental de Clubes"
+    );
+  }
+
   return [...new Set(list.filter(Boolean))];
 }
 
