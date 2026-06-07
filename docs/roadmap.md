@@ -1,3 +1,3 @@
-# Football Legacy V3.7.24
+# Football Legacy V3.7.25
 
-Corrige salvamento infinito em adicionar/editar temporada, principalmente com Supercopa da UEFA e Intercontinental de Clubes. Usa chaves seguras para competições especiais, salva estatísticas com nome normalizado e destrava o botão mesmo se o reload do dashboard falhar.
+Rollback emergencial da v3.7.24. Volta para a base estável v3.7.23 e remove alterações que quebraram botões/causaram Maximum call stack size exceeded. Não sobrescreve openSeasonFlow nem funções de clique. Mantém apenas proteção para destravar botão em erro e inclui Supercopa da UEFA/Intercontinental nos títulos gerais sem recursão.
