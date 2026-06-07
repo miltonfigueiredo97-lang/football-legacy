@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.33 fix season save recursion only');
+console.log('Football Legacy script carregado v3.7.34 ballon ending season year');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -6057,4 +6057,92 @@ window.addEventListener("error", function(){
 window.addEventListener("unhandledrejection", function(){
   setTimeout(()=>unlockSeasonSaveButton(), 100);
 });
+
+
+
+// ===== V3.7.34 BOLA DE OURO = ANO FINAL DA TEMPORADA =====
+// Regra correta:
+// 2024/2025 -> 2025
+// 2025/2026 -> 2026
+// 2026/2027 -> 2027
+
+function getAwardYearFromSeason(value){
+  const text = String(value || "");
+  const years = text.match(/\d{4}/g);
+  if(!years || !years.length) return "";
+  return years.length > 1 ? years[years.length - 1] : years[0];
+}
+
+function getCareerSeasonBallonOptions(){
+  const rows = [];
+
+  getTable("CARREIRA_TEMPORADAS")
+    .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
+    .forEach(t=>{
+      const season = t.temporada || "";
+      const year = getAwardYearFromSeason(season);
+      if(!year) return;
+      rows.push({
+        value:year,
+        label:`${season} - ${year}`,
+        season,
+        year
+      });
+    });
+
+  getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
+    .forEach(r=>{
+      const year = getAwardYearFromSeason(r.ano || r.temporada);
+      if(!year) return;
+      rows.push({
+        value:year,
+        label:`${year}`,
+        season:String(r.temporada || year),
+        year
+      });
+    });
+
+  getTable("BOLA_DE_OURO_BASE").forEach(r=>{
+    const year = getAwardYearFromSeason(r.ano || r.temporada);
+    if(!year) return;
+    rows.push({
+      value:year,
+      label:`${year}`,
+      season:String(r.temporada || year),
+      year
+    });
+  });
+
+  const map = new Map();
+
+  rows.forEach(o=>{
+    // Prioriza label com temporada completa: 2024/2025 - 2025.
+    if(!map.has(o.value) || o.label.includes("/")){
+      map.set(o.value, o);
+    }
+  });
+
+  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
+}
+
+function normalizeBallonCareerRecord(record){
+  const year = getAwardYearFromSeason(record.ano || record.temporada || "");
+  return {
+    carreira_id: record.carreira_id || active.carreira_id || "",
+    temporada: year,
+    ano: year,
+    posicao: record.posicao || "",
+    jogador: record.jogador || "",
+    pais: record.pais || "",
+    idade_na_premiacao: record.idade_na_premiacao || record.idade || "",
+    valor_mercado: record.valor_mercado || record.valor || "",
+    imagem_url: record.imagem_url || "",
+    observacao: record.observacao || "",
+    clube: record.clube || record.club || record.time || ""
+  };
+}
+
+window.getAwardYearFromSeason = getAwardYearFromSeason;
+window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
 
