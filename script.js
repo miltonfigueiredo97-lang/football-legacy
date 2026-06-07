@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.57 fix layout selecoes resumo');
+console.log('Football Legacy script carregado v3.7.58 rollback layout before selecoes');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -9075,503 +9075,115 @@ window.flBuildProjectionGuaranteedV3755 = flBuildProjectionGuaranteedV3755;
 
 
 
-// ===== V3.7.56 SELEÇÕES NA CARREIRA =====
-// Seleção no personagem + números da seleção por temporada.
-// Não altera o salvamento das temporadas de clube.
+// ===== V3.7.58 ROLLBACK VISUAL ANTES DAS SELEÇÕES =====
+// Recupera layout quebrado pelas versões 3.7.56/3.7.57.
+// Não insere seleção nas linhas. Não mexe em Apps Script.
 
-const NATIONAL_TEAM_BADGES_V3756 = {
-  brasil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
-  brazil:"https://r2.thesportsdb.com/images/media/team/badge/8phz9z1678283124.png",
-  argentina:"https://r2.thesportsdb.com/images/media/team/badge/2xxo8u1678283348.png",
-  franca:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
-  france:"https://r2.thesportsdb.com/images/media/team/badge/r57asx1678283296.png",
-  espanha:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
-  spain:"https://r2.thesportsdb.com/images/media/team/badge/okzv471678283240.png",
-  portugal:"https://r2.thesportsdb.com/images/media/team/badge/9qd9bp1678283232.png",
-  inglaterra:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
-  england:"https://r2.thesportsdb.com/images/media/team/badge/xqprrv1678283151.png",
-  alemanha:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
-  germany:"https://r2.thesportsdb.com/images/media/team/badge/x9i0ms1678283200.png",
-  italia:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
-  italy:"https://r2.thesportsdb.com/images/media/team/badge/6av5u51678283175.png",
-  holanda:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
-  netherlands:"https://r2.thesportsdb.com/images/media/team/badge/3c12ss1678283263.png",
-  uruguai:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png",
-  uruguay:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png"
-};
-
-function flKeyV3756(value){
-  return String(value || "").toLowerCase().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"");
-}
-
-function normalizeSelectionNameV3756(value){
-  const raw = String(value || "").trim();
-  const key = flKeyV3756(raw);
-  const aliases = {
-    brasileiro:"Brasil", brasileira:"Brasil", brasil:"Brasil", brazil:"Brasil",
-    argentino:"Argentina", argentina:"Argentina",
-    frances:"França", francesa:"França", franca:"França", france:"França",
-    espanhol:"Espanha", espanhola:"Espanha", espanha:"Espanha", spain:"Espanha",
-    portugues:"Portugal", portuguesa:"Portugal", portugal:"Portugal",
-    ingles:"Inglaterra", inglesa:"Inglaterra", inglaterra:"Inglaterra", england:"Inglaterra",
-    alemao:"Alemanha", alema:"Alemanha", alemanha:"Alemanha", germany:"Alemanha",
-    italiano:"Itália", italiana:"Itália", italia:"Itália", italy:"Itália",
-    holandes:"Holanda", holandesa:"Holanda", holanda:"Holanda", netherlands:"Holanda",
-    uruguaio:"Uruguai", uruguaia:"Uruguai", uruguai:"Uruguai", uruguay:"Uruguai"
-  };
-  return aliases[key] || raw;
-}
-
-function getSelectionBadgeV3756(name){
-  const norm = normalizeSelectionNameV3756(name);
-  return NATIONAL_TEAM_BADGES_V3756[flKeyV3756(norm)] || "";
-}
-
-function getActivePlayerSelectionV3756(){
-  const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
-  if(!p) return "";
-  return normalizeSelectionNameV3756(
-    p.selecao || p.seleção || p.selecao_nacional || p.national_team || p.nacionalidade || ""
-  );
-}
-
-function getSelectionRowsV3756(){
-  const carreiraId = active?.carreira_id || "";
-  const personagemId = active?.protagonista_id || "";
-  return getTable("SELECOES_CARREIRA").filter(r =>
-    (!carreiraId || String(r.carreira_id) === String(carreiraId)) &&
-    (!personagemId || String(r.personagem_id) === String(personagemId))
-  );
-}
-
-function getSelectionRowForSeasonV3756(season){
-  if(!season) return null;
-  return getSelectionRowsV3756().find(r =>
-    String(r.carreira_temporada_id || "") === String(season.id || "") ||
-    String(r.temporada || "") === String(season.temporada || "")
-  ) || null;
-}
-
-function getSelectionTotalsV3756(){
-  return getSelectionRowsV3756().reduce((acc,r)=>{
-    acc.selecao = normalizeSelectionNameV3756(r.selecao || acc.selecao);
-    acc.jogos += Number(r.jogos || 0);
-    acc.gols += Number(r.gols || 0);
-    acc.assistencias += Number(r.assistencias || 0);
-    if(String(r.titulos || "").trim()) acc.titulos.push(String(r.titulos).trim());
-    return acc;
-  },{
-    selecao:getActivePlayerSelectionV3756(),
-    jogos:0,
-    gols:0,
-    assistencias:0,
-    titulos:[]
-  });
-}
-
-function injectSelectionFieldOnPersonagemFormV3756(){
+function flRollbackVisualV3758(){
   try{
-    if(!form || !modal?.classList?.contains("active")) return;
-    const names = [...form.querySelectorAll("input,select,textarea")]
-      .map(i=>String(i.name || "").toLowerCase());
+    // Remove blocos de seleção que possam ter ficado no DOM.
+    document.querySelectorAll(
+      ".selection-season-cell-v3756,.career-selection-card-v3756,.career-selection-card-v3757"
+    ).forEach(el=>el.remove());
 
-    const isPersonagem = names.includes("carreira_id") && names.includes("nome") && names.includes("posicao") && names.includes("nacionalidade");
-    if(!isPersonagem || form.querySelector("[name='selecao']")) return;
+    // Remove classes que quebravam grid/largura.
+    document.querySelectorAll(".season-row-with-selection-v3756,.season-row-pretty-v3757").forEach(el=>{
+      el.classList.remove("season-row-with-selection-v3756","season-row-pretty-v3757");
+      el.style.removeProperty("display");
+      el.style.removeProperty("grid-template-columns");
+      el.style.removeProperty("gap");
+      el.style.removeProperty("min-height");
+      el.style.removeProperty("padding");
+    });
 
-    const id = form.querySelector("[name='id']")?.value || "";
-    const p = id ? getTable("PERSONAGENS").find(x=>String(x.id)===String(id)) : getActiveProtagonist();
-    const value = normalizeSelectionNameV3756(p?.selecao || p?.selecao_nacional || p?.nacionalidade || "");
+    // Remove classes de resumo que esticaram os cards.
+    document.querySelectorAll(".summary-metrics-row-v3757,.summary-stats-row-v3755,.summary-stats-with-projection-v3754,.summary-stats-with-projection-v3753").forEach(el=>{
+      el.classList.remove(
+        "summary-metrics-row-v3757",
+        "summary-stats-row-v3755",
+        "summary-stats-with-projection-v3754",
+        "summary-stats-with-projection-v3753"
+      );
+      el.style.removeProperty("display");
+      el.style.removeProperty("grid-template-columns");
+      el.style.removeProperty("max-width");
+      el.style.removeProperty("width");
+      el.style.removeProperty("height");
+      el.style.removeProperty("flex");
+    });
 
-    const html = `
-      <div class="form-field personagem-selection-field-v3756">
-        <label>Seleção</label>
-        <input name="selecao" value="${escapeAttr(value)}" placeholder="Ex: Brasil, Argentina, Portugal">
-        <small>A seleção será usada no Resumo e nas estatísticas por temporada.</small>
-      </div>
-    `;
-    const nac = form.querySelector("[name='nacionalidade']");
-    const field = nac?.closest(".form-field");
-    if(field) field.insertAdjacentHTML("afterend", html);
-    else form.insertAdjacentHTML("beforeend", html);
-  }catch(err){ console.warn("Falha campo seleção:", err); }
-}
+    // Remove projeções bugadas antigas da faixa.
+    document.querySelectorAll(
+      ".career-projection-v3757,.career-projection-v3755,.career-projection-v3752.projection-forced-v3754,.career-projection-v3752.projection-beside-v3753"
+    ).forEach(el=>el.remove());
 
-const __apiPostOriginalV3756 = typeof apiPost === "function" ? apiPost : null;
-if(__apiPostOriginalV3756 && !window.__apiPostSelectionWrappedV3756){
-  window.__apiPostSelectionWrappedV3756 = true;
-  apiPost = async function(payload){
-    try{
-      if(payload && payload.table === "PERSONAGENS" && payload.record){
-        const input = form?.querySelector("[name='selecao']");
-        if(input){
-          payload.record.selecao = normalizeSelectionNameV3756(input.value || "");
-          payload.record.selecao_nacional = payload.record.selecao;
-        }
-      }
-    }catch(err){}
-    return await __apiPostOriginalV3756(payload);
-  };
-}
-
-const __openFormOriginalV3756 = typeof openForm === "function" ? openForm : null;
-if(__openFormOriginalV3756 && !window.__openFormSelectionWrappedV3756){
-  window.__openFormSelectionWrappedV3756 = true;
-  openForm = function(){
-    const result = __openFormOriginalV3756.apply(this, arguments);
-    setTimeout(injectSelectionFieldOnPersonagemFormV3756, 120);
-    setTimeout(injectSelectionFieldOnPersonagemFormV3756, 450);
-    return result;
-  };
-}
-
-function openSelectionSeasonModalV3756(seasonId){
-  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : getTable("CARREIRA_TEMPORADAS");
-  const season = seasons.find(s=>String(s.id)===String(seasonId));
-  if(!season){ alert("Temporada não encontrada."); return; }
-
-  const old = getSelectionRowForSeasonV3756(season) || {};
-  const selecao = normalizeSelectionNameV3756(old.selecao || getActivePlayerSelectionV3756());
-  const badge = getSelectionBadgeV3756(selecao);
-
-  modalTitle.textContent = `Editar seleção • ${season.temporada}`;
-  modalBox.classList.add("wide");
-  form.className = "selection-season-form-v3756";
-
-  form.innerHTML = `
-    <div class="selection-season-modal-v3756">
-      <div class="selected-team active">
-        ${badge ? `<img src="${escapeAttr(badge)}" onerror="this.style.display='none'">` : ""}
-        <div><strong>${escapeHtml(selecao || "Seleção")}</strong><small>${escapeHtml(season.temporada || "")}</small></div>
-      </div>
-
-      <div class="season-flow-grid">
-        <div class="form-field"><label>Seleção</label><input name="selecao" value="${escapeAttr(selecao)}" placeholder="Ex: Brasil"></div>
-        <div class="form-field"><label>Jogos</label><input name="jogos" type="number" value="${escapeAttr(old.jogos || "")}" placeholder="Jogos"></div>
-        <div class="form-field"><label>Gols</label><input name="gols" type="number" value="${escapeAttr(old.gols || "")}" placeholder="Gols"></div>
-        <div class="form-field"><label>Assistências</label><input name="assistencias" type="number" value="${escapeAttr(old.assistencias || "")}" placeholder="Assistências"></div>
-      </div>
-
-      <div class="form-field full"><label>Títulos pela seleção nessa temporada</label><input name="titulos" value="${escapeAttr(old.titulos || "")}" placeholder="Ex: Copa América, Copa do Mundo"></div>
-      <div class="form-field full"><label>Observação</label><input name="observacao" value="${escapeAttr(old.observacao || "")}" placeholder="Ex: Artilheiro da Copa América"></div>
-
-      <div class="form-actions">
-        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-        <button class="gold-btn" id="saveBtn">Salvar seleção</button>
-      </div>
-    </div>
-  `;
-
-  form.onsubmit = async e=>{
-    e.preventDefault();
-    const btn = $("saveBtn");
-    if(btn && btn.disabled) return;
-    setButtonSaving(btn);
-
-    try{
-      const data = Object.fromEntries(new FormData(form).entries());
-      const record = {
-        carreira_id: active.carreira_id || "",
-        personagem_id: active.protagonista_id || "",
-        carreira_temporada_id: season.id || "",
-        temporada: season.temporada || "",
-        selecao: normalizeSelectionNameV3756(data.selecao || selecao),
-        jogos: data.jogos || "",
-        gols: data.gols || "",
-        assistencias: data.assistencias || "",
-        titulos: data.titulos || "",
-        observacao: data.observacao || ""
-      };
-
-      const payload = old.id
-        ? {action:"update", table:"SELECOES_CARREIRA", id:old.id, record}
-        : {action:"create", table:"SELECOES_CARREIRA", record};
-
-      const result = await apiPost(payload);
-      if(!result.ok) throw new Error(result.error || "Erro ao salvar seleção.");
-
-      if(!Array.isArray(db.SELECOES_CARREIRA)) db.SELECOES_CARREIRA = [];
-      if(old.id){
-        const idx = db.SELECOES_CARREIRA.findIndex(r=>String(r.id)===String(old.id));
-        if(idx >= 0) db.SELECOES_CARREIRA[idx] = Object.assign({}, db.SELECOES_CARREIRA[idx], record);
-      }else{
-        db.SELECOES_CARREIRA.push(Object.assign({}, record, result?.data || {}, {id:result?.data?.id || result?.id || ("local_"+Date.now())}));
-      }
-
-      clearButtonSaving(btn);
-      closeModal();
-      renderAll();
-      setStatus("Seleção salva.", "ok");
-    }catch(err){
-      clearButtonSaving(btn);
-      console.error(err);
-      setStatus("Erro ao salvar seleção: " + err.message, "error");
-    }
-  };
-
-  modal.classList.add("active");
-}
-
-function formatSelectionCellV3756(season){
-  const row = getSelectionRowForSeasonV3756(season);
-  const selecao = normalizeSelectionNameV3756(row?.selecao || getActivePlayerSelectionV3756());
-  const badge = getSelectionBadgeV3756(selecao);
-
-  return `
-    <div class="selection-season-cell-v3756">
-      <div class="selection-season-main-v3756">
-        ${badge ? `<img src="${escapeAttr(badge)}" onerror="this.style.display='none'">` : `<div class="selection-placeholder-v3756">🌎</div>`}
-        <div>
-          <strong>${escapeHtml(selecao || "Seleção")}</strong>
-          <small>${row ? `${Number(row.jogos||0)} jogos • ${Number(row.gols||0)} gols • ${Number(row.assistencias||0)} assist.` : "Sem dados"}</small>
-          ${row?.titulos ? `<small class="selection-title-v3756">${escapeHtml(row.titulos)}</small>` : ""}
-        </div>
-      </div>
-      <button class="season-edit-selection-btn-v3756" onclick="openSelectionSeasonModalV3756('${escapeAttr(season.id)}')">Editar seleção</button>
-    </div>
-  `;
-}
-
-function injectSelectionIntoSeasonRowsV3756(){
-  try{
-    const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-    if(!seasons.length) return;
-
-    const cards = [...document.querySelectorAll("article, .entity-card, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card, div")]
-      .filter(card=>{
-        const txt = card.textContent || "";
-        if(!/editar/i.test(txt) || !/jogos|gols|assist/i.test(txt)) return false;
-        return seasons.some(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
-      })
-      .filter(card=>!card.querySelector(".selection-season-cell-v3756"));
-
-    const finalCards = cards.filter(card=>!cards.some(other=>other !== card && card.contains(other)));
-
-    finalCards.forEach(card=>{
-      const txt = card.textContent || "";
-      const season = seasons.find(s=>txt.includes(String(s.temporada || "")) && txt.includes(String(s.clube_nome || "")));
-      if(!season) return;
-
-      card.classList.add("season-row-with-selection-v3756");
-
-      [...card.querySelectorAll("*")].forEach(el=>{
-        const t = (el.textContent || "").trim().toLowerCase();
-        if(t === "cartões" || t === "cartoes" || t === "nota média" || t === "nota media"){
-          const block = el.closest("div");
-          if(block) block.classList.add("hide-season-unused-v3756");
-        }
+    // Garante que só fique uma imagem grande do personagem.
+    const heroes = [...document.querySelectorAll("section, article, div")]
+      .filter(el=>{
+        const txt = el.textContent || "";
+        const r = el.getBoundingClientRect();
+        return txt.includes("MILTON FIGUEIREDO") && txt.includes("Clubes da carreira") && r.width > 700;
       });
 
-      card.insertAdjacentHTML("beforeend", formatSelectionCellV3756(season));
-    });
-  }catch(err){ console.warn("Falha seleção nas temporadas:", err); }
-}
+    const hero = heroes.sort((a,b)=>{
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return (ar.width*ar.height) - (br.width*br.height);
+    })[0];
 
-function injectSelectionCardOnCareerClubsV3756(){
-  try{
-    const totals = getSelectionTotalsV3756();
-    const selecao = normalizeSelectionNameV3756(totals.selecao);
-    if(!selecao) return;
+    if(hero){
+      const bigImgs = [...hero.querySelectorAll("img")].filter(img=>{
+        const r = img.getBoundingClientRect();
+        return r.width > 120 && r.height > 150;
+      });
 
-    const title = [...document.querySelectorAll("h2,h3,h4,strong,div")]
-      .find(el=>/clubes da carreira/i.test(el.textContent || ""));
-    if(!title) return;
-
-    let container = title.parentElement;
-    for(let i=0;i<5 && container;i++){
-      if((container.textContent || "").includes("Jogos")) break;
-      container = container.parentElement;
+      if(bigImgs.length > 1){
+        bigImgs.slice(0, -1).forEach(img=>{
+          const box = img.closest(".player-photo-box-v3751,.profile-card,.player-card,.protagonist-card") || img.parentElement;
+          if(box) box.remove();
+          else img.remove();
+        });
+      }
     }
-    if(!container || container.querySelector(".career-selection-card-v3756")) return;
 
-    const badge = getSelectionBadgeV3756(selecao);
-    const card = document.createElement("div");
-    card.className = "career-selection-card-v3756";
-    card.innerHTML = `
-      ${badge ? `<img src="${escapeAttr(badge)}" onerror="this.style.display='none'">` : `<div class="selection-placeholder-v3756">🌎</div>`}
-      <strong>${escapeHtml(selecao)}</strong>
-      <small>Seleção</small>
-      <div><b>${totals.jogos}</b> Jogos</div>
-      <div><b>${totals.gols}</b> Gols</div>
-      <div><b>${totals.assistencias}</b> Assistências</div>
-    `;
-    container.appendChild(card);
-  }catch(err){ console.warn("Falha card seleção:", err); }
+    // Remove textos ISO/período indefinido, mas sem reformatar card.
+    document.querySelectorAll("article,.entity-card,.season-card,.played-season-card,.career-season-card,.season-row-card,.temporada-card").forEach(card=>{
+      const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while(walker.nextNode()) nodes.push(walker.currentNode);
+
+      nodes.forEach(node=>{
+        const old = node.nodeValue || "";
+        let txt = old;
+        txt = txt.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+at[eé]\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z/gi, "");
+        txt = txt.replace(/per[ií]odo n[aã]o definido/gi, "");
+        if(txt !== old) node.nodeValue = txt.trim() ? txt : "";
+      });
+    });
+
+  }catch(err){
+    console.warn("Rollback visual v3.7.58 falhou:", err);
+  }
 }
 
-function applySelectionsCareerV3756(){
-  injectSelectionIntoSeasonRowsV3756();
-  injectSelectionCardOnCareerClubsV3756();
-}
-
-const __renderAllOriginalV3756 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAllOriginalV3756 && !window.__renderAllSelectionWrappedV3756){
-  window.__renderAllSelectionWrappedV3756 = true;
+const __renderAllOriginalV3758 = typeof renderAll === "function" ? renderAll : null;
+if(__renderAllOriginalV3758 && !window.__renderAllRollbackV3758){
+  window.__renderAllRollbackV3758 = true;
   renderAll = function(){
-    const result = __renderAllOriginalV3756.apply(this, arguments);
-    setTimeout(applySelectionsCareerV3756, 150);
-    setTimeout(applySelectionsCareerV3756, 900);
+    const result = __renderAllOriginalV3758.apply(this, arguments);
+    setTimeout(flRollbackVisualV3758, 80);
+    setTimeout(flRollbackVisualV3758, 600);
+    setTimeout(flRollbackVisualV3758, 1500);
     return result;
   };
 }
 
 document.addEventListener("click", function(){
-  setTimeout(injectSelectionFieldOnPersonagemFormV3756, 150);
-  setTimeout(applySelectionsCareerV3756, 300);
+  setTimeout(flRollbackVisualV3758, 200);
 }, true);
 
-setInterval(()=>{ if(document.visibilityState === "visible") applySelectionsCareerV3756(); }, 3000);
+setInterval(()=>{
+  if(document.visibilityState === "visible") flRollbackVisualV3758();
+}, 2500);
 
-window.openSelectionSeasonModalV3756 = openSelectionSeasonModalV3756;
-window.applySelectionsCareerV3756 = applySelectionsCareerV3756;
-
-
-
-// ===== V3.7.57 FIX LAYOUT SELEÇÕES + RESUMO =====
-// Corrige somente visual. Não altera Apps Script nem salvamento.
-
-function fl5757CleanOldProjection(){
-  document.querySelectorAll(".career-projection-v3752,.career-projection-v3755").forEach(el=>el.remove());
-}
-
-function fl5757ProjectionData(){
-  try{
-    if(typeof flBuildProjectionGuaranteedV3755 === "function"){
-      const p = flBuildProjectionGuaranteedV3755();
-      if(p) return p;
-    }
-  }catch(e){}
-  return null;
-}
-
-function fl5757FindMetricCards(){
-  return [...document.querySelectorAll("div,article,section")]
-    .filter(el=>{
-      const t=(el.textContent||"").toLowerCase();
-      const r=el.getBoundingClientRect();
-      return r.width>=80 && r.width<=210 && r.height>=60 && r.height<=150 &&
-        (t.includes("jogos") || t.includes("gols") || t.includes("assist"));
-    });
-}
-
-function fl5757InjectProjection(){
-  const p = fl5757ProjectionData();
-  if(!p) return;
-
-  const cards = fl5757FindMetricCards();
-  if(cards.length < 3) return;
-
-  let row = cards[0].parentElement;
-  for(let i=0;i<4 && row;i++){
-    if(cards.slice(0,3).every(c=>row.contains(c))) break;
-    row = row.parentElement;
-  }
-  if(!row) return;
-
-  row.classList.add("summary-metrics-row-v3757");
-
-  let box = row.querySelector(".career-projection-v3757");
-  if(!box){
-    box=document.createElement("div");
-    box.className="career-projection-v3757";
-    row.appendChild(box);
-  }
-
-  box.innerHTML = `
-    <div class="proj-title-v3757">
-      <strong>Previsão até 38 anos</strong>
-      <span>${p.currentAge} anos • ${p.seasonsLeft} temp.</span>
-    </div>
-    <div class="proj-values-v3757">
-      <div><small>Jogos</small><b>${Math.round(p.final.jogos)}</b><em>+${Math.round(p.future.jogos)}</em></div>
-      <div><small>Gols</small><b>${Math.round(p.final.gols)}</b><em>+${Math.round(p.future.gols)}</em></div>
-      <div><small>Assist.</small><b>${Math.round(p.final.assistencias)}</b><em>+${Math.round(p.future.assistencias)}</em></div>
-    </div>
-  `;
-}
-
-function fl5757FixHeroImages(){
-  const heroes = [...document.querySelectorAll("section,article,div")]
-    .filter(el=>{
-      const t=el.textContent||"";
-      const r=el.getBoundingClientRect();
-      return t.includes("MILTON FIGUEIREDO") && t.includes("Clubes da carreira") && r.width>800;
-    });
-  const hero=heroes[0];
-  if(!hero) return;
-
-  const imgs=[...hero.querySelectorAll("img")]
-    .filter(img=>{
-      const r=img.getBoundingClientRect();
-      return r.width>130 && r.height>160;
-    });
-  if(imgs.length>1){
-    imgs.slice(0,-1).forEach(img=>{
-      const box=img.closest(".player-photo-box-v3751,.profile-card,.player-card,.protagonist-card") || img.parentElement;
-      if(box) box.remove(); else img.remove();
-    });
-  }
-}
-
-function fl5757FixSeasonRows(){
-  const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
-  if(!seasons.length) return;
-
-  const cards=[...document.querySelectorAll("article,.entity-card,.season-card,.played-season-card,.career-season-card,.season-row-card,.temporada-card,div")]
-    .filter(card=>{
-      const t=card.textContent||"";
-      const r=card.getBoundingClientRect();
-      if(r.width<700 || r.height<65) return false;
-      if(!/editar/i.test(t) || !/jogos|gols|assist/i.test(t)) return false;
-      return seasons.some(s=>t.includes(String(s.temporada||"")) && t.includes(String(s.clube_nome||"")));
-    });
-
-  const finalCards=cards.filter(c=>!cards.some(o=>o!==c && c.contains(o)===false && o.contains(c)));
-
-  finalCards.forEach(card=>{
-    card.classList.add("season-row-pretty-v3757");
-
-    [...card.querySelectorAll("*")].forEach(el=>{
-      const t=(el.textContent||"").trim().toLowerCase();
-      if(["cartões","cartoes","nota média","nota media"].includes(t)){
-        const block=el.closest("div");
-        if(block) block.classList.add("hide-season-unused-v3757");
-      }
-    });
-
-    const age=card.querySelector(".season-age-badge-v3751,.season-age-badge-v3750,.season-age-badge-v3747,.season-age-badge-v3746,.season-age-badge-v3745");
-    if(age) age.className="season-age-pill-v3757";
-
-    const img=card.querySelector("img");
-    if(img){
-      img.classList.add("season-emblem-v3757");
-      if(img.parentElement) img.parentElement.classList.add("season-emblem-wrap-v3757");
-    }
-
-    const sel=card.querySelector(".selection-season-cell-v3756");
-    if(sel) sel.classList.add("selection-season-compact-v3757");
-  });
-}
-
-function fl5757Apply(){
-  fl5757CleanOldProjection();
-  fl5757InjectProjection();
-  fl5757FixHeroImages();
-  fl5757FixSeasonRows();
-}
-
-const __renderAll5757 = typeof renderAll === "function" ? renderAll : null;
-if(__renderAll5757 && !window.__renderAll5757Wrapped){
-  window.__renderAll5757Wrapped=true;
-  renderAll=function(){
-    const r=__renderAll5757.apply(this,arguments);
-    setTimeout(fl5757Apply,120);
-    setTimeout(fl5757Apply,800);
-    setTimeout(fl5757Apply,1800);
-    return r;
-  };
-}
-
-document.addEventListener("click",()=>setTimeout(fl5757Apply,250),true);
-setInterval(()=>{if(document.visibilityState==="visible") fl5757Apply();},3000);
-window.fl5757Apply=fl5757Apply;
+window.flRollbackVisualV3758 = flRollbackVisualV3758;

@@ -1,3 +1,3 @@
-# Football Legacy V3.7.57
+# Football Legacy V3.7.58
 
-Correção visual: linhas de temporadas horizontais e compactas com seleção à direita; remove Cartões/Nota Média; corrige bloco de previsão no resumo para não esticar cards; remove imagem duplicada.
+Rollback visual para antes das seleções. Remove interferências das versões 3.7.56/3.7.57, recuperando o layout do resumo e das temporadas jogadas. Não altera Apps Script.
