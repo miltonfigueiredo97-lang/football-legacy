@@ -1,3 +1,3 @@
-# Football Legacy V3.7
+# Football Legacy V3.7.1
 
-Adiciona aba Records com Top 3 de maiores artilheiros, líderes de assistência, jogadores com mais jogos e maior goleador em uma única temporada. Inclui filtros por carreira geral, competições principais e clubes usados na carreira.
+Corrige Troféus para puxar CAMPEOES_CARREIRA, renderiza títulos marcados como ganhos no editor de temporada, adiciona visual com imagens/logos por competição e remove texto do Resumo 'Clique no escudo'.

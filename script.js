@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7 records tab');
+console.log('Football Legacy script carregado v3.7.1 trofeus fix');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -3077,6 +3077,204 @@ function renderRecords(){
   renderSingleSeasonGoalRecords(seasonGoals);
 }
 
+
+// ===== V3.7.1 TROFEUS FIX =====
+function normalizeTextKey(value){
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]/g,"");
+}
+
+function trophyImageForCompetition(name){
+  const key = normalizeTextKey(name);
+
+  const map = [
+    ["championsleague", "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/UEFA_Champions_League_logo_2.svg/512px-UEFA_Champions_League_logo_2.svg.png"],
+    ["europaleague", "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/UEFA_Europa_League_logo.svg/512px-UEFA_Europa_League_logo.svg.png"],
+    ["conferenceleague", "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/UEFA_Conference_League_logo.svg/512px-UEFA_Conference_League_logo.svg.png"],
+    ["libertadores", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Copa_Libertadores_logo.svg/512px-Copa_Libertadores_logo.svg.png"],
+    ["sulamericana", "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Copa_Sudamericana_logo.svg/512px-Copa_Sudamericana_logo.svg.png"],
+    ["copadomundo", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/FIFA_World_Cup_Trophy.svg/512px-FIFA_World_Cup_Trophy.svg.png"],
+    ["worldcup", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/FIFA_World_Cup_Trophy.svg/512px-FIFA_World_Cup_Trophy.svg.png"],
+    ["mundialdeclubes", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/FIFA_Club_World_Cup_logo.svg/512px-FIFA_Club_World_Cup_logo.svg.png"],
+    ["intercontinentaldeclubes", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Intercontinental_Cup.svg/512px-Intercontinental_Cup.svg.png"],
+    ["premierleague", "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Premier_League_Logo.svg/512px-Premier_League_Logo.svg.png"],
+    ["laliga", "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/LaLiga.svg/512px-LaLiga.svg.png"],
+    ["serieaitaliana", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Serie_A_logo_%282019%29.svg/512px-Serie_A_logo_%282019%29.svg.png"],
+    ["seriea", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Serie_A_logo_%282019%29.svg/512px-Serie_A_logo_%282019%29.svg.png"],
+    ["bundesliga", "https://upload.wikimedia.org/wikipedia/en/thumb/d/df/Bundesliga_logo_%282017%29.svg/512px-Bundesliga_logo_%282017%29.svg.png"],
+    ["ligue1", "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Ligue_1_Uber_Eats_logo.svg/512px-Ligue_1_Uber_Eats_logo.svg.png"],
+    ["brasileirao", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Brasileir%C3%A3o_Assa%C3%AD_logo.png/512px-Brasileir%C3%A3o_Assa%C3%AD_logo.png"],
+    ["brazilianseriea", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Brasileir%C3%A3o_Assa%C3%AD_logo.png/512px-Brasileir%C3%A3o_Assa%C3%AD_logo.png"],
+    ["copadobrasil", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Copa_do_Brasil_logo.svg/512px-Copa_do_Brasil_logo.svg.png"],
+    ["copadelrey", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Copa_del_Rey_logo.svg/512px-Copa_del_Rey_logo.svg.png"],
+    ["facup", "https://upload.wikimedia.org/wikipedia/en/thumb/5/5e/Emirates_FA_Cup_logo.svg/512px-Emirates_FA_Cup_logo.svg.png"],
+    ["eurocopa", "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/UEFA_Euro_2024_Logo.svg/512px-UEFA_Euro_2024_Logo.svg.png"],
+    ["copaamerica", "https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/Copa_America_2024_logo.svg/512px-Copa_America_2024_logo.svg.png"]
+  ];
+
+  const found = map.find(([k]) => key.includes(k) || k.includes(key));
+  return found ? found[1] : "";
+}
+
+function trophyFallbackIcon(name){
+  const key = normalizeTextKey(name);
+  if(key.includes("champions")) return "🏆";
+  if(key.includes("copa") || key.includes("cup")) return "🏆";
+  if(key.includes("liga") || key.includes("league") || key.includes("serie") || key.includes("bundesliga") || key.includes("ligue")) return "🥇";
+  if(key.includes("mundial") || key.includes("world")) return "🌍";
+  return "🏆";
+}
+
+function getCareerTrophyRows(){
+  const carreira = getActiveCareer();
+  const rows = getTable("CAMPEOES_CARREIRA")
+    .filter(t=>!carreira || String(t.carreira_id)===String(carreira.id))
+    .filter(t=>String(t.status || "").includes("titulo") || String(t.clube || "").trim());
+
+  const legacy = getTable("CAMPEOES")
+    .filter(t=>!carreira || !t.carreira_id || String(t.carreira_id)===String(carreira.id));
+
+  return [...rows, ...legacy];
+}
+
+function getSeasonByCareerSeasonId(id){
+  return getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(id)) || {};
+}
+
+function renderTrofeus(){
+  const wrap = $("trofeus-list") || $("trofeusGrid") || document.querySelector("#trofeus .cards-grid") || document.querySelector("#trofeus .content-card");
+
+  if(!wrap) return;
+
+  const p = getActiveProtagonist();
+  const trophies = getCareerTrophyRows()
+    .filter(t=>{
+      // Mostra títulos ganhos pelo jogador/time na carreira.
+      if(String(t.status || "").includes("titulo")) return Trueish(t.status);
+      return String(t.clube || "").trim();
+    })
+    .sort((a,b)=>{
+      const sa = a.temporada || getSeasonByCareerSeasonId(a.carreira_temporada_id).temporada || "";
+      const sb = b.temporada || getSeasonByCareerSeasonId(b.carreira_temporada_id).temporada || "";
+      return compareSeasonsDesc(sa,sb);
+    });
+
+  if(!trophies.length){
+    wrap.innerHTML = `
+      <div class="trophy-empty">
+        <div>🏆</div>
+        <h3>Nenhum troféu cadastrado ainda</h3>
+        <p>Marque “Ganhei” no editor de temporada para os títulos aparecerem aqui.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const total = trophies.length;
+  const byComp = new Map();
+
+  trophies.forEach(t=>{
+    const comp = t.competicao || compName(t.competicao_id) || "Título";
+    byComp.set(comp, (byComp.get(comp) || 0) + 1);
+  });
+
+  wrap.innerHTML = `
+    <div class="trophy-summary">
+      <div>
+        <span>Total de títulos</span>
+        <strong>${total}</strong>
+      </div>
+      <div>
+        <span>Competições vencidas</span>
+        <strong>${byComp.size}</strong>
+      </div>
+      <div>
+        <span>Maior coleção</span>
+        <strong>${[...byComp.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || "-"}</strong>
+      </div>
+    </div>
+
+    <div class="trophy-grid-real">
+      ${trophies.map(t=>{
+        const season = t.temporada || getSeasonByCareerSeasonId(t.carreira_temporada_id).temporada || "-";
+        const clubSeason = getSeasonByCareerSeasonId(t.carreira_temporada_id);
+        const comp = t.competicao || compName(t.competicao_id) || "Título";
+        const img = trophyImageForCompetition(comp);
+        const fallback = trophyFallbackIcon(comp);
+
+        return `
+          <article class="real-trophy-card">
+            <div class="real-trophy-img">
+              ${img ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(comp)}" onerror="this.outerHTML='<span>${fallback}</span>'">` : `<span>${fallback}</span>`}
+            </div>
+            <div>
+              <strong>${escapeHtml(comp)}</strong>
+              <small>${escapeHtml(season)} • ${escapeHtml(clubSeason.clube_nome || t.clube || "-")}</small>
+            </div>
+            <div class="real-trophy-meta">
+              ${t.artilheiro ? `<span>Artilheiro: ${escapeHtml(t.artilheiro)}</span>` : ""}
+              ${t.lider_assistencias ? `<span>Assistências: ${escapeHtml(t.lider_assistencias)}</span>` : ""}
+              ${t.melhor_jogador ? `<span>Melhor: ${escapeHtml(t.melhor_jogador)}</span>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function Trueish(v){ return true; }
+
+function renderDashboardJourney(){
+  const user = getActiveUser();
+  const career = getActiveCareer();
+  const protagonist = getActiveProtagonist();
+  const stats = getProtagonistStats();
+  const season = getCurrentSeason(stats);
+  const journey = buildClubJourney();
+
+  setText("careerNameSide", career ? career.nome : "Football Legacy");
+  setText("careerMetaSide", user ? user.nome : "Google Sheets");
+
+  setText("currentSeason", season || "Banco conectado");
+  setText("mainCharacterTitle", protagonist ? protagonist.nome : "Protagonista");
+  setText("mainCharacterDesc", career ? (career.descricao || "Resumo da carreira do jogador selecionado.") : "Crie uma carreira.");
+  setText("mainCharacter", protagonist ? protagonist.nome : "Sem personagem");
+  setText("mainCharacterSub", protagonist ? `${protagonist.posicao || "-"} • ${protagonist.nacionalidade || "-"}` : "Cadastre um personagem");
+
+  setPlayerPhoto(protagonist);
+
+  const meta = document.querySelector(".hero-meta");
+
+  if(meta){
+    meta.classList.add("club-journey-hero");
+    meta.innerHTML = `
+      <div class="club-journey-head">
+        <span>Clubes da carreira</span>
+      </div>
+      <div class="club-journey-strip clean-club-strip">
+        ${journey.length ? journey.map(c=>`
+          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+            <span class="club-crest-wrap clean-club-crest">
+              ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
+            </span>
+            <strong>${escapeHtml(c.clube_nome)}</strong>
+            <small>${escapeHtml(c.firstSeason)}${c.lastSeason && c.lastSeason!==c.firstSeason ? " - " + escapeHtml(c.lastSeason) : ""}</small>
+            <span class="club-full-stats">
+              <span><b>${c.jogos}</b> Jogos</span>
+              <span><b>${c.gols}</b> Gols</span>
+              <span><b>${c.assistencias}</b> Assistências</span>
+            </span>
+          </button>
+        `).join("") : `<div class="season-empty">Nenhum clube jogado ainda.</div>`}
+      </div>
+    `;
+  }
+}
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -3219,3 +3417,5 @@ if(typeof renderDashboardJourney !== "undefined") window.renderDashboardJourney 
 if(typeof saveSeasonTitlesFlow !== "undefined") window.saveSeasonTitlesFlow = saveSeasonTitlesFlow;
 if(typeof renderSeasonTitlesRows !== "undefined") window.renderSeasonTitlesRows = renderSeasonTitlesRows;
 if(typeof renderRecords !== "undefined") window.renderRecords = renderRecords;
+if(typeof renderTrofeus !== "undefined") window.renderTrofeus = renderTrofeus;
+if(typeof getCareerTrophyRows !== "undefined") window.getCareerTrophyRows = getCareerTrophyRows;
