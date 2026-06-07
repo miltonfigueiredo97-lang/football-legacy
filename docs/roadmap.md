@@ -1,3 +1,3 @@
-# Football Legacy V3.7.86
+# Football Legacy V3.7.87
 
-Top 11 limpo: remove mapa duplicado antigo, cria botão +Top11 funcional por carreira, permite fundo recomendado 1600x1000 ou 1920x1200, mantém drag/posições. Remove texto azul claro de datas ISO sob o nome do time nas temporadas jogadas.
+Top 11 corrigido: remove dependência de openModal, cria modal próprio, fixa fundo padrão do Top 11 para todos, remove aplicar fundo, adiciona seletor de Top 11 por temporada e salva posições apenas do Top 11 selecionado.
