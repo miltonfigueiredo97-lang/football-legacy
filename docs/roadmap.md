@@ -1,3 +1,3 @@
-# Football Legacy V3.7.34
+# Football Legacy V3.7.35
 
-Corrige regra da Bola de Ouro para usar o ano final da temporada. Exemplo: 2024/2025 - 2025, 2025/2026 - 2026. Salva BOLA_DE_OURO_CARREIRA.temporada e ano com o ano final.
+Bola de Ouro agora salva ranking em lote usando action=batch. Um ranking inteiro usa uma única chamada ao Apps Script, em vez de uma chamada por jogador. Requer Apps Script v3.5.7.

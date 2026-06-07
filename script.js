@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.34 ballon ending season year');
+console.log('Football Legacy script carregado v3.7.35 batch save ballon');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -6145,4 +6145,286 @@ function normalizeBallonCareerRecord(record){
 
 window.getAwardYearFromSeason = getAwardYearFromSeason;
 window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
+
+
+
+// ===== V3.7.35 BOLA DE OURO SALVAMENTO EM LOTE =====
+// Antes: 1 jogador = 1 request.
+// Agora: ranking inteiro = 1 request.
+// Requer Apps Script v3.5.7 com action=batch.
+
+async function apiBatchPost(operations){
+  const payload = {
+    action:"batch",
+    operations
+  };
+
+  return await apiPost(payload);
+}
+
+function getAwardYearFromSeason(value){
+  const text = String(value || "");
+  const years = text.match(/\d{4}/g);
+  if(!years || !years.length) return "";
+  return years.length > 1 ? years[years.length - 1] : years[0];
+}
+
+function getCareerSeasonBallonOptions(){
+  const rows = [];
+
+  getTable("CARREIRA_TEMPORADAS")
+    .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
+    .forEach(t=>{
+      const season = t.temporada || "";
+      const year = getAwardYearFromSeason(season);
+      if(!year) return;
+      rows.push({
+        value:year,
+        label:`${season} - ${year}`,
+        season,
+        year
+      });
+    });
+
+  getTable("BOLA_DE_OURO_CARREIRA")
+    .filter(r=>!active.carreira_id || String(r.carreira_id)===String(active.carreira_id))
+    .forEach(r=>{
+      const year = getAwardYearFromSeason(r.ano || r.temporada);
+      if(!year) return;
+      rows.push({
+        value:year,
+        label:`${year}`,
+        season:String(r.temporada || year),
+        year
+      });
+    });
+
+  getTable("BOLA_DE_OURO_BASE").forEach(r=>{
+    const year = getAwardYearFromSeason(r.ano || r.temporada);
+    if(!year) return;
+    rows.push({
+      value:year,
+      label:`${year}`,
+      season:String(r.temporada || year),
+      year
+    });
+  });
+
+  const map = new Map();
+  rows.forEach(o=>{
+    if(!map.has(o.value) || o.label.includes("/")){
+      map.set(o.value, o);
+    }
+  });
+
+  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
+}
+
+function normalizeBallonCareerRecord(record){
+  const year = getAwardYearFromSeason(record.ano || record.temporada || "");
+  return {
+    carreira_id: record.carreira_id || active.carreira_id || "",
+    temporada: year,
+    ano: year,
+    posicao: record.posicao || "",
+    jogador: record.jogador || "",
+    pais: record.pais || "",
+    idade_na_premiacao: record.idade_na_premiacao || record.idade || "",
+    valor_mercado: record.valor_mercado || record.valor || "",
+    imagem_url: record.imagem_url || "",
+    observacao: record.observacao || "",
+    clube: record.clube || record.club || record.time || ""
+  };
+}
+
+function getBallonRowClub(row){
+  return row.clube || row.club || row.time || row.equipe || "";
+}
+
+function syncBatchResultsLocal(operations, response){
+  try{
+    const results = response?.results || response?.data?.results || [];
+
+    operations.forEach((op, index)=>{
+      const res = results[index] || {};
+      const table = op.table;
+      if(!table) return;
+      if(!Array.isArray(db[table])) db[table] = [];
+
+      if(op.action === "create"){
+        const created = Object.assign({}, op.record || {}, res.data || {});
+        if(!created.id) created.id = res.id || created.id || ("local_" + Date.now() + "_" + index);
+        db[table].push(created);
+      }
+
+      if(op.action === "update"){
+        const id = String(op.id || res.data?.id || "");
+        const updated = Object.assign({}, op.record || {}, res.data || {});
+        if(id) updated.id = id;
+
+        const idx = db[table].findIndex(r=>String(r.id)===String(updated.id));
+        if(idx >= 0) db[table][idx] = Object.assign({}, db[table][idx], updated);
+        else db[table].push(updated);
+      }
+    });
+  }catch(err){
+    console.warn("Falha ao sincronizar batch local:", err);
+  }
+}
+
+function openBallonBatchForm(options={}){
+  const carreira = getActiveCareer();
+
+  if(!carreira){
+    alert("Selecione uma carreira antes.");
+    return;
+  }
+
+  const editYear = getAwardYearFromSeason(options.editSeason || options.editYear || "");
+  const isEdit = !!options.editExisting;
+  const activeYear = getAwardYearFromSeason(active.temporada || getCurrentSeason(getProtagonistStats()) || "");
+  const initialYear = editYear || activeYear || String(new Date().getFullYear());
+
+  const existingRows = isEdit && initialYear
+    ? getTable("BOLA_DE_OURO_CARREIRA")
+        .filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(getAwardYearFromSeason(r.ano || r.temporada))===String(initialYear))
+    : [];
+
+  const byPos = {};
+  existingRows.forEach(r=>{ byPos[String(r.posicao)] = r; });
+
+  let optionsList = getCareerSeasonBallonOptions();
+  if(initialYear && !optionsList.some(o=>String(o.value)===String(initialYear))){
+    optionsList.unshift({value:initialYear,label:String(initialYear),year:initialYear});
+  }
+
+  modalTitle.textContent = isEdit ? "Editar ranking Bola de Ouro" : "Novo ranking Bola de Ouro";
+  modalBox.classList.add("wide");
+  modalBox.classList.add("ballon-rank-modal");
+  form.className = "ballon-batch-form";
+
+  const imageUrl = existingRows.find(r=>r.imagem_url)?.imagem_url || "";
+
+  form.innerHTML = `
+    <div class="form-field full">
+      <label>Temporada / Ano da Bola de Ouro</label>
+      <select name="ano_premiacao" id="ballonBatchSeason">
+        ${optionsList.map(o=>`<option value="${escapeAttr(o.value)}" ${String(o.value)===String(initialYear)?"selected":""}>${escapeHtml(o.label)}</option>`).join("")}
+      </select>
+      <small class="field-help">Exemplo: 2024/2025 - 2025. Na planilha salva como 2025.</small>
+    </div>
+
+    <div class="form-field full">
+      <label>Imagem do vencedor</label>
+      <div class="file-row">
+        <input name="imagem_url" value="${escapeAttr(imageUrl)}" placeholder="URL da imagem de fundo do vencedor">
+        <button type="button" class="upload-btn" onclick="triggerUpload('imagem_url')">Importar</button>
+      </div>
+      <input type="file" id="file_imagem_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'imagem_url')">
+    </div>
+
+    <div class="ballon-rank-grid ballon-rank-grid-with-club">
+      <div class="ballon-rank-head">#</div>
+      <div class="ballon-rank-head">Jogador</div>
+      <div class="ballon-rank-head">País</div>
+      <div class="ballon-rank-head">Clube</div>
+      <div class="ballon-rank-head">Idade</div>
+      <div class="ballon-rank-head">Valor</div>
+
+      ${Array.from({length:10},(_,i)=>{
+        const pos = i+1;
+        const old = byPos[String(pos)] || {};
+        return `
+          <div class="ballon-rank-pos">${pos}</div>
+          <input name="jogador_${pos}" value="${escapeAttr(old.jogador || "")}" placeholder="Jogador">
+          <input name="pais_${pos}" value="${escapeAttr(old.pais || "")}" placeholder="País, código ou emoji">
+          <input name="clube_${pos}" value="${escapeAttr(getBallonRowClub(old))}" placeholder="Clube">
+          <input name="idade_${pos}" type="number" value="${escapeAttr(old.idade_na_premiacao || old.idade || "")}" placeholder="Idade">
+          <input name="valor_${pos}" value="${escapeAttr(old.valor_mercado || old.valor || "")}" placeholder="Ex: €90M">
+        `;
+      }).join("")}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const year = getAwardYearFromSeason(data.ano_premiacao);
+
+      if(!year) throw new Error("Selecione o ano da Bola de Ouro.");
+
+      const oldRows = isEdit
+        ? getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(active.carreira_id) && String(getAwardYearFromSeason(r.ano || r.temporada))===String(year))
+        : [];
+
+      const operations = [];
+
+      for(let pos=1; pos<=10; pos++){
+        const raw = {
+          carreira_id: active.carreira_id,
+          temporada: year,
+          ano: year,
+          posicao: pos,
+          jogador: data[`jogador_${pos}`] || "",
+          pais: data[`pais_${pos}`] || "",
+          idade_na_premiacao: data[`idade_${pos}`] || "",
+          valor_mercado: data[`valor_${pos}`] || "",
+          imagem_url: pos === 1 ? (data.imagem_url || "") : "",
+          observacao: "",
+          clube: data[`clube_${pos}`] || ""
+        };
+
+        if(!raw.jogador && !raw.pais && !raw.clube && !raw.idade_na_premiacao && !raw.valor_mercado) continue;
+
+        const record = normalizeBallonCareerRecord(raw);
+        const existing = oldRows.find(r=>String(r.posicao)===String(pos));
+
+        operations.push(existing
+          ? {action:"update", table:"BOLA_DE_OURO_CARREIRA", id:existing.id, record}
+          : {action:"create", table:"BOLA_DE_OURO_CARREIRA", record}
+        );
+      }
+
+      if(!operations.length) throw new Error("Preencha pelo menos um jogador.");
+
+      const result = await apiBatchPost(operations);
+      if(!result.ok) throw new Error(result.error || "Erro ao salvar ranking em lote.");
+
+      syncBatchResultsLocal(operations, result);
+
+      clearButtonSaving(btn);
+      closeModal();
+
+      if(typeof renderBolaOuro === "function") renderBolaOuro();
+
+      setStatus(`Ranking da Bola de Ouro ${year} salvo em lote.`, "ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar ranking: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
+function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
+
+window.openBallonBatchForm = openBallonBatchForm;
+window.openNewBallonRanking = openNewBallonRanking;
+window.openEditBallonRankingSeason = openEditBallonRankingSeason;
+window.getAwardYearFromSeason = getAwardYearFromSeason;
 
