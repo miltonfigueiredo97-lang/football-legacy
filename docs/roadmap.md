@@ -1,3 +1,3 @@
-# Football Legacy V2.7 Hotfix
+# Football Legacy V2.9 Frontend Load Guard
 
-Baseada na V2.5 para restaurar carregamento do Sheets. Reaplica histórico da Bola de Ouro com estado independente, seletor de temporada e atualização por posição sem apagar rankings antigos.
+Hotfix frontend: endpoint Apps Script está OK. Corrige JS travando antes do loadData por event binding em elemento inexistente, adiciona diagnóstico de erros e torna renderAll defensivo.

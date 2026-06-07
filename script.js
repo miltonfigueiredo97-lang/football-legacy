@@ -27,6 +27,13 @@ const schemas = {
 const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu"};
 
 function $(id){return document.getElementById(id)}
+function bind(id,event,handler){
+  const el = $(id);
+  if(el) el.addEventListener(event, handler);
+}
+function setClick(id,handler){
+  bind(id,"click",handler);
+}
 function setStatus(msg,type=""){const el=$("statusBar"); if(el){el.textContent=msg; el.className="status-bar "+type}}
 function setText(id,v){const el=$(id); if(el) el.textContent=v}
 function num(v){const n=Number(String(v||"").replace(",", ".")); return isNaN(n)?0:n}
@@ -70,14 +77,33 @@ function getCurrentSeason(stats=getProtagonistStats()){
 async function loadData(){
   try{
     setStatus("Carregando dados do Google Sheets...");
-    const res=await fetch(API_URL+"?action=all&cache="+Date.now());
-    const json=await res.json();
+    const url = API_URL + "?action=all&cache=" + Date.now();
+    const res=await fetch(url, { method:"GET", cache:"no-store" });
+
+    if(!res.ok){
+      throw new Error("HTTP " + res.status + " ao chamar Apps Script");
+    }
+
+    const text = await res.text();
+    let json;
+
+    try{
+      json = JSON.parse(text);
+    }catch(parseErr){
+      console.error("Resposta recebida:", text);
+      throw new Error("Apps Script não retornou JSON válido");
+    }
+
     if(!json.ok) throw new Error(json.error||"Erro ao carregar dados");
+
     db=json.data||{};
     ensureActive();
     renderAll();
     setStatus("Dados carregados do Google Sheets com sucesso.","ok");
-  }catch(err){console.error(err);setStatus("Erro ao carregar Google Sheets: "+err.message,"error")}
+  }catch(err){
+    console.error(err);
+    setStatus("Erro ao carregar Google Sheets: "+err.message,"error");
+  }
 }
 
 async function apiPost(payload){
@@ -88,7 +114,15 @@ async function apiPost(payload){
 
 function renderAll(){
   const steps=[renderSelectors,renderDashboard,renderPlayedSeasons,renderPersonagens,renderStats,renderTrofeus,renderTop11,renderBolaOuro,renderClubes,renderMuseu,renderPrimaryButton];
-  for(const step of steps){try{step()}catch(e){console.error(step.name,e);setStatus("Erro em "+step.name+": "+e.message,"error")}}
+
+  for(const step of steps){
+    try{
+      if(typeof step === "function") step();
+    }catch(e){
+      console.error("Erro em " + (step.name || "render"), e);
+      setStatus("Erro em " + (step.name || "render") + ": " + e.message, "error");
+    }
+  }
 }
 
 function renderSelectors(){
@@ -552,7 +586,19 @@ function openBallonBatchForm(){
       localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
 
       closeModal();
-      await loadData();
+      await 
+window.addEventListener('error', function(event){
+  console.error("Football Legacy error:", event.error || event.message);
+  setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
+});
+
+window.addEventListener('unhandledrejection', function(event){
+  console.error("Football Legacy promise error:", event.reason);
+  const msg = event.reason && event.reason.message ? event.reason.message : String(event.reason || "erro desconhecido");
+  setStatus("Erro no dashboard: " + msg, "error");
+});
+
+loadData();
     }catch(err){
       btn.disabled=false;
       btn.textContent="Salvar Ranking";
@@ -574,23 +620,69 @@ function openSeasonFlow(){
 function triggerUpload(key){const input=$("file_"+key); if(input)input.click()}
 async function uploadToCloudinary(event,key){const file=event.target.files[0]; if(!file)return; const target=form.querySelector(`[name="${key}"]`); const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLOUDINARY_UPLOAD_PRESET);setStatus("Enviando mídia...");const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});const json=await res.json();if(!json.secure_url)throw new Error(json.error?.message||"Erro Cloudinary");target.value=json.secure_url;setStatus("Mídia enviada.","ok")}
 
-document.querySelectorAll(".menu-item").forEach(b=>b.onclick=()=>navigate(b.dataset.page));
-document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>openForm(b.dataset.form));
-$("syncBtn").onclick=loadData;
-$("seasonCreateBtn").onclick=openSeasonFlow;
-$("openSeasonBtn").onclick=openSeasonFlow;
-$("top11BatchBtn").onclick=openTop11BatchForm;
-$("ballonBatchBtn").onclick=openBallonBatchForm;
-$("protagonistEditCard").onclick=()=>{const p=getActiveProtagonist();p?openForm("personagem",p.id):openForm("personagem")};
-$("userSelect").onchange=e=>{active.usuario_id=e.target.value;const c=getCareersForUser(active.usuario_id);active.carreira_id=c[0]?String(c[0].id):"";active.protagonista_id="";active.temporada="";saveActive();renderAll()};
-$("careerSelect").onchange=e=>{active.carreira_id=e.target.value;active.protagonista_id="";active.temporada="";const ch=getCareerCharacters();if(ch[0])active.protagonista_id=String(ch[0].id);saveActive();renderAll()};
-$("protagonistSelect").onchange=e=>{active.protagonista_id=e.target.value;active.temporada="";saveActive();renderAll()};
+document.querySelectorAll(".menu-item").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.page)));
+document.querySelectorAll("[data-form]").forEach(b=>b.addEventListener("click",()=>openForm(b.dataset.form)));
+
+setClick("syncBtn", loadData);
+setClick("seasonCreateBtn", openSeasonFlow);
+setClick("openSeasonBtn", openSeasonFlow);
+setClick("top11BatchBtn", openTop11BatchForm);
+setClick("ballonBatchBtn", openBallonBatchForm);
+
+setClick("protagonistEditCard", ()=>{
+  const p=getActiveProtagonist();
+  p?openForm("personagem",p.id):openForm("personagem");
+});
+
+const userSelectEl = $("userSelect");
+if(userSelectEl){
+  userSelectEl.addEventListener("change", e=>{
+    active.usuario_id=e.target.value;
+    const c=getCareersForUser(active.usuario_id);
+    active.carreira_id=c[0]?String(c[0].id):"";
+    active.protagonista_id="";
+    active.temporada="";
+    saveActive();
+    renderAll();
+  });
+}
+
+const careerSelectEl = $("careerSelect");
+if(careerSelectEl){
+  careerSelectEl.addEventListener("change", e=>{
+    active.carreira_id=e.target.value;
+    active.protagonista_id="";
+    active.temporada="";
+    const ch=getCareerCharacters();
+    if(ch[0])active.protagonista_id=String(ch[0].id);
+    saveActive();
+    renderAll();
+  });
+}
+
+const protagonistSelectEl = $("protagonistSelect");
+if(protagonistSelectEl){
+  protagonistSelectEl.addEventListener("change", e=>{
+    active.protagonista_id=e.target.value;
+    active.temporada="";
+    saveActive();
+    renderAll();
+  });
+}
 
 window.openForm=openForm;window.removeRecord=removeRecord;window.setActiveProtagonist=setActiveProtagonist;window.openPlayerByName=openPlayerByName;window.triggerUpload=triggerUpload;window.uploadToCloudinary=uploadToCloudinary;
-loadData();
-
 
 window.addEventListener('error', function(event){
   console.error("Football Legacy error:", event.error || event.message);
   setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
 });
+
+window.addEventListener('unhandledrejection', function(event){
+  console.error("Football Legacy promise error:", event.reason);
+  const msg = event.reason && event.reason.message ? event.reason.message : String(event.reason || "erro desconhecido");
+  setStatus("Erro no dashboard: " + msg, "error");
+});
+
+loadData();
+
+
