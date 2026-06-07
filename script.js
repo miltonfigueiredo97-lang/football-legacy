@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.6.1 save buttons');
+console.log('Football Legacy script carregado v3.6.2 restore api season flow');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -1467,6 +1467,469 @@ function editSeasonRecord(id){
   openSeasonFlow(id);
 }
 
+
+// ===== V3.6.2 RESTORE API SEASON FLOW =====
+let selectedSeasonTeam = null;
+let selectedCompetitionsForSeason = [];
+
+function escapeName(value){
+  return String(value || "").replace(/[^a-zA-Z0-9]/g,"_");
+}
+
+function unescapeCompKey(key){
+  return String(key || "").replace(/_/g," ");
+}
+
+function competitionSuggestions(team){
+  const list = [];
+
+  if(team.league) list.push(team.league);
+
+  const country = String(team.country || "").toLowerCase();
+
+  if(country.includes("england")){
+    list.push("FA Cup","Carabao Cup","Community Shield");
+  }else if(country.includes("spain")){
+    list.push("Copa del Rey","Supercopa de España");
+  }else if(country.includes("italy")){
+    list.push("Coppa Italia","Supercoppa Italiana");
+  }else if(country.includes("germany")){
+    list.push("DFB-Pokal","DFL-Supercup");
+  }else if(country.includes("france")){
+    list.push("Coupe de France","Trophée des Champions");
+  }else if(country.includes("brazil")){
+    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+  }else if(country.includes("portugal")){
+    list.push("Taça de Portugal","Taça da Liga","Supertaça");
+  }else if(country.includes("netherlands")){
+    list.push("KNVB Cup","Johan Cruyff Shield");
+  }
+
+  list.push("Champions League","Europa League","Conference League","Mundial de Clubes");
+
+  return [...new Set(list.filter(Boolean))];
+}
+
+async function searchTeamsForSeason(){
+  const query = $("seasonTeamSearch")?.value?.trim();
+  const results = $("seasonTeamResults");
+
+  if(!query || !results) return;
+
+  results.innerHTML = `<div class="entity-card"><small>Buscando time...</small></div>`;
+
+  try{
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const teams = (json.teams || []).filter(t => String(t.strSport || "").toLowerCase().includes("soccer"));
+
+    if(!teams.length){
+      results.innerHTML = `<div class="entity-card"><small>Nenhum time encontrado. Digite outro nome.</small></div>`;
+      return;
+    }
+
+    results.innerHTML = teams.slice(0,10).map(t=>{
+      const team = {
+        name:t.strTeam || "",
+        league:t.strLeague || "",
+        country:t.strCountry || "",
+        badge:t.strBadge || "",
+        api_id:t.idTeam || ""
+      };
+
+      return `
+        <div class="team-result">
+          <img src="${team.badge}" onerror="this.style.display='none'">
+          <div>
+            <strong>${escapeHtml(team.name)}</strong>
+            <small>${escapeHtml(team.league || "-")} • ${escapeHtml(team.country || "-")}</small>
+          </div>
+          <button type="button" onclick='selectSeasonTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
+        </div>
+      `;
+    }).join("");
+  }catch(err){
+    console.error(err);
+    results.innerHTML = `<div class="entity-card"><small>Erro ao buscar time na API.</small></div>`;
+  }
+}
+
+function selectSeasonTeam(team){
+  selectedSeasonTeam = team;
+
+  const box = $("selectedTeamBox");
+
+  if(box){
+    box.classList.add("active");
+    box.innerHTML = `
+      <img src="${team.badge || ""}" onerror="this.style.display='none'">
+      <div>
+        <strong>${escapeHtml(team.name || "-")}</strong>
+        <small>${escapeHtml(team.league || "-")} • ${escapeHtml(team.country || "-")}</small>
+      </div>
+    `;
+  }
+
+  renderCompetitionSuggestions(team);
+}
+
+function renderCompetitionSuggestions(team, existingComps=[]){
+  const wrap = $("seasonCompetitionChecks");
+
+  if(!wrap) return;
+
+  const comps = [...new Set([...competitionSuggestions(team), ...existingComps].filter(Boolean))];
+
+  wrap.innerHTML = comps.map((c,i)=>{
+    const checked = existingComps.length ? existingComps.includes(c) : i===0;
+    return `
+      <label class="comp-check">
+        <input type="checkbox" value="${escapeAttr(c)}" ${checked ? "checked" : ""} onchange="renderSeasonStatsRows()">
+        ${escapeHtml(c)}
+      </label>
+    `;
+  }).join("");
+
+  renderSeasonStatsRows();
+}
+
+function getSelectedSeasonCompetitions(){
+  return [...document.querySelectorAll("#seasonCompetitionChecks input:checked")].map(i=>i.value);
+}
+
+function renderSeasonStatsRows(existingStats=null){
+  const wrap = $("seasonStatsRows");
+
+  if(!wrap) return;
+
+  const comps = getSelectedSeasonCompetitions();
+  selectedCompetitionsForSeason = comps;
+
+  if(!comps.length){
+    wrap.innerHTML = `<div class="entity-card"><small>Selecione pelo menos uma competição.</small></div>`;
+    return;
+  }
+
+  const stats = existingStats || window.__editingSeasonStats || [];
+
+  wrap.innerHTML = comps.map(comp=>{
+    const old = stats.find(s=>String(s.competicao || compName(s.competicao_id) || "").toLowerCase() === String(comp).toLowerCase()) || {};
+    const key = escapeName(comp);
+
+    return `
+      <div class="season-stats-row">
+        <strong>${escapeHtml(comp)}</strong>
+        <input name="jogos_${key}" type="number" placeholder="Jogos" value="${escapeAttr(old.jogos || "")}">
+        <input name="gols_${key}" type="number" placeholder="Gols" value="${escapeAttr(old.gols || "")}">
+        <input name="assistencias_${key}" type="number" placeholder="Assist." value="${escapeAttr(old.assistencias || "")}">
+        <input name="cartoes_${key}" type="number" placeholder="Cartões" value="${escapeAttr(old.cartoes || "")}">
+        <input name="media_geral_${key}" type="number" step="0.1" placeholder="Nota" value="${escapeAttr(old.nota_geral || old.media_geral || "")}">
+      </div>
+    `;
+  }).join("");
+}
+
+function openSeasonFlow(existingId=null){
+  const carreira = getActiveCareer();
+  const protagonista = getActiveProtagonist();
+
+  if(!carreira){
+    alert("Selecione ou crie uma carreira antes.");
+    return;
+  }
+
+  if(!protagonista){
+    alert("Selecione ou crie um protagonista antes.");
+    return;
+  }
+
+  const existing = existingId
+    ? getCareerSeasonRecords().find(t=>String(t.id)===String(existingId))
+    : null;
+
+  selectedSeasonTeam = existing ? {
+    name: existing.clube_nome || "",
+    league: existing.liga || "",
+    country: "",
+    badge: existing.escudo || "",
+    api_id: ""
+  } : null;
+
+  selectedCompetitionsForSeason = existing ? getCompetitionsFromSeasonRecord(existing) : [];
+  window.__editingSeasonStats = existing ? getSeasonStatsForRecord(existing) : [];
+
+  modalTitle.textContent = existing ? "Editar passagem da temporada" : "Nova passagem de temporada";
+  modalBox.classList.add("wide");
+  modalBox.classList.add("ballon-modal");
+  form.className = "season-flow-form";
+
+  const defaultSeason = existing?.temporada || (active.temporada || "");
+  const defaultInicio = existing?.data_inicio || "";
+  const defaultFim = existing?.data_fim || "";
+
+  form.innerHTML = `
+    <div class="season-flow">
+      <div class="season-flow-grid">
+        <div class="form-field">
+          <label>Início no time</label>
+          <input name="data_inicio" type="month" value="${escapeAttr(defaultInicio)}">
+        </div>
+        <div class="form-field">
+          <label>Fim no time</label>
+          <input name="data_fim" type="month" value="${escapeAttr(defaultFim)}">
+        </div>
+        <div class="form-field">
+          <label>Temporada reconhecida</label>
+          <input name="temporada" placeholder="Ex: 2025/2026" value="${escapeAttr(defaultSeason)}">
+        </div>
+        <div class="form-field">
+          <label>Ano final</label>
+          <input name="ano" placeholder="Ex: 2026" value="${escapeAttr(existing?.ano || "")}">
+        </div>
+      </div>
+
+      <div class="team-search-row">
+        <div class="form-field">
+          <label>Selecionar time pela API</label>
+          <input id="seasonTeamSearch" placeholder="Ex: Newcastle, Milan, Real Madrid" value="${escapeAttr(existing?.clube_nome || "")}">
+        </div>
+        <button type="button" class="upload-btn" onclick="searchTeamsForSeason()">Buscar time</button>
+      </div>
+
+      <div class="selected-team ${selectedSeasonTeam ? "active" : ""}" id="selectedTeamBox">
+        ${selectedSeasonTeam ? `
+          <img src="${selectedSeasonTeam.badge || ""}" onerror="this.style.display='none'">
+          <div>
+            <strong>${escapeHtml(selectedSeasonTeam.name || "-")}</strong>
+            <small>${escapeHtml(selectedSeasonTeam.league || "-")}</small>
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="team-results" id="seasonTeamResults"></div>
+
+      <div class="form-field">
+        <label>Competições do time/período</label>
+        <div class="competition-checks" id="seasonCompetitionChecks">
+          <small>Busque e selecione um time para listar competições.</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Relatório por competição</label>
+        <div class="season-stats-grid" id="seasonStatsRows">
+          <small>As competições selecionadas aparecerão aqui.</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar temporada"}</button>
+      </div>
+    </div>
+  `;
+
+  const inicio = form.querySelector("[name='data_inicio']");
+  const temp = form.querySelector("[name='temporada']");
+
+  if(inicio && temp){
+    inicio.addEventListener("change", ()=>{
+      temp.value = monthYearToSeason(inicio.value);
+    });
+  }
+
+  if(selectedSeasonTeam){
+    renderCompetitionSuggestions(selectedSeasonTeam, selectedCompetitionsForSeason);
+  }
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      await saveSeasonFlow(data, btn, existing);
+      closeModal();
+      await loadData();
+      setStatus("Temporada salva com sucesso.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      console.error(err);
+      setStatus("Erro ao salvar temporada: " + err.message, "error");
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+async function saveSeasonFlow(data, button, existing=null){
+  if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
+  if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
+  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  const temporada = data.temporada || monthYearToSeason(data.data_inicio);
+
+  if(!temporada) throw new Error("Informe o início no time ou a temporada.");
+
+  const comps = selectedCompetitionsForSeason.length ? selectedCompetitionsForSeason : getSelectedSeasonCompetitions();
+
+  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+
+  setButtonSaving(button);
+  setStatus("Salvando temporada...");
+
+  let clube = getTable("CLUBES").find(c => String(c.nome || "").toLowerCase() === String(selectedSeasonTeam.name || "").toLowerCase());
+
+  if(!clube){
+    const clubeJson = await apiPost({
+      action:"create",
+      table:"CLUBES",
+      record:{
+        nome:selectedSeasonTeam.name,
+        pais:selectedSeasonTeam.country,
+        escudo:selectedSeasonTeam.badge,
+        estadio:""
+      }
+    });
+
+    if(!clubeJson.ok) throw new Error(clubeJson.error || "Erro ao criar clube.");
+
+    clube = clubeJson.data;
+  }
+
+  const seasonRecord = {
+    carreira_id:active.carreira_id,
+    temporada_base_id:"",
+    temporada,
+    ordem_na_carreira: existing?.ordem_na_carreira || "",
+    clube_id:clube.id,
+    clube_nome:selectedSeasonTeam.name,
+    escudo:selectedSeasonTeam.badge || clube.escudo || "",
+    liga:selectedSeasonTeam.league || "",
+    competicoes:comps.join(", "),
+    status: existing?.status || "em andamento",
+    data_inicio:data.data_inicio || "",
+    data_fim:data.data_fim || ""
+  };
+
+  const seasonPayload = existing
+    ? {action:"update", table:"CARREIRA_TEMPORADAS", id:existing.id, record:seasonRecord}
+    : {action:"create", table:"CARREIRA_TEMPORADAS", record:seasonRecord};
+
+  const tempJson = await apiPost(seasonPayload);
+
+  if(!tempJson.ok) throw new Error(tempJson.error || "Erro ao salvar passagem.");
+
+  const savedSeason = tempJson.data || existing || {};
+  const carreiraTemporadaId = savedSeason.id || existing?.id;
+
+  for(const compNameText of comps){
+    let comp = getTable("COMPETICOES").find(c => String(c.nome || "").toLowerCase() === String(compNameText).toLowerCase());
+
+    if(!comp){
+      const compJson = await apiPost({
+        action:"create",
+        table:"COMPETICOES",
+        record:{nome:compNameText}
+      });
+
+      if(!compJson.ok) throw new Error(compJson.error || "Erro ao criar competição.");
+
+      comp = compJson.data;
+    }
+
+    const key = escapeName(compNameText);
+    const oldStats = getTable("ESTATISTICAS_CARREIRA").find(s =>
+      String(s.carreira_temporada_id) === String(carreiraTemporadaId) &&
+      String(s.personagem_id) === String(active.protagonista_id) &&
+      String(s.competicao || "").toLowerCase() === String(compNameText).toLowerCase()
+    );
+
+    const statRecord = {
+      carreira_id:active.carreira_id,
+      carreira_temporada_id:carreiraTemporadaId,
+      personagem_id:active.protagonista_id,
+      competicao_id:comp.id,
+      competicao:compNameText,
+      jogos:data[`jogos_${key}`] || "",
+      gols:data[`gols_${key}`] || "",
+      assistencias:data[`assistencias_${key}`] || "",
+      cartoes:data[`cartoes_${key}`] || "",
+      nota_geral:data[`media_geral_${key}`] || "",
+      clube_id:clube.id,
+      clube_nome:selectedSeasonTeam.name
+    };
+
+    const statPayload = oldStats
+      ? {action:"update", table:"ESTATISTICAS_CARREIRA", id:oldStats.id, record:statRecord}
+      : {action:"create", table:"ESTATISTICAS_CARREIRA", record:statRecord};
+
+    const statJson = await apiPost(statPayload);
+
+    if(!statJson.ok) throw new Error(statJson.error || "Erro ao salvar estatística.");
+  }
+
+  active.temporada = temporada;
+  saveActive();
+}
+
+function editSeasonRecord(id){
+  openSeasonFlow(id);
+}
+
+function renderPlayedSeasons(){
+  const container = $("playedSeasonsCards") || $("playedSeasonsTable");
+  if(!container) return;
+
+  const rows = getCareerSeasonRecords()
+    .sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada) || num(a.ordem_na_carreira)-num(b.ordem_na_carreira));
+
+  if(!rows.length){
+    container.innerHTML = `<div class="season-empty">Nenhuma temporada cadastrada ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(r=>{
+    const stats = getSeasonStatsForRecord(r);
+    const jogos = stats.reduce((acc,s)=>acc+num(s.jogos),0);
+    const gols = stats.reduce((acc,s)=>acc+num(s.gols),0);
+    const assistencias = stats.reduce((acc,s)=>acc+num(s.assistencias),0);
+    const cartoes = stats.reduce((acc,s)=>acc+num(s.cartoes),0);
+    const notas = stats.map(s=>num(s.nota_geral || s.media_geral)).filter(Boolean);
+    const avgGoals = jogos ? (gols/jogos).toFixed(2) : "0.00";
+    const avgAssists = jogos ? (assistencias/jogos).toFixed(2) : "0.00";
+    const avgRating = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : "-";
+    const periodo = (r.data_inicio || r.data_fim) ? `${r.data_inicio || "?"} até ${r.data_fim || "?"}` : "Período não definido";
+
+    return `
+      <article class="season-card restored-season-card">
+        <div class="season-card-main">
+          <div class="season-club-crest">
+            ${r.escudo ? `<img src="${escapeAttr(r.escudo)}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
+          </div>
+          <div>
+            <strong>${escapeHtml(r.temporada || "-")}</strong>
+            <h4>${escapeHtml(r.clube_nome || "-")}</h4>
+            <small>${escapeHtml(periodo)} • ${escapeHtml(r.competicoes || "Sem competições")}</small>
+          </div>
+        </div>
+
+        <div class="season-stat"><small>Jogos</small><strong>${jogos}</strong></div>
+        <div class="season-stat"><small>Gols</small><strong>${gols}</strong></div>
+        <div class="season-stat"><small>Assist.</small><strong>${assistencias}</strong></div>
+        <div class="season-stat"><small>G/J</small><strong>${avgGoals}</strong></div>
+        <div class="season-stat"><small>A/J</small><strong>${avgAssists}</strong></div>
+        <div class="season-stat"><small>Cartões</small><strong>${cartoes}</strong></div>
+        <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
+        <div class="season-actions"><button onclick="editSeasonRecord('${r.id}')">Editar</button></div>
+      </article>
+    `;
+  }).join("");
+}
+
 function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
@@ -1599,3 +2062,7 @@ if(typeof closeBestBallonModal !== "undefined") window.closeBestBallonModal = cl
 if(typeof editSeasonRecord !== "undefined") window.editSeasonRecord = editSeasonRecord;
 if(typeof setButtonSaving !== "undefined") window.setButtonSaving = setButtonSaving;
 if(typeof clearButtonSaving !== "undefined") window.clearButtonSaving = clearButtonSaving;
+if(typeof searchTeamsForSeason !== "undefined") window.searchTeamsForSeason = searchTeamsForSeason;
+if(typeof selectSeasonTeam !== "undefined") window.selectSeasonTeam = selectSeasonTeam;
+if(typeof renderSeasonStatsRows !== "undefined") window.renderSeasonStatsRows = renderSeasonStatsRows;
+if(typeof openSeasonFlow !== "undefined") window.openSeasonFlow = openSeasonFlow;

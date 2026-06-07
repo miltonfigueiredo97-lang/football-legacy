@@ -1,3 +1,3 @@
-# Football Legacy V3.6.1
+# Football Legacy V3.6.2
 
-Corrige feedback visual dos botões de salvar, trava clique duplo, adiciona spinner, corrige formulário genérico de edição/salvamento e mantém suporte a edição da BOLA_DE_OURO_BASE. Também define padrão de imagem da Bola de Ouro: 1080x1350 px.
+Restaura o fluxo antigo de temporada com busca de time pela API TheSportsDB, seleção de competições sugeridas pelo time/país e preenchimento de estatísticas por competição. Mantém salvamento nas abas novas CARREIRA_TEMPORADAS e ESTATISTICAS_CARREIRA.

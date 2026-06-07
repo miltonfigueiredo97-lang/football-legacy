@@ -496,3 +496,135 @@ button.saving::before,
 .ballon-poster.has-image::after{
   background:linear-gradient(90deg,rgba(4,14,48,.88) 0%,rgba(4,14,48,.58) 42%,rgba(4,14,48,.12) 70%,rgba(4,14,48,0) 100%)!important;
 }
+
+
+/* ===== V3.6.2 RESTORE API SEASON FLOW ===== */
+.team-search-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:end;
+}
+
+.team-results{
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+}
+
+.team-result{
+  display:grid;
+  grid-template-columns:48px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+}
+
+.team-result img{
+  width:42px;
+  height:42px;
+  object-fit:contain;
+}
+
+.team-result button{
+  border:1px solid rgba(251,191,36,.45);
+  background:rgba(251,191,36,.12);
+  color:#fbbf24;
+  border-radius:12px;
+  padding:9px 12px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.selected-team{
+  display:none;
+  grid-template-columns:52px 1fr;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-radius:18px;
+  background:rgba(251,191,36,.10);
+  border:1px solid rgba(251,191,36,.28);
+}
+
+.selected-team.active{
+  display:grid;
+}
+
+.selected-team img{
+  width:48px;
+  height:48px;
+  object-fit:contain;
+}
+
+.competition-checks{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:8px;
+  max-height:250px;
+  overflow:auto;
+  padding:10px;
+  border-radius:16px;
+  background:rgba(15,23,42,.55);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.comp-check{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:9px 10px;
+  border-radius:12px;
+  background:rgba(255,255,255,.05);
+  color:#dbeafe;
+  cursor:pointer;
+  font-weight:800;
+}
+
+.comp-check input{
+  accent-color:#fbbf24;
+}
+
+.season-stats-grid{
+  display:grid;
+  gap:10px;
+}
+
+.season-stats-row{
+  display:grid;
+  grid-template-columns:minmax(170px,1.2fr) repeat(5,minmax(88px,.7fr));
+  gap:8px;
+  align-items:center;
+  padding:10px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.season-stats-row strong{
+  color:#fbbf24;
+}
+
+.restored-season-card{
+  grid-template-columns:minmax(260px,1.5fr) repeat(7,minmax(80px,.55fr)) auto!important;
+  align-items:center!important;
+}
+
+.restored-season-card .season-actions{
+  justify-content:end;
+}
+
+@media(max-width:1100px){
+  .restored-season-card,
+  .season-stats-row{
+    grid-template-columns:1fr 1fr!important;
+  }
+
+  .restored-season-card .season-card-main,
+  .season-stats-row strong{
+    grid-column:1/-1;
+  }
+}
