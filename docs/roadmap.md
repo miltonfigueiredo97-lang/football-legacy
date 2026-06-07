@@ -1,3 +1,3 @@
-# Football Legacy V3.7.21
+# Football Legacy V3.7.22
 
-Corrige temporadas da carreira para formato completo YYYY/YYYY, evitando 29/30. Melhora fallback do resumo rápido: se action=summary falhar, carrega action=all sem mensagem assustadora.
+Versão de estabilização. Remove carregamento summary/cache e volta para action=all direto. Adiciona timeout de 45s para carregamento/salvamento e destrava botão Salvar em erros para evitar ficar preso.
