@@ -1,3 +1,3 @@
-# Football Legacy V3.7.96
+# Football Legacy V3.7.97
 
-Força o render novo do Top 11 e bloqueia o render antigo que voltava para o campo verde vazio. Intercepta renderPageById('top11'), clique na sidebar e limpa X perdido.
+Corrige Top11_CARREIRA fora do mapa: recalcula slot 0..10 por temporada, ignora x/y inválido ou #### e só usa x/y salvo se for número válido entre 0 e 100.
