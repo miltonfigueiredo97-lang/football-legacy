@@ -4919,3 +4919,29 @@ body > .remove-season-x-v3793{
     grid-template-columns:1fr;
   }
 }
+
+
+/* ===== V3.8.07 FEEDBACK SALVANDO MODAL TOP11 ===== */
+.top11-clean-modal-v3806 button.saving,
+.top11-clean-modal-v3806 button:disabled{
+  opacity:.72;
+  cursor:wait!important;
+  filter:saturate(.9);
+}
+
+.top11-clean-modal-v3806 button.saving::after{
+  content:"";
+  display:inline-block;
+  width:12px;
+  height:12px;
+  margin-left:8px;
+  border-radius:999px;
+  border:2px solid currentColor;
+  border-top-color:transparent;
+  animation:top11SavingSpin3807 .8s linear infinite;
+  vertical-align:-2px;
+}
+
+@keyframes top11SavingSpin3807{
+  to{ transform:rotate(360deg); }
+}

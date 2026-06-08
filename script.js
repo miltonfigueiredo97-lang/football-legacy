@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.8.06 top11 clean rebuild');
+console.log('Football Legacy script carregado v3.8.07 top11 modal feedback close');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -18093,6 +18093,14 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     form.onsubmit = async e => {
       e.preventDefault();
 
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const oldText = submitBtn ? submitBtn.textContent : "";
+      if(submitBtn){
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando...";
+        submitBtn.classList.add("saving");
+      }
+
       const updated = Object.assign({}, row, {
         jogador: form.jogador.value.trim(),
         posicao_tatica: form.posicao_tatica.value,
@@ -18104,9 +18112,28 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
         pais: form.pais.value.trim()
       });
 
-      await saveRows(selectedGroup(), [updated], false);
-      modal.remove();
-      render();
+      try{
+        await saveRows(selectedGroup(), [updated], false);
+        setStatus("Jogador do Top 11 salvo.", "ok");
+      }catch(err){
+        console.warn("Top 11 salvo/pendente, fechando modal para não travar:", err);
+        // O Apps Script/proxy às vezes retorna erro/504 mesmo com a linha salva na planilha.
+        // Fecha o modal e atualiza a tela para dar feedback visual.
+        setStatus("Comando enviado. Atualize se a planilha demorar a refletir.", "ok");
+      }finally{
+        if(Array.isArray(window.db?.TOP11_CARREIRA)){
+          const idx = window.db.TOP11_CARREIRA.findIndex(r => String((r.id ?? r.ID ?? "")) === String(updated.id ?? updated.ID ?? ""));
+          if(idx >= 0) window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], updated);
+        }
+        modal.remove();
+        render();
+        setTimeout(render, 400);
+        if(submitBtn){
+          submitBtn.disabled = false;
+          submitBtn.textContent = oldText || "Salvar jogador";
+          submitBtn.classList.remove("saving");
+        }
+      }
     };
   }
 
@@ -18221,10 +18248,31 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
         return;
       }
 
-      await saveRows({label:season, carreira_temporada_id:seasonId}, rows, true);
-      modal.remove();
-      selectedKey = seasonId ? `career:${seasonId}` : `career:${season}`;
-      render();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const oldText = submitBtn ? submitBtn.textContent : "";
+      if(submitBtn){
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando...";
+        submitBtn.classList.add("saving");
+      }
+
+      try{
+        await saveRows({label:season, carreira_temporada_id:seasonId}, rows, true);
+        setStatus("Top 11 salvo.", "ok");
+      }catch(err){
+        console.warn("Top 11 enviado/pendente, fechando modal para não travar:", err);
+        setStatus("Comando enviado. Atualize se a planilha demorar a refletir.", "ok");
+      }finally{
+        modal.remove();
+        selectedKey = seasonId ? `career:${seasonId}` : `career:${season}`;
+        render();
+        setTimeout(render, 400);
+        if(submitBtn){
+          submitBtn.disabled = false;
+          submitBtn.textContent = oldText || "Salvar Top 11";
+          submitBtn.classList.remove("saving");
+        }
+      }
     };
   }
 
@@ -18265,4 +18313,41 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       setTimeout(render, 250);
     }
   }, true);
+})();
+
+
+// ===== V3.8.07 — FEEDBACK E FECHAMENTO ROBUSTO DOS MODAIS TOP11 =====
+(function(){
+  function closeTop11ModalSoon(){
+    setTimeout(function(){
+      const modal = document.getElementById("top11-clean-modal-v3806");
+      if(modal && /salvando/i.test(modal.textContent || "")){
+        modal.remove();
+        if(typeof FL_RENDER_TOP11_CLEAN_V3806 === "function") FL_RENDER_TOP11_CLEAN_V3806();
+        else if(typeof renderTop11 === "function") renderTop11();
+      }
+    }, 2500);
+  }
+
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest("#top11-clean-modal-v3806 button[type='submit'], #top11-clean-modal-v3806 .gold");
+    if(!btn) return;
+
+    if(/salvar/i.test(btn.textContent || "")){
+      btn.classList.add("saving");
+      const original = btn.textContent;
+      setTimeout(function(){
+        if(btn.isConnected && btn.classList.contains("saving")){
+          btn.textContent = "Salvando...";
+        }
+      }, 40);
+      closeTop11ModalSoon();
+    }
+  }, true);
+
+  window.FL_CLOSE_TOP11_MODAL_V3807 = function(){
+    document.getElementById("top11-clean-modal-v3806")?.remove();
+    if(typeof FL_RENDER_TOP11_CLEAN_V3806 === "function") FL_RENDER_TOP11_CLEAN_V3806();
+    else if(typeof renderTop11 === "function") renderTop11();
+  };
 })();

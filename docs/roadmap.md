@@ -1,3 +1,3 @@
-# Football Legacy V3.8.06 — Top 11 Clean Rebuild
+# Football Legacy V3.8.07 — Top 11 modal feedback/close
 
-Reconstrói a aba Top 11 do zero em um render único e isolado. Não usa os renders antigos. Suporta TOP11_BASE, TOP11_CARREIRA, edição, importação de imagem, criado=SIM sem API, foto_url prioritária e ranking Melhores.
+Corrige o pós-save do modal do Top 11: botão mostra Salvando, fecha modal ao concluir ou após envio pendente, re-renderiza a aba e evita parecer que o clique não funcionou.
