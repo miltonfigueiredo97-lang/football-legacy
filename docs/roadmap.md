@@ -1,3 +1,3 @@
-# Football Legacy V3.8.07 — Top 11 modal feedback/close
+# Football Legacy V3.8.08 — Top 11 All Time Squad
 
-Corrige o pós-save do modal do Top 11: botão mostra Salvando, fecha modal ao concluir ou após envio pendente, re-renderiza a aba e evita parecer que o clique não funcionou.
+Adiciona botão ALL TIME SQUAD ao Top 11. O popup monta automaticamente o melhor onze por aparições: GOL, LE, dois ZAG, LD, três MEI e três ATA. foto_url vence API e criado=SIM bloqueia API.
