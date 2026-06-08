@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.7.99 top11 importar imagem criado');
+console.log('Football Legacy script carregado v3.8.00 top11 import isolado sem api em criado');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -18128,4 +18128,554 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 
   setTimeout(enhanceEditPlayerModal, 500);
   setTimeout(enhanceCreateTop11Modal, 500);
+})();
+
+
+// ===== V3.8.00 — TOP11 IMPORT ISOLADO + API BLOQUEADA EM CRIADO/FOTO_URL =====
+// Correção crítica:
+// - Importar imagem agora afeta SOMENTE a linha/jogador atual.
+// - Nunca copia a mesma foto_url para todos marcados como criado.
+// - foto_url sempre vence a API.
+// - criado = SIM bloqueia API mesmo sem foto_url.
+// - API só roda quando criado vazio/NÃO e foto_url vazia.
+
+(function(){
+  const TOP11_BG_V3800 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+
+  function esc(v){
+    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
+    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+  }
+
+  function attr(v){
+    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
+    return String(v ?? "").replace(/"/g,"&quot;");
+  }
+
+  function norm(v){
+    return String(v || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,"");
+  }
+
+  function pick(row, keys){
+    for(const k of keys){
+      if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+    }
+    const n = {};
+    Object.keys(row || {}).forEach(k=>n[norm(k)] = row[k]);
+    for(const k of keys){
+      const nk = norm(k);
+      if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
+    }
+    return "";
+  }
+
+  function initials(name){
+    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+  }
+
+  function isCreated(row){
+    const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
+    return ["sim","s","yes","y","true","1","criado","created"].includes(v);
+  }
+
+  function allCareerRows(){
+    if(typeof FL_top11CareerRowsV3797 === "function") return FL_top11CareerRowsV3797();
+    if(typeof FL_top11CareerRowsV3795 === "function") return FL_top11CareerRowsV3795();
+    if(typeof getTable === "function") return getTable("TOP11_CARREIRA") || [];
+    return window.db?.TOP11_CARREIRA || [];
+  }
+
+  function allBaseRows(){
+    if(typeof FL_top11BaseRowsV3797 === "function") return FL_top11BaseRowsV3797();
+    if(typeof FL_top11BaseRowsV3794 === "function") return FL_top11BaseRowsV3794();
+    if(typeof getTable === "function") return getTable("TOP11_BASE") || [];
+    return window.db?.TOP11_BASE || [];
+  }
+
+  function rowByCard(card){
+    const id = String(card?.dataset?.id || "");
+    const source = String(card?.dataset?.source || "");
+    const name = String(card?.dataset?.player || "");
+    const rows = source === "career" ? allCareerRows() : allBaseRows();
+
+    return (
+      rows.find(r => id && String(r.id || "") === id) ||
+      rows.find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase()) ||
+      null
+    );
+  }
+
+  function renderManualOrCreatedPhoto(photoEl, row, name){
+    if(!photoEl) return false;
+
+    const manual = pick(row || {}, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+    const created = isCreated(row || {});
+
+    if(manual){
+      photoEl.dataset.manualLocked = "1";
+      photoEl.innerHTML = `<img src="${attr(manual)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+      return true;
+    }
+
+    if(created){
+      photoEl.dataset.manualLocked = "1";
+      photoEl.innerHTML = esc(initials(name));
+      return true;
+    }
+
+    return false;
+  }
+
+  function enforceTop11CreatedPhotos(){
+    document.querySelectorAll(".top11-player-v3796").forEach(card=>{
+      const name = card.dataset.player || "";
+      const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
+      const row = rowByCard(card);
+      if(row) renderManualOrCreatedPhoto(photo, row, name);
+    });
+
+    document.querySelectorAll("[data-top11-best-photo]").forEach(photo=>{
+      const name = photo.dataset.top11BestPhoto || "";
+      const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
+      if(row) renderManualOrCreatedPhoto(photo, row, name);
+    });
+  }
+
+  async function enrichTop11PhotosSafe(){
+    const cards = [...document.querySelectorAll(".top11-player-v3796")];
+
+    for(const card of cards){
+      const name = card.dataset.player || "";
+      const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
+      const row = rowByCard(card);
+
+      if(row && renderManualOrCreatedPhoto(photo, row, name)) continue;
+      if(!photo || photo.querySelector("img")) continue;
+
+      if(typeof FL_fetchPlayerPhotoV3790 === "function"){
+        try{
+          const img = await FL_fetchPlayerPhotoV3790(name);
+          if(img && photo.isConnected && !photo.dataset.manualLocked){
+            photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+          }
+        }catch(err){}
+      }
+    }
+
+    setTimeout(enforceTop11CreatedPhotos, 80);
+  }
+
+  async function enrichTop11BestPhotosSafe(){
+    const nodes = [...document.querySelectorAll("[data-top11-best-photo]")];
+
+    for(const photo of nodes){
+      const name = photo.dataset.top11BestPhoto || "";
+      const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
+
+      if(row && renderManualOrCreatedPhoto(photo, row, name)) continue;
+      if(photo.querySelector("img")) continue;
+
+      if(typeof FL_fetchPlayerPhotoV3790 === "function"){
+        try{
+          const img = await FL_fetchPlayerPhotoV3790(name);
+          if(img && photo.isConnected && !photo.dataset.manualLocked){
+            photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+          }
+        }catch(err){}
+      }
+    }
+
+    setTimeout(enforceTop11CreatedPhotos, 80);
+  }
+
+  async function uploadToCloudinary(file){
+    if(!file) return "";
+
+    if(typeof CLOUD_NAME === "undefined" || typeof CLOUDINARY_UPLOAD_PRESET === "undefined"){
+      throw new Error("Cloudinary não configurado no dashboard.");
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    setStatus("Importando imagem do jogador...", "loading");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+      method:"POST",
+      body:fd
+    });
+
+    const json = await res.json();
+
+    if(!json.secure_url){
+      throw new Error(json.error?.message || "Erro ao importar imagem.");
+    }
+
+    setStatus("Imagem importada.", "ok");
+    return json.secure_url;
+  }
+
+  function getCreateRowIndex(row){
+    const named = row.querySelector('[name^="jogador_"],[name^="foto_url_"],[name^="criado_"]');
+    if(named){
+      const m = String(named.name || "").match(/_(\d+)$/);
+      if(m) return Number(m[1]);
+    }
+
+    const rows = [...row.parentElement.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+    return rows.indexOf(row);
+  }
+
+  function cleanDuplicateImportControls(row, keepBtn){
+    row.querySelectorAll(".top11-import-btn-v3799,.top11-import-btn-v3800").forEach(btn=>{
+      if(keepBtn && btn === keepBtn) return;
+      btn.remove();
+    });
+
+    row.querySelectorAll('input[type="file"][id*="top11"][id*="file"]').forEach((inp, idx)=>{
+      if(idx > 0) inp.remove();
+    });
+  }
+
+  function enhanceCreateTop11ModalIsolated(){
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form) return;
+
+    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+
+    rows.forEach((row, fallbackIdx)=>{
+      const idx = getCreateRowIndex(row);
+      const safeIdx = idx >= 0 ? idx : fallbackIdx;
+
+      const criadoSelect = row.querySelector(`[name="criado_${safeIdx}"]`) || row.querySelector('[name^="criado_"]');
+      let fotoInput = row.querySelector(`[name="foto_url_${safeIdx}"]`);
+
+      if(!fotoInput){
+        fotoInput = document.createElement("input");
+        fotoInput.name = `foto_url_${safeIdx}`;
+        fotoInput.className = "top11-photo-url-v3798 top11-auto-url-v3800";
+        fotoInput.placeholder = "Imagem importada";
+        fotoInput.readOnly = true;
+        row.appendChild(fotoInput);
+      }
+
+      fotoInput.readOnly = true;
+      fotoInput.classList.add("top11-auto-url-v3800");
+
+      let btn = row.querySelector(".top11-import-btn-v3800");
+      if(!btn){
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Importar";
+        btn.className = "top11-import-btn-v3800";
+        fotoInput.insertAdjacentElement("afterend", btn);
+      }
+
+      cleanDuplicateImportControls(row, btn);
+
+      let file = row.querySelector(`#fl_top11_create_file_${safeIdx}_v3800`);
+      if(!file){
+        file = document.createElement("input");
+        file.type = "file";
+        file.id = `fl_top11_create_file_${safeIdx}_v3800`;
+        file.accept = "image/png,image/jpeg,image/webp";
+        file.style.display = "none";
+        row.appendChild(file);
+      }
+
+      btn.onclick = (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        file.click();
+      };
+
+      file.onchange = async ()=>{
+        const selected = file.files && file.files[0];
+        if(!selected) return;
+
+        try{
+          const url = await uploadToCloudinary(selected);
+
+          fotoInput.value = url;
+          fotoInput.dataset.importedFor = String(safeIdx);
+
+          if(criadoSelect) criadoSelect.value = "SIM";
+
+          btn.textContent = "Importado";
+          btn.classList.add("imported");
+
+          fotoInput.dispatchEvent(new Event("input", {bubbles:true}));
+          fotoInput.dispatchEvent(new Event("change", {bubbles:true}));
+        }catch(err){
+          console.error(err);
+          setStatus("Erro ao importar imagem: " + err.message, "error");
+        }finally{
+          file.value = "";
+        }
+      };
+    });
+  }
+
+  function enhanceEditPlayerModalIsolated(){
+    const modal = document.getElementById("fl-top11-player-edit-modal-v3798");
+    if(!modal) return;
+
+    const form = modal.querySelector("#fl-top11-player-edit-form-v3798");
+    if(!form) return;
+
+    const fotoInput = form.querySelector('[name="foto_url"]');
+    const criadoSelect = form.querySelector('[name="criado"]');
+    const preview = modal.querySelector("#fl-top11-player-preview-v3798");
+
+    if(!fotoInput) return;
+
+    fotoInput.readOnly = true;
+    fotoInput.placeholder = "Imagem importada automaticamente";
+    fotoInput.classList.add("top11-auto-url-v3800");
+
+    const urlRow = fotoInput.closest(".fl-url-row-v3798") || fotoInput.parentElement;
+
+    let btn = urlRow.querySelector(".top11-import-btn-v3800");
+    if(!btn){
+      btn = urlRow.querySelector("button") || document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Importar";
+      btn.className = "top11-import-btn-v3800";
+      if(!btn.parentElement) urlRow.appendChild(btn);
+    }else{
+      btn.textContent = "Importar";
+    }
+
+    let file = form.querySelector("#fl_top11_edit_file_v3800");
+    if(!file){
+      file = document.createElement("input");
+      file.type = "file";
+      file.id = "fl_top11_edit_file_v3800";
+      file.accept = "image/png,image/jpeg,image/webp";
+      file.style.display = "none";
+      form.appendChild(file);
+    }
+
+    btn.onclick = (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      file.click();
+    };
+
+    file.onchange = async ()=>{
+      const selected = file.files && file.files[0];
+      if(!selected) return;
+
+      try{
+        const url = await uploadToCloudinary(selected);
+
+        fotoInput.value = url;
+        if(criadoSelect) criadoSelect.value = "SIM";
+
+        if(preview){
+          preview.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='Imagem inválida'">`;
+        }
+
+        btn.textContent = "Importado";
+        btn.classList.add("imported");
+
+        fotoInput.dispatchEvent(new Event("input", {bubbles:true}));
+        fotoInput.dispatchEvent(new Event("change", {bubbles:true}));
+      }catch(err){
+        console.error(err);
+        setStatus("Erro ao importar imagem: " + err.message, "error");
+      }finally{
+        file.value = "";
+      }
+    };
+  }
+
+  async function saveTop11CreateIsolated(e){
+    const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
+    if(!btn) return;
+
+    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
+    if(!modal) return;
+
+    if(!/salvar top 11/i.test(btn.textContent || "") && btn.id !== "fl-top11-save-v3787" && btn.id !== "fl-top11-save-v3788") return;
+
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    if(window.FL_TOP11_SAVING_V3800) return;
+    window.FL_TOP11_SAVING_V3800 = true;
+
+    try{
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+
+      const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+      const defaults = [
+        ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],
+        ["MEI",52,28],["MEI",52,50],["MEI",52,72],
+        ["PE",78,28],["CA",84,50],["PD",78,72]
+      ];
+
+      const temporada = String(form.temporada?.value || "").trim();
+      const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
+      const createRows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+
+      const rows = [];
+
+      createRows.forEach((row, fallbackIdx)=>{
+        const idx = getCreateRowIndex(row);
+        const i = idx >= 0 ? idx : fallbackIdx;
+        if(i < 0 || i > 10) return;
+
+        const jogadorInput = row.querySelector(`[name="jogador_${i}"]`) || row.querySelector('[name^="jogador_"]');
+        const posInput = row.querySelector(`[name="posicao_${i}"]`) || row.querySelector('[name^="posicao_"]');
+        const overallInput = row.querySelector(`[name="overall_${i}"]`) || row.querySelector('[name^="overall_"]');
+        const clubeInput = row.querySelector(`[name="clube_${i}"]`) || row.querySelector('[name^="clube_"]');
+        const paisInput = row.querySelector(`[name="pais_${i}"]`) || row.querySelector('[name^="pais_"]');
+        const criadoInput = row.querySelector(`[name="criado_${i}"]`) || row.querySelector('[name^="criado_"]');
+        const fotoInput = row.querySelector(`[name="foto_url_${i}"]`) || row.querySelector('[name^="foto_url_"]');
+
+        const jogador = String(jogadorInput?.value || "").trim();
+        if(!jogador) return;
+
+        rows.push({
+          carreira_id: active?.carreira_id || "",
+          carreira_temporada_id: carreiraTemporadaId,
+          temporada,
+          posicao_origem: origins[i],
+          posicao_tatica: String(posInput?.value || defaults[i]?.[0] || "").trim(),
+          jogador,
+          overall: String(overallInput?.value || "").trim(),
+          clube: String(clubeInput?.value || "").trim(),
+          pais: String(paisInput?.value || "").trim(),
+          criado: String(criadoInput?.value || "").trim(),
+          foto_url: String(fotoInput?.value || "").trim(),
+          x: defaults[i]?.[1] ?? "",
+          y: defaults[i]?.[2] ?? "",
+          mapa_url: TOP11_BG_V3800
+        });
+      });
+
+      if(!rows.length){
+        setStatus("Preencha pelo menos um jogador.", "error");
+        return;
+      }
+
+      setStatus("Salvando Top 11...", "loading");
+
+      const result = await apiPost({
+        action:"saveTop11CareerV2",
+        carreira_id: active?.carreira_id || "",
+        carreira_temporada_id: carreiraTemporadaId,
+        temporada,
+        mapa_url: TOP11_BG_V3800,
+        replace_existing:true,
+        rows
+      });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+      }
+
+      if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
+
+      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r=>{
+        const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
+        const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
+        const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
+        return !(sameCareer && (sameSeasonId || sameSeason));
+      });
+
+      (result.data?.rows || rows).forEach(r=>window.db.TOP11_CARREIRA.push(r));
+
+      modal.remove();
+      setStatus("Top 11 salvo.", "ok");
+
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
+      else if(typeof renderTop11 === "function") renderTop11();
+
+      setTimeout(enforceTop11CreatedPhotos, 100);
+      setTimeout(enforceTop11CreatedPhotos, 600);
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao salvar Top 11: " + err.message, "error");
+    }finally{
+      window.FL_TOP11_SAVING_V3800 = false;
+      btn.disabled = false;
+      btn.textContent = "Salvar Top 11";
+    }
+  }
+
+  const oldRenderTop11 =
+    window.FL_renderTop11NewV3797 ||
+    window.FL_renderTop11NewV3796 ||
+    window.renderTop11 ||
+    null;
+
+  function renderTop11V3800(){
+    if(oldRenderTop11) oldRenderTop11();
+    setTimeout(enforceTop11CreatedPhotos, 80);
+    setTimeout(enrichTop11PhotosSafe, 140);
+    setTimeout(enforceTop11CreatedPhotos, 500);
+    setTimeout(enforceTop11CreatedPhotos, 1400);
+  }
+
+  const observer = new MutationObserver(()=>{
+    enhanceCreateTop11ModalIsolated();
+    enhanceEditPlayerModalIsolated();
+    enforceTop11CreatedPhotos();
+  });
+
+  observer.observe(document.body, {childList:true, subtree:true});
+
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest("button");
+    if(btn && /\+\s*top\s*11/i.test(btn.textContent || "")){
+      setTimeout(enhanceCreateTop11ModalIsolated, 120);
+      setTimeout(enhanceCreateTop11ModalIsolated, 400);
+      setTimeout(enhanceCreateTop11ModalIsolated, 900);
+    }
+
+    const card = e.target.closest(".top11-player-v3796");
+    if(card){
+      setTimeout(enhanceEditPlayerModalIsolated, 120);
+      setTimeout(enhanceEditPlayerModalIsolated, 400);
+    }
+
+    setTimeout(enforceTop11CreatedPhotos, 250);
+  }, true);
+
+  document.addEventListener("click", saveTop11CreateIsolated, true);
+
+  window.FL_enrichTop11PhotosV3790 = enrichTop11PhotosSafe;
+  window.FL_enrichTop11BestPhotosV3790 = enrichTop11BestPhotosSafe;
+  window.FL_enforceTop11CreatedPhotosV3800 = enforceTop11CreatedPhotos;
+  window.FL_enhanceCreateTop11ModalV3800 = enhanceCreateTop11ModalIsolated;
+  window.FL_enhanceEditPlayerModalV3800 = enhanceEditPlayerModalIsolated;
+  window.FL_renderTop11NewV3800 = renderTop11V3800;
+  window.FL_renderTop11NewV3797 = renderTop11V3800;
+  window.FL_renderTop11NewV3796 = renderTop11V3800;
+  window.renderTop11 = renderTop11V3800;
+  try{ renderTop11 = renderTop11V3800; }catch(err){}
+
+  setTimeout(enforceTop11CreatedPhotos, 300);
+  setTimeout(enforceTop11CreatedPhotos, 1000);
+  setInterval(enforceTop11CreatedPhotos, 2500);
 })();

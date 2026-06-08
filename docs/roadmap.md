@@ -1,3 +1,3 @@
-# Football Legacy V3.7.99
+# Football Legacy V3.8.00
 
-Top 11: jogador criado agora usa botão Importar para subir imagem ao Cloudinary, igual Bola de Ouro. A foto_url continua na planilha, mas é preenchida automaticamente pelo botão.
+Corrige importação de imagem do Top 11: import afeta somente a linha/jogador atual; foto_url sempre vence API; criado=SIM bloqueia API; evita copiar a mesma URL para todos os jogadores criados.
