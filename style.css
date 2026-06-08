@@ -4665,3 +4665,40 @@ body > .remove-season-x-v3793{
     grid-template-columns:1fr;
   }
 }
+
+
+/* ===== V3.8.01 TOP11 IMPORT ISOLADO SEM QUEBRAR RENDER ===== */
+.top11-auto-url-v3801{
+  opacity:.86;
+  cursor:default;
+}
+
+.top11-import-btn-v3801{
+  border:1px solid rgba(251,191,36,.45)!important;
+  background:rgba(251,191,36,.14)!important;
+  color:#fbbf24!important;
+  border-radius:13px!important;
+  font-weight:1000!important;
+  cursor:pointer!important;
+  padding:10px 12px!important;
+  white-space:nowrap;
+}
+
+.top11-import-btn-v3801.imported{
+  border-color:rgba(34,197,94,.55)!important;
+  background:rgba(34,197,94,.14)!important;
+  color:#86efac!important;
+}
+
+.top11-import-btn-v3801:hover{
+  filter:brightness(1.15);
+}
+
+.top11-create-row-v3787,
+.top11-create-row-v3788{
+  grid-template-columns:34px 74px 1fr 70px .75fr .75fr 86px 1fr 92px!important;
+}
+
+.top11-player-v3796 .top11-photo-v3796[data-manual-locked="1"]{
+  border-color:rgba(34,197,94,.72);
+}
