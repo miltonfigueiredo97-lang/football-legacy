@@ -1,3 +1,3 @@
-# Football Legacy V3.8.08 — Top 11 All Time Squad
+# Football Legacy V3.8.09 — Top 11 All Time Squad DEF Geral
 
-Adiciona botão ALL TIME SQUAD ao Top 11. O popup monta automaticamente o melhor onze por aparições: GOL, LE, dois ZAG, LD, três MEI e três ATA. foto_url vence API e criado=SIM bloqueia API.
+Ajusta o All Time Squad para não separar LE/ZAG/LD. Agora monta 1 GOL, 4 DEF, 3 MEI e 3 ATA por aparições.
