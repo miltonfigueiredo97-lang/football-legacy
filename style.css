@@ -4667,13 +4667,13 @@ body > .remove-season-x-v3793{
 }
 
 
-/* ===== V3.7.99 TOP11 IMPORTAR IMAGEM ===== */
-.top11-auto-url-v3799{
+/* ===== V3.8.01 TOP11 IMPORT ISOLADO SEM QUEBRAR RENDER ===== */
+.top11-auto-url-v3801{
   opacity:.86;
   cursor:default;
 }
 
-.top11-import-btn-v3799{
+.top11-import-btn-v3801{
   border:1px solid rgba(251,191,36,.45)!important;
   background:rgba(251,191,36,.14)!important;
   color:#fbbf24!important;
@@ -4684,45 +4684,13 @@ body > .remove-season-x-v3793{
   white-space:nowrap;
 }
 
-.top11-import-btn-v3799:hover{
-  filter:brightness(1.15);
-}
-
-.top11-create-row-v3787,
-.top11-create-row-v3788{
-  grid-template-columns:34px 74px 1fr 70px .75fr .75fr 86px 1fr 92px!important;
-}
-
-.top11-photo-url-v3798,
-.top11-auto-url-v3799{
-  min-width:0;
-}
-
-
-/* ===== V3.8.00 TOP11 IMPORT ISOLADO ===== */
-.top11-auto-url-v3800{
-  opacity:.86;
-  cursor:default;
-}
-
-.top11-import-btn-v3800{
-  border:1px solid rgba(251,191,36,.45)!important;
-  background:rgba(251,191,36,.14)!important;
-  color:#fbbf24!important;
-  border-radius:13px!important;
-  font-weight:1000!important;
-  cursor:pointer!important;
-  padding:10px 12px!important;
-  white-space:nowrap;
-}
-
-.top11-import-btn-v3800.imported{
+.top11-import-btn-v3801.imported{
   border-color:rgba(34,197,94,.55)!important;
   background:rgba(34,197,94,.14)!important;
   color:#86efac!important;
 }
 
-.top11-import-btn-v3800:hover{
+.top11-import-btn-v3801:hover{
   filter:brightness(1.15);
 }
 

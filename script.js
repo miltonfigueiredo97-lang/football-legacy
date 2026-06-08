@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.8.00 top11 import isolado sem api em criado');
+console.log('Football Legacy script carregado v3.8.01 top11 restaurado import isolado');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -17877,270 +17877,17 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 })();
 
 
-// ===== V3.7.99 — TOP11 CRIADO COM BOTÃO IMPORTAR IMAGEM =====
-// Não precisa colar URL manualmente.
-// O botão Importar abre seletor de arquivo, envia para Cloudinary e preenche foto_url automaticamente.
-// Funciona em:
-// - editar jogador do Top 11;
-// - + Top 11 novo.
+// ===== V3.8.01 — TOP11 RESTAURADO + IMPORTAÇÃO ISOLADA =====
+// Base visual: v3.7.98, que mantinha o Top 11 funcionando.
+// Correção aplicada sem mexer no render principal:
+// 1. Importar imagem afeta somente o jogador/linha atual.
+// 2. foto_url sempre vence a API.
+// 3. criado = SIM nunca busca API.
+// 4. Evita copiar a mesma URL para todos criados.
+// 5. Reforça render novo se o Top 11 antigo aparecer.
 
 (function(){
-  function esc(v){
-    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
-    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
-  }
-
-  function attr(v){
-    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
-    return String(v ?? "").replace(/"/g,"&quot;");
-  }
-
-  function initials(name){
-    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
-  }
-
-  async function uploadTop11ImageToCloudinary(file){
-    if(!file) return "";
-
-    if(typeof CLOUD_NAME === "undefined" || typeof CLOUDINARY_UPLOAD_PRESET === "undefined"){
-      throw new Error("Cloudinary não configurado no dashboard.");
-    }
-
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-    setStatus("Importando imagem do jogador...", "loading");
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-      method: "POST",
-      body: fd
-    });
-
-    const json = await res.json();
-
-    if(!json.secure_url){
-      throw new Error(json.error?.message || "Erro ao importar imagem.");
-    }
-
-    setStatus("Imagem importada.", "ok");
-    return json.secure_url;
-  }
-
-  function previewInto(previewEl, url, name){
-    if(!previewEl) return;
-
-    if(url){
-      previewEl.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='Imagem inválida'">`;
-    }else{
-      previewEl.innerHTML = `<span>${esc(initials(name || "J"))}</span>`;
-    }
-  }
-
-  async function handleTop11Import(inputEl, targetInput, previewEl, nameInput){
-    const file = inputEl.files && inputEl.files[0];
-    if(!file || !targetInput) return;
-
-    try{
-      const url = await uploadTop11ImageToCloudinary(file);
-      targetInput.value = url;
-
-      const createdSelect =
-        targetInput.closest("form")?.querySelector(`[name="criado"]`) ||
-        targetInput.closest(".top11-create-row-v3787,.top11-create-row-v3788")?.querySelector(`[name^="criado_"]`);
-
-      if(createdSelect) createdSelect.value = "SIM";
-
-      const playerName = nameInput ? nameInput.value : "";
-      previewInto(previewEl, url, playerName);
-
-      targetInput.dispatchEvent(new Event("input", {bubbles:true}));
-      targetInput.dispatchEvent(new Event("change", {bubbles:true}));
-    }catch(err){
-      console.error(err);
-      setStatus("Erro ao importar imagem: " + err.message, "error");
-    }finally{
-      inputEl.value = "";
-    }
-  }
-
-  function enhanceEditPlayerModal(){
-    const modal = document.getElementById("fl-top11-player-edit-modal-v3798");
-    if(!modal || modal.dataset.importV3799 === "1") return;
-
-    const form = modal.querySelector("#fl-top11-player-edit-form-v3798");
-    if(!form) return;
-
-    modal.dataset.importV3799 = "1";
-
-    const fotoInput = form.querySelector(`[name="foto_url"]`);
-    const nameInput = form.querySelector(`[name="jogador"]`);
-    const preview = modal.querySelector("#fl-top11-player-preview-v3798");
-
-    if(!fotoInput) return;
-
-    fotoInput.placeholder = "URL gerada automaticamente ao importar";
-    fotoInput.readOnly = true;
-    fotoInput.classList.add("top11-auto-url-v3799");
-
-    const oldUrlRow = fotoInput.closest(".fl-url-row-v3798");
-    const oldButton = oldUrlRow?.querySelector("button");
-
-    if(oldButton){
-      oldButton.textContent = "Importar";
-      oldButton.onclick = null;
-      oldButton.setAttribute("type", "button");
-      oldButton.classList.add("top11-import-btn-v3799");
-    }
-
-    let file = form.querySelector("#fl_top11_edit_file_v3799");
-    if(!file){
-      file = document.createElement("input");
-      file.type = "file";
-      file.id = "fl_top11_edit_file_v3799";
-      file.accept = "image/png,image/jpeg,image/webp";
-      file.style.display = "none";
-      form.appendChild(file);
-    }
-
-    const importButton = oldButton || document.createElement("button");
-    importButton.type = "button";
-    importButton.textContent = "Importar";
-    importButton.classList.add("top11-import-btn-v3799");
-
-    if(!oldButton){
-      const row = document.createElement("div");
-      row.className = "fl-url-row-v3798";
-      fotoInput.parentNode.insertBefore(row, fotoInput);
-      row.appendChild(fotoInput);
-      row.appendChild(importButton);
-    }
-
-    importButton.onclick = () => file.click();
-    file.onchange = () => handleTop11Import(file, fotoInput, preview, nameInput);
-
-    const label = fotoInput.closest("label");
-    if(label && label.childNodes && label.childNodes[0]){
-      label.childNodes[0].textContent = "Imagem do jogador";
-    }
-
-    const createdSelect = form.querySelector(`[name="criado"]`);
-    if(createdSelect){
-      createdSelect.addEventListener("change", () => {
-        if(createdSelect.value === "SIM" && !fotoInput.value){
-          setStatus("Jogador criado marcado. Importe a imagem pelo botão Importar.", "ok");
-        }
-      });
-    }
-  }
-
-  function enhanceCreateTop11Modal(){
-    const form =
-      document.getElementById("top11-create-form-v3788") ||
-      document.getElementById("top11-create-form-v3787");
-
-    if(!form) return;
-
-    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
-
-    rows.forEach((row, idx)=>{
-      const fotoInput = row.querySelector(`[name="foto_url_${idx}"]`);
-      if(!fotoInput || fotoInput.dataset.importV3799 === "1") return;
-
-      fotoInput.dataset.importV3799 = "1";
-      fotoInput.placeholder = "URL gerada ao importar";
-      fotoInput.readOnly = true;
-      fotoInput.classList.add("top11-auto-url-v3799");
-
-      let file = row.querySelector(`#fl_top11_create_file_${idx}_v3799`);
-      if(!file){
-        file = document.createElement("input");
-        file.type = "file";
-        file.id = `fl_top11_create_file_${idx}_v3799`;
-        file.accept = "image/png,image/jpeg,image/webp";
-        file.style.display = "none";
-        row.appendChild(file);
-      }
-
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "Importar";
-      btn.className = "top11-import-btn-v3799";
-      btn.onclick = () => file.click();
-
-      fotoInput.insertAdjacentElement("afterend", btn);
-
-      file.onchange = () => {
-        const nameInput = row.querySelector(`[name="jogador_${idx}"]`);
-        const createdSelect = row.querySelector(`[name="criado_${idx}"]`);
-        if(createdSelect) createdSelect.value = "SIM";
-        handleTop11Import(file, fotoInput, null, nameInput);
-      };
-    });
-  }
-
-  // Reaproveita abertura existente, mas transforma o modal depois de abrir.
-  const originalOpenCreate =
-    window.FL_openCreateTop11V3798 ||
-    window.FL_openCreateTop11V3795 ||
-    window.FL_openCreateTop11V3790 ||
-    window.FL_openCreateTop11V3788 ||
-    window.FL_openCreateTop11V3787 ||
-    null;
-
-  function openCreateTop11WithImport(){
-    if(originalOpenCreate) originalOpenCreate();
-    setTimeout(enhanceCreateTop11Modal, 120);
-    setTimeout(enhanceCreateTop11Modal, 350);
-    setTimeout(enhanceCreateTop11Modal, 800);
-  }
-
-  // Observa DOM para quando os modais forem criados por funções antigas.
-  const observer = new MutationObserver(() => {
-    enhanceEditPlayerModal();
-    enhanceCreateTop11Modal();
-  });
-
-  observer.observe(document.body, {childList:true, subtree:true});
-
-  document.addEventListener("click", function(e){
-    const btn = e.target.closest("button");
-    if(btn && /\+\s*top\s*11/i.test(btn.textContent || "")){
-      setTimeout(enhanceCreateTop11Modal, 180);
-      setTimeout(enhanceCreateTop11Modal, 500);
-    }
-
-    const card = e.target.closest(".top11-player-v3796");
-    if(card){
-      setTimeout(enhanceEditPlayerModal, 120);
-      setTimeout(enhanceEditPlayerModal, 350);
-    }
-  }, true);
-
-  window.FL_uploadTop11ImageToCloudinaryV3799 = uploadTop11ImageToCloudinary;
-  window.FL_enhanceEditPlayerModalV3799 = enhanceEditPlayerModal;
-  window.FL_enhanceCreateTop11ModalV3799 = enhanceCreateTop11Modal;
-  window.FL_openCreateTop11V3799 = openCreateTop11WithImport;
-  window.FL_openCreateTop11V3798 = openCreateTop11WithImport;
-  window.FL_openCreateTop11V3795 = openCreateTop11WithImport;
-  window.FL_openCreateTop11V3790 = openCreateTop11WithImport;
-
-  setTimeout(enhanceEditPlayerModal, 500);
-  setTimeout(enhanceCreateTop11Modal, 500);
-})();
-
-
-// ===== V3.8.00 — TOP11 IMPORT ISOLADO + API BLOQUEADA EM CRIADO/FOTO_URL =====
-// Correção crítica:
-// - Importar imagem agora afeta SOMENTE a linha/jogador atual.
-// - Nunca copia a mesma foto_url para todos marcados como criado.
-// - foto_url sempre vence a API.
-// - criado = SIM bloqueia API mesmo sem foto_url.
-// - API só roda quando criado vazio/NÃO e foto_url vazia.
-
-(function(){
-  const TOP11_BG_V3800 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+  const TOP11_BG_V3801 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 
   function esc(v){
     if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
@@ -18165,7 +17912,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
     }
     const n = {};
-    Object.keys(row || {}).forEach(k=>n[norm(k)] = row[k]);
+    Object.keys(row || {}).forEach(k => n[norm(k)] = row[k]);
     for(const k of keys){
       const nk = norm(k);
       if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
@@ -18197,28 +17944,28 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return window.db?.TOP11_BASE || [];
   }
 
-  function rowByCard(card){
+  function findRowForCard(card){
     const id = String(card?.dataset?.id || "");
     const source = String(card?.dataset?.source || "");
-    const name = String(card?.dataset?.player || "");
+    const name = String(card?.dataset?.player || "").trim().toLowerCase();
     const rows = source === "career" ? allCareerRows() : allBaseRows();
 
     return (
       rows.find(r => id && String(r.id || "") === id) ||
-      rows.find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase()) ||
+      rows.find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name) ||
       null
     );
   }
 
-  function renderManualOrCreatedPhoto(photoEl, row, name){
-    if(!photoEl) return false;
+  function applyManualPhoto(photoEl, row, name){
+    if(!photoEl || !row) return false;
 
-    const manual = pick(row || {}, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
-    const created = isCreated(row || {});
+    const foto = pick(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+    const created = isCreated(row);
 
-    if(manual){
+    if(foto){
       photoEl.dataset.manualLocked = "1";
-      photoEl.innerHTML = `<img src="${attr(manual)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+      photoEl.innerHTML = `<img src="${attr(foto)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
       return true;
     }
 
@@ -18231,43 +17978,48 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return false;
   }
 
-  function enforceTop11CreatedPhotos(){
+  function enforceCreatedAndManualPhotos(){
     document.querySelectorAll(".top11-player-v3796").forEach(card=>{
-      const name = card.dataset.player || "";
+      const row = findRowForCard(card);
+      const name = card.dataset.player || pick(row || {}, ["jogador","JOGADOR"]) || "";
       const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
-      const row = rowByCard(card);
-      if(row) renderManualOrCreatedPhoto(photo, row, name);
+      applyManualPhoto(photo, row, name);
     });
 
     document.querySelectorAll("[data-top11-best-photo]").forEach(photo=>{
       const name = photo.dataset.top11BestPhoto || "";
       const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
-      if(row) renderManualOrCreatedPhoto(photo, row, name);
+      applyManualPhoto(photo, row, name);
     });
+  }
+
+  async function safeFetchTop11Photo(name){
+    if(typeof FL_fetchPlayerPhotoV3790 !== "function") return "";
+    try{
+      return await FL_fetchPlayerPhotoV3790(name);
+    }catch(err){
+      return "";
+    }
   }
 
   async function enrichTop11PhotosSafe(){
     const cards = [...document.querySelectorAll(".top11-player-v3796")];
 
     for(const card of cards){
-      const name = card.dataset.player || "";
+      const row = findRowForCard(card);
+      const name = card.dataset.player || pick(row || {}, ["jogador","JOGADOR"]) || "";
       const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
-      const row = rowByCard(card);
 
-      if(row && renderManualOrCreatedPhoto(photo, row, name)) continue;
+      if(applyManualPhoto(photo, row, name)) continue;
       if(!photo || photo.querySelector("img")) continue;
 
-      if(typeof FL_fetchPlayerPhotoV3790 === "function"){
-        try{
-          const img = await FL_fetchPlayerPhotoV3790(name);
-          if(img && photo.isConnected && !photo.dataset.manualLocked){
-            photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-          }
-        }catch(err){}
+      const img = await safeFetchTop11Photo(name);
+      if(img && photo.isConnected && !photo.dataset.manualLocked){
+        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
       }
     }
 
-    setTimeout(enforceTop11CreatedPhotos, 80);
+    setTimeout(enforceCreatedAndManualPhotos, 80);
   }
 
   async function enrichTop11BestPhotosSafe(){
@@ -18277,20 +18029,16 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       const name = photo.dataset.top11BestPhoto || "";
       const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
 
-      if(row && renderManualOrCreatedPhoto(photo, row, name)) continue;
+      if(applyManualPhoto(photo, row, name)) continue;
       if(photo.querySelector("img")) continue;
 
-      if(typeof FL_fetchPlayerPhotoV3790 === "function"){
-        try{
-          const img = await FL_fetchPlayerPhotoV3790(name);
-          if(img && photo.isConnected && !photo.dataset.manualLocked){
-            photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-          }
-        }catch(err){}
+      const img = await safeFetchTop11Photo(name);
+      if(img && photo.isConnected && !photo.dataset.manualLocked){
+        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
       }
     }
 
-    setTimeout(enforceTop11CreatedPhotos, 80);
+    setTimeout(enforceCreatedAndManualPhotos, 80);
   }
 
   async function uploadToCloudinary(file){
@@ -18321,29 +18069,28 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return json.secure_url;
   }
 
-  function getCreateRowIndex(row){
+  function getRowIndex(row){
     const named = row.querySelector('[name^="jogador_"],[name^="foto_url_"],[name^="criado_"]');
     if(named){
       const m = String(named.name || "").match(/_(\d+)$/);
       if(m) return Number(m[1]);
     }
-
     const rows = [...row.parentElement.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
     return rows.indexOf(row);
   }
 
-  function cleanDuplicateImportControls(row, keepBtn){
-    row.querySelectorAll(".top11-import-btn-v3799,.top11-import-btn-v3800").forEach(btn=>{
+  function cleanImportDuplicates(row, keepBtn){
+    row.querySelectorAll(".top11-import-btn-v3799,.top11-import-btn-v3800,.top11-import-btn-v3801").forEach(btn=>{
       if(keepBtn && btn === keepBtn) return;
       btn.remove();
     });
 
-    row.querySelectorAll('input[type="file"][id*="top11"][id*="file"]').forEach((inp, idx)=>{
-      if(idx > 0) inp.remove();
+    row.querySelectorAll('input[type="file"][id*="top11"][id*="file"]').forEach((input, idx)=>{
+      if(idx > 0) input.remove();
     });
   }
 
-  function enhanceCreateTop11ModalIsolated(){
+  function enhanceCreateModal(){
     const form =
       document.getElementById("top11-create-form-v3788") ||
       document.getElementById("top11-create-form-v3787");
@@ -18353,40 +18100,45 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
 
     rows.forEach((row, fallbackIdx)=>{
-      const idx = getCreateRowIndex(row);
-      const safeIdx = idx >= 0 ? idx : fallbackIdx;
+      const idx = getRowIndex(row);
+      const i = idx >= 0 ? idx : fallbackIdx;
 
-      const criadoSelect = row.querySelector(`[name="criado_${safeIdx}"]`) || row.querySelector('[name^="criado_"]');
-      let fotoInput = row.querySelector(`[name="foto_url_${safeIdx}"]`);
+      let criadoSelect = row.querySelector(`[name="criado_${i}"]`) || row.querySelector('[name^="criado_"]');
+      if(!criadoSelect){
+        criadoSelect = document.createElement("select");
+        criadoSelect.name = `criado_${i}`;
+        criadoSelect.className = "top11-created-select-v3798";
+        criadoSelect.innerHTML = `<option value="">API</option><option value="SIM">Criado</option>`;
+        row.appendChild(criadoSelect);
+      }
 
+      let fotoInput = row.querySelector(`[name="foto_url_${i}"]`) || row.querySelector('[name^="foto_url_"]');
       if(!fotoInput){
         fotoInput = document.createElement("input");
-        fotoInput.name = `foto_url_${safeIdx}`;
-        fotoInput.className = "top11-photo-url-v3798 top11-auto-url-v3800";
-        fotoInput.placeholder = "Imagem importada";
-        fotoInput.readOnly = true;
+        fotoInput.name = `foto_url_${i}`;
         row.appendChild(fotoInput);
       }
 
       fotoInput.readOnly = true;
-      fotoInput.classList.add("top11-auto-url-v3800");
+      fotoInput.placeholder = "Imagem importada";
+      fotoInput.classList.add("top11-auto-url-v3801");
 
-      let btn = row.querySelector(".top11-import-btn-v3800");
+      let btn = row.querySelector(".top11-import-btn-v3801");
       if(!btn){
         btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = "Importar";
-        btn.className = "top11-import-btn-v3800";
+        btn.className = "top11-import-btn-v3801";
         fotoInput.insertAdjacentElement("afterend", btn);
       }
 
-      cleanDuplicateImportControls(row, btn);
+      cleanImportDuplicates(row, btn);
 
-      let file = row.querySelector(`#fl_top11_create_file_${safeIdx}_v3800`);
+      let file = row.querySelector(`#fl_top11_create_file_${i}_v3801`);
       if(!file){
         file = document.createElement("input");
         file.type = "file";
-        file.id = `fl_top11_create_file_${safeIdx}_v3800`;
+        file.id = `fl_top11_create_file_${i}_v3801`;
         file.accept = "image/png,image/jpeg,image/webp";
         file.style.display = "none";
         row.appendChild(file);
@@ -18405,10 +18157,10 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
         try{
           const url = await uploadToCloudinary(selected);
 
+          // Só esta linha recebe a URL.
           fotoInput.value = url;
-          fotoInput.dataset.importedFor = String(safeIdx);
-
-          if(criadoSelect) criadoSelect.value = "SIM";
+          fotoInput.dataset.importedFor = String(i);
+          criadoSelect.value = "SIM";
 
           btn.textContent = "Importado";
           btn.classList.add("imported");
@@ -18425,7 +18177,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     });
   }
 
-  function enhanceEditPlayerModalIsolated(){
+  function enhanceEditModal(){
     const modal = document.getElementById("fl-top11-player-edit-modal-v3798");
     if(!modal) return;
 
@@ -18439,27 +18191,27 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     if(!fotoInput) return;
 
     fotoInput.readOnly = true;
-    fotoInput.placeholder = "Imagem importada automaticamente";
-    fotoInput.classList.add("top11-auto-url-v3800");
+    fotoInput.placeholder = "Imagem importada";
+    fotoInput.classList.add("top11-auto-url-v3801");
 
-    const urlRow = fotoInput.closest(".fl-url-row-v3798") || fotoInput.parentElement;
+    const row = fotoInput.closest(".fl-url-row-v3798") || fotoInput.parentElement;
 
-    let btn = urlRow.querySelector(".top11-import-btn-v3800");
+    let btn = row.querySelector(".top11-import-btn-v3801");
     if(!btn){
-      btn = urlRow.querySelector("button") || document.createElement("button");
+      btn = row.querySelector("button") || document.createElement("button");
       btn.type = "button";
       btn.textContent = "Importar";
-      btn.className = "top11-import-btn-v3800";
-      if(!btn.parentElement) urlRow.appendChild(btn);
+      btn.className = "top11-import-btn-v3801";
+      if(!btn.parentElement) row.appendChild(btn);
     }else{
       btn.textContent = "Importar";
     }
 
-    let file = form.querySelector("#fl_top11_edit_file_v3800");
+    let file = form.querySelector("#fl_top11_edit_file_v3801");
     if(!file){
       file = document.createElement("input");
       file.type = "file";
-      file.id = "fl_top11_edit_file_v3800";
+      file.id = "fl_top11_edit_file_v3801";
       file.accept = "image/png,image/jpeg,image/webp";
       file.style.display = "none";
       form.appendChild(file);
@@ -18478,6 +18230,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       try{
         const url = await uploadToCloudinary(selected);
 
+        // Só o jogador aberto no modal recebe a URL.
         fotoInput.value = url;
         if(criadoSelect) criadoSelect.value = "SIM";
 
@@ -18499,7 +18252,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     };
   }
 
-  async function saveTop11CreateIsolated(e){
+  async function saveCreateModalIsolated(e){
     const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
     if(!btn) return;
 
@@ -18518,8 +18271,8 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    if(window.FL_TOP11_SAVING_V3800) return;
-    window.FL_TOP11_SAVING_V3800 = true;
+    if(window.FL_TOP11_SAVING_V3801) return;
+    window.FL_TOP11_SAVING_V3801 = true;
 
     try{
       btn.disabled = true;
@@ -18539,7 +18292,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       const rows = [];
 
       createRows.forEach((row, fallbackIdx)=>{
-        const idx = getCreateRowIndex(row);
+        const idx = getRowIndex(row);
         const i = idx >= 0 ? idx : fallbackIdx;
         if(i < 0 || i > 10) return;
 
@@ -18568,7 +18321,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
           foto_url: String(fotoInput?.value || "").trim(),
           x: defaults[i]?.[1] ?? "",
           y: defaults[i]?.[2] ?? "",
-          mapa_url: TOP11_BG_V3800
+          mapa_url: TOP11_BG_V3801
         });
       });
 
@@ -18584,7 +18337,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
         carreira_id: active?.carreira_id || "",
         carreira_temporada_id: carreiraTemporadaId,
         temporada,
-        mapa_url: TOP11_BG_V3800,
+        mapa_url: TOP11_BG_V3801,
         replace_existing:true,
         rows
       });
@@ -18611,36 +18364,39 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
       else if(typeof renderTop11 === "function") renderTop11();
 
-      setTimeout(enforceTop11CreatedPhotos, 100);
-      setTimeout(enforceTop11CreatedPhotos, 600);
+      setTimeout(enforceCreatedAndManualPhotos, 100);
+      setTimeout(enforceCreatedAndManualPhotos, 700);
     }catch(err){
       console.error(err);
       setStatus("Erro ao salvar Top 11: " + err.message, "error");
     }finally{
-      window.FL_TOP11_SAVING_V3800 = false;
+      window.FL_TOP11_SAVING_V3801 = false;
       btn.disabled = false;
       btn.textContent = "Salvar Top 11";
     }
   }
 
-  const oldRenderTop11 =
-    window.FL_renderTop11NewV3797 ||
-    window.FL_renderTop11NewV3796 ||
-    window.renderTop11 ||
-    null;
+  function fixIfOldTop11Appears(){
+    const page = document.getElementById("top11");
+    if(!page) return;
 
-  function renderTop11V3800(){
-    if(oldRenderTop11) oldRenderTop11();
-    setTimeout(enforceTop11CreatedPhotos, 80);
-    setTimeout(enrichTop11PhotosSafe, 140);
-    setTimeout(enforceTop11CreatedPhotos, 500);
-    setTimeout(enforceTop11CreatedPhotos, 1400);
+    const hasOldEmptyGreen =
+      page.querySelector(".top11-create-card-v3787,.top11-create-empty-v3787") ||
+      (page.textContent || "").includes("Melhor onze da temporada.");
+
+    const hasNewRender = page.querySelector(".top11-page-head-v3796,.top11-map-section-v3796");
+
+    if(hasOldEmptyGreen && !hasNewRender){
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
+    }
   }
 
   const observer = new MutationObserver(()=>{
-    enhanceCreateTop11ModalIsolated();
-    enhanceEditPlayerModalIsolated();
-    enforceTop11CreatedPhotos();
+    enhanceCreateModal();
+    enhanceEditModal();
+    enforceCreatedAndManualPhotos();
+    fixIfOldTop11Appears();
   });
 
   observer.observe(document.body, {childList:true, subtree:true});
@@ -18648,34 +18404,37 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
   document.addEventListener("click", function(e){
     const btn = e.target.closest("button");
     if(btn && /\+\s*top\s*11/i.test(btn.textContent || "")){
-      setTimeout(enhanceCreateTop11ModalIsolated, 120);
-      setTimeout(enhanceCreateTop11ModalIsolated, 400);
-      setTimeout(enhanceCreateTop11ModalIsolated, 900);
+      setTimeout(enhanceCreateModal, 120);
+      setTimeout(enhanceCreateModal, 450);
+      setTimeout(enhanceCreateModal, 900);
     }
 
     const card = e.target.closest(".top11-player-v3796");
     if(card){
-      setTimeout(enhanceEditPlayerModalIsolated, 120);
-      setTimeout(enhanceEditPlayerModalIsolated, 400);
+      setTimeout(enhanceEditModal, 120);
+      setTimeout(enhanceEditModal, 450);
     }
 
-    setTimeout(enforceTop11CreatedPhotos, 250);
+    setTimeout(enforceCreatedAndManualPhotos, 250);
+    setTimeout(fixIfOldTop11Appears, 300);
   }, true);
 
-  document.addEventListener("click", saveTop11CreateIsolated, true);
+  document.addEventListener("click", saveCreateModalIsolated, true);
 
+  // Reforços sem mexer no render principal.
+  window.FL_enforceTop11CreatedPhotosV3801 = enforceCreatedAndManualPhotos;
+  window.FL_enhanceCreateTop11ModalV3801 = enhanceCreateModal;
+  window.FL_enhanceEditPlayerModalV3801 = enhanceEditModal;
+  window.FL_enrichTop11PhotosV3801 = enrichTop11PhotosSafe;
+  window.FL_enrichTop11BestPhotosV3801 = enrichTop11BestPhotosSafe;
+
+  // Só substitui enriquecimento de foto, não substitui render.
   window.FL_enrichTop11PhotosV3790 = enrichTop11PhotosSafe;
   window.FL_enrichTop11BestPhotosV3790 = enrichTop11BestPhotosSafe;
-  window.FL_enforceTop11CreatedPhotosV3800 = enforceTop11CreatedPhotos;
-  window.FL_enhanceCreateTop11ModalV3800 = enhanceCreateTop11ModalIsolated;
-  window.FL_enhanceEditPlayerModalV3800 = enhanceEditPlayerModalIsolated;
-  window.FL_renderTop11NewV3800 = renderTop11V3800;
-  window.FL_renderTop11NewV3797 = renderTop11V3800;
-  window.FL_renderTop11NewV3796 = renderTop11V3800;
-  window.renderTop11 = renderTop11V3800;
-  try{ renderTop11 = renderTop11V3800; }catch(err){}
 
-  setTimeout(enforceTop11CreatedPhotos, 300);
-  setTimeout(enforceTop11CreatedPhotos, 1000);
-  setInterval(enforceTop11CreatedPhotos, 2500);
+  setTimeout(fixIfOldTop11Appears, 400);
+  setTimeout(enforceCreatedAndManualPhotos, 600);
+  setTimeout(fixIfOldTop11Appears, 1400);
+  setTimeout(enforceCreatedAndManualPhotos, 1600);
+  setInterval(enforceCreatedAndManualPhotos, 2500);
 })();
