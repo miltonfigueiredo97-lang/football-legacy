@@ -1,3 +1,3 @@
-# Football Legacy V3.8.01
+# Football Legacy V3.8.02 — Emergency Rollback
 
-Restaura o Top 11 usando a base estável v3.7.98 e aplica importação isolada sem mexer no render principal. foto_url sempre vence API; criado=SIM bloqueia API; import afeta apenas a linha/jogador atual.
+Rollback para a última base estável do Top 11 antes dos patches de importação. Não altera render nem importação. Objetivo: voltar a carregar sem travar.
