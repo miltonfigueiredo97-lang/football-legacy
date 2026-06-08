@@ -1,3 +1,3 @@
-# Football Legacy V3.8.01
+# Football Legacy V3.8.06 — Top 11 Clean Rebuild
 
-Restaura o Top 11 usando a base estável v3.7.98 e aplica importação isolada sem mexer no render principal. foto_url sempre vence API; criado=SIM bloqueia API; import afeta apenas a linha/jogador atual.
+Reconstrói a aba Top 11 do zero em um render único e isolado. Não usa os renders antigos. Suporta TOP11_BASE, TOP11_CARREIRA, edição, importação de imagem, criado=SIM sem API, foto_url prioritária e ranking Melhores.

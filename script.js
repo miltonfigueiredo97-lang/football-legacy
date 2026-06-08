@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.8.01 top11 restaurado import isolado');
+console.log('Football Legacy script carregado v3.8.06 top11 clean rebuild');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -17408,24 +17408,49 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 })();
 
 
-// ===== V3.7.98 — EDITAR JOGADOR DO TOP 11 + CRIADO/FOTO URL =====
-// Funcionalidades:
-// - Clicar em jogador da carreira abre modal de edição.
-// - Edita nome, posição, criado e foto_url.
-// - Se criado = SIM, não busca imagem pela API.
-// - + Top 11 tem campos Criado/API e Foto URL manual.
+// ===== V3.8.06 — TOP 11 CLEAN REBUILD =====
+// Recriação limpa da aba Top 11.
+// Não usa os renders antigos contaminados.
+// Regras:
+// - TOP11_BASE = base histórica fixa.
+// - TOP11_CARREIRA = carreira editável.
+// - foto_url sempre vence API.
+// - criado = SIM nunca busca API.
+// - Importar imagem afeta somente o jogador/linha atual.
 
 (function(){
-  const TOP11_BG_V3798 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+  "use strict";
+
+  const BG = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
+
+  let selectedKey = "";
+  let bestFilter = "TOTAL";
+  let editing = false;
+  let rendering = false;
+  const photoCache = {};
+
+  const SLOT = [
+    {orig:"GL",   pos:"GOL", x:8,  y:50},
+    {orig:"DEF",  pos:"LE",  x:22, y:20},
+    {orig:"DEF2", pos:"ZAG", x:27, y:38},
+    {orig:"DEF3", pos:"ZAG", x:27, y:62},
+    {orig:"DEF4", pos:"LD",  x:22, y:80},
+    {orig:"MEI",  pos:"MEI", x:52, y:28},
+    {orig:"MEI5", pos:"MEI", x:52, y:50},
+    {orig:"MEI6", pos:"MEI", x:52, y:72},
+    {orig:"ATA",  pos:"PE",  x:78, y:28},
+    {orig:"ATA7", pos:"CA",  x:84, y:50},
+    {orig:"ATA8", pos:"PD",  x:78, y:72}
+  ];
 
   function esc(v){
     if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
-    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+    return String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   }
 
   function attr(v){
     if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
-    return String(v ?? "").replace(/"/g,"&quot;");
+    return String(v ?? "").replace(/"/g, "&quot;");
   }
 
   function norm(v){
@@ -17437,891 +17462,757 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
   }
 
   function pick(row, keys){
+    if(!row) return "";
     for(const k of keys){
-      if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+      if(row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
     }
-    const n = {};
-    Object.keys(row || {}).forEach(k=>n[norm(k)] = row[k]);
+    const map = {};
+    Object.keys(row).forEach(k => map[norm(k)] = row[k]);
     for(const k of keys){
       const nk = norm(k);
-      if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
+      if(map[nk] !== undefined && map[nk] !== null && map[nk] !== "") return map[nk];
     }
     return "";
   }
 
+  function asPct(v){
+    const s = String(v ?? "").trim().replace(",", ".");
+    if(!s || /#/.test(s)) return null;
+    const n = Number(s);
+    if(!Number.isFinite(n) || n < 0 || n > 100) return null;
+    return n;
+  }
+
   function initials(name){
     const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
+    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   }
 
   function isCreated(row){
-    const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
+    const v = String(pick(row, ["criado","CRIADO","created","jogador_criado"]) || "").trim().toLowerCase();
     return ["sim","s","yes","y","true","1","criado","created"].includes(v);
   }
 
-  function currentTop11Group(){
-    if(typeof FL_top11CareerRowsV3797 === "function" && typeof FL_top11BaseRowsV3797 === "function"){
-      const allCareer = FL_top11CareerRowsV3797();
-      const allBase = FL_top11BaseRowsV3797();
-
-      const selected =
-        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3797 ||
-        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796 ||
-        "";
-
-      const careerGroups = new Map();
-      allCareer.forEach(r=>{
-        const sid = pick(r, ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) || "";
-        const temp = pick(r, ["temporada","TEMPORADA"]) || "";
-        const key = sid ? `career:${sid}` : `career:${temp}`;
-        if(!careerGroups.has(key)) careerGroups.set(key, {key, source:"career", editable:true, rows:[]});
-        careerGroups.get(key).rows.push(r);
-      });
-
-      const baseGroups = new Map();
-      allBase.forEach(r=>{
-        const ano = r.ano || r.temporada || "";
-        const key = `base:${ano}`;
-        if(!baseGroups.has(key)) baseGroups.set(key, {key, source:"base", editable:false, rows:[]});
-        baseGroups.get(key).rows.push(r);
-      });
-
-      return careerGroups.get(selected) || baseGroups.get(selected) || null;
+  function table(name){
+    if(typeof getTable === "function"){
+      try { return getTable(name) || []; } catch(e){}
     }
-
-    return null;
+    return (window.db && Array.isArray(window.db[name])) ? window.db[name] : [];
   }
 
-  function findCareerRowById(id){
-    const rows =
-      typeof FL_top11CareerRowsV3797 === "function" ? FL_top11CareerRowsV3797() :
-      typeof FL_top11CareerRowsV3795 === "function" ? FL_top11CareerRowsV3795() :
-      (getTable("TOP11_CARREIRA") || []);
-
-    return rows.find(r=>String(r.id || "") === String(id));
+  function careerId(){
+    return String(window.active?.carreira_id || window.active?.career_id || "1");
   }
 
-  function openEditTop11PlayerModal(id){
-    const row = findCareerRowById(id);
+  function posGroup(row){
+    const p = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
+    const o = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
 
-    if(!row){
-      setStatus("Só dá para editar jogadores do Top 11 da carreira. Base histórica é fixa.", "error");
-      return;
-    }
-
-    const nome = pick(row, ["jogador","JOGADOR"]);
-    const pos = pick(row, ["posicao_tatica","POSICAO_TATICA"]);
-    const origem = pick(row, ["posicao_origem","POSICAO_ORIGEM"]);
-    const criado = isCreated(row) ? "SIM" : "";
-    const foto = pick(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
-    const clube = pick(row, ["clube","CLUBE"]);
-    const pais = pick(row, ["pais","PAIS"]);
-    const overall = pick(row, ["overall","OVERALL"]);
-
-    document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
-
-    const modal = document.createElement("div");
-    modal.id = "fl-top11-player-edit-modal-v3798";
-    modal.className = "fl-modal-backdrop-v3798";
-    modal.innerHTML = `
-      <div class="fl-modal-card-v3798">
-        <button type="button" class="fl-modal-close-v3798" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">×</button>
-
-        <h2>Editar jogador do Top 11</h2>
-        <p>Altere nome, posição e imagem manual quando o jogador for criado.</p>
-
-        <form id="fl-top11-player-edit-form-v3798">
-          <input type="hidden" name="id" value="${attr(id)}">
-
-          <label>
-            Nome do jogador
-            <input name="jogador" value="${attr(nome)}" required>
-          </label>
-
-          <div class="fl-grid-2-v3798">
-            <label>
-              Posição
-              <select name="posicao_tatica">
-                ${["GOL","LE","ZAG","LD","VOL","MC","MEI","PE","CA","PD"].map(p=>`
-                  <option value="${p}" ${String(pos).toUpperCase()===p ? "selected" : ""}>${p}</option>
-                `).join("")}
-              </select>
-            </label>
-
-            <label>
-              Posição origem
-              <select name="posicao_origem">
-                ${["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"].map(p=>`
-                  <option value="${p}" ${String(origem).toUpperCase()===p ? "selected" : ""}>${p}</option>
-                `).join("")}
-              </select>
-            </label>
-          </div>
-
-          <div class="fl-grid-2-v3798">
-            <label>
-              Tipo de imagem
-              <select name="criado">
-                <option value="" ${!criado ? "selected" : ""}>Buscar por API</option>
-                <option value="SIM" ${criado ? "selected" : ""}>Criado / usar URL manual</option>
-              </select>
-            </label>
-
-            <label>
-              Overall
-              <input name="overall" value="${attr(overall)}" placeholder="Opcional">
-            </label>
-          </div>
-
-          <label>
-            Foto URL manual
-            <div class="fl-url-row-v3798">
-              <input name="foto_url" value="${attr(foto)}" placeholder="https://res.cloudinary.com/.../jogador.png">
-              <button type="button" onclick="FL_previewTop11PlayerPhotoV3798()">Prévia</button>
-            </div>
-          </label>
-
-          <div id="fl-top11-player-preview-v3798" class="fl-preview-v3798">
-            ${foto ? `<img src="${attr(foto)}" onerror="this.parentElement.innerHTML='URL inválida'">` : `<span>${esc(initials(nome))}</span>`}
-          </div>
-
-          <div class="fl-grid-2-v3798">
-            <label>
-              Clube
-              <input name="clube" value="${attr(clube)}" placeholder="Opcional">
-            </label>
-
-            <label>
-              País
-              <input name="pais" value="${attr(pais)}" placeholder="Opcional">
-            </label>
-          </div>
-
-          <div class="fl-modal-actions-v3798">
-            <button type="button" class="ghost" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">Cancelar</button>
-            <button type="submit" class="gold">Salvar jogador</button>
-          </div>
-        </form>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    document.getElementById("fl-top11-player-edit-form-v3798").onsubmit = saveTop11PlayerEdit;
+    if(["GOL","GK","GL"].includes(p) || ["GL","GOL"].includes(o)) return "GOL";
+    if(["LE","LD","ZAG","CB","LB","RB"].includes(p) || ["DEF","DEF2","DEF3","DEF4"].includes(o)) return "DEF";
+    if(["VOL","MC","MEI","CAM","CM","CDM"].includes(p) || ["MEI","MEI5","MEI6"].includes(o)) return "MEI";
+    if(["PE","PD","CA","LW","RW","ST"].includes(p) || ["ATA","ATA7","ATA8"].includes(o)) return "ATA";
+    return "TOTAL";
   }
 
-  function previewTop11PlayerPhoto(){
-    const form = document.getElementById("fl-top11-player-edit-form-v3798");
-    const preview = document.getElementById("fl-top11-player-preview-v3798");
-    if(!form || !preview) return;
+  function slotOrder(row){
+    const origem = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
+    const exact = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+    const ei = exact.indexOf(origem);
+    if(ei >= 0) return ei;
 
-    const url = String(form.foto_url.value || "").trim();
-    const nome = String(form.jogador.value || "").trim();
-
-    if(url){
-      preview.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='URL inválida'">`;
-    }else{
-      preview.innerHTML = `<span>${esc(initials(nome))}</span>`;
-    }
+    const pos = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
+    const order = {GOL:0,GK:0,LE:1,LB:1,ZAG:2,CB:2,LD:4,RB:4,VOL:5,MC:6,CM:6,MEI:7,CAM:7,PE:8,LW:8,CA:9,ST:9,PD:10,RW:10};
+    return order[pos] ?? 999;
   }
 
-  async function saveTop11PlayerEdit(e){
-    e.preventDefault();
+  function normalizeRowsBySeason(rows, source){
+    const by = new Map();
 
-    const form = e.currentTarget;
-    const id = String(form.id.value || "").trim();
-    const original = findCareerRowById(id);
-
-    if(!original){
-      setStatus("Jogador não encontrado na TOP11_CARREIRA.", "error");
-      return;
-    }
-
-    const updated = Object.assign({}, original, {
-      id,
-      jogador: String(form.jogador.value || "").trim(),
-      posicao_tatica: String(form.posicao_tatica.value || "").trim(),
-      posicao_origem: String(form.posicao_origem.value || "").trim(),
-      criado: String(form.criado.value || "").trim(),
-      foto_url: String(form.foto_url.value || "").trim(),
-      clube: String(form.clube.value || "").trim(),
-      pais: String(form.pais.value || "").trim(),
-      overall: String(form.overall.value || "").trim()
+    rows.forEach((r, idx) => {
+      const season = String(pick(r, source === "base" ? ["ano","ANO","temporada","TEMPORADA"] : ["temporada","TEMPORADA"]) || "");
+      if(!season) return;
+      const sid = source === "career" ? String(pick(r, ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) || "") : "";
+      const key = source === "career" && sid ? `career:${sid}` : `${source}:${season}`;
+      if(!by.has(key)) by.set(key, []);
+      by.get(key).push(Object.assign({__rawIndex:idx,__source:source}, r));
     });
 
-    try{
-      setStatus("Salvando jogador do Top 11...", "loading");
+    const outGroups = [];
 
-      const result = await apiPost({
-        action:"saveTop11CareerV2",
-        carreira_id: active?.carreira_id || updated.carreira_id || "",
-        carreira_temporada_id: updated.carreira_temporada_id || "",
-        temporada: updated.temporada || "",
-        mapa_url: updated.mapa_url || TOP11_BG_V3798,
-        replace_existing:false,
-        rows:[updated]
-      });
+    by.forEach((arr, key) => {
+      arr.sort((a,b) => slotOrder(a) - slotOrder(b) || Number(pick(a,["id","ID"]) || 0) - Number(pick(b,["id","ID"]) || 0) || a.__rawIndex - b.__rawIndex);
 
-      if(!result || !result.ok){
-        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
-      }
+      arr = arr.slice(0, 11).map((r, idx) => {
+        const s = SLOT[idx] || SLOT[SLOT.length - 1];
 
-      if(Array.isArray(window.db?.TOP11_CARREIRA)){
-        const idx = window.db.TOP11_CARREIRA.findIndex(r=>String(r.id || "") === String(id));
-        if(idx >= 0){
-          window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], updated);
-        }
-      }
+        const xRaw = asPct(pick(r, ["x","X"]));
+        const yRaw = asPct(pick(r, ["y","Y"]));
+        const useSaved = source === "career" && xRaw !== null && yRaw !== null;
 
-      document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
-
-      setStatus("Jogador atualizado.", "ok");
-
-      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
-      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
-      else if(typeof renderTop11 === "function") renderTop11();
-    }catch(err){
-      console.error(err);
-      setStatus("Erro ao salvar jogador: " + err.message, "error");
-    }
-  }
-
-  function enhanceCreateTop11Modal(){
-    const form =
-      document.getElementById("top11-create-form-v3788") ||
-      document.getElementById("top11-create-form-v3787");
-
-    if(!form || form.dataset.criadoV3798 === "1") return;
-    form.dataset.criadoV3798 = "1";
-
-    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
-
-    rows.forEach((row, idx)=>{
-      if(row.querySelector(`[name="criado_${idx}"]`)) return;
-
-      const criado = document.createElement("select");
-      criado.name = `criado_${idx}`;
-      criado.className = "top11-created-select-v3798";
-      criado.innerHTML = `
-        <option value="">API</option>
-        <option value="SIM">Criado</option>
-      `;
-      criado.title = "Se for criado, usa só a foto_url manual e não busca na API.";
-
-      const foto = document.createElement("input");
-      foto.name = `foto_url_${idx}`;
-      foto.className = "top11-photo-url-v3798";
-      foto.placeholder = "Foto URL manual";
-
-      row.appendChild(criado);
-      row.appendChild(foto);
-    });
-  }
-
-  const originalOpenCreate =
-    window.FL_openCreateTop11V3795 ||
-    window.FL_openCreateTop11V3790 ||
-    window.FL_openCreateTop11V3788 ||
-    window.FL_openCreateTop11V3787 ||
-    null;
-
-  function openCreateTop11WithCreated(){
-    if(originalOpenCreate) originalOpenCreate();
-    setTimeout(enhanceCreateTop11Modal, 120);
-    setTimeout(enhanceCreateTop11Modal, 350);
-  }
-
-  async function saveTop11WithCreatedFromModal(e){
-    const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
-    if(!btn) return;
-
-    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
-    if(!modal) return;
-
-    if(!/salvar top 11/i.test(btn.textContent || "") && btn.id !== "fl-top11-save-v3787" && btn.id !== "fl-top11-save-v3788") return;
-
-    const form =
-      document.getElementById("top11-create-form-v3788") ||
-      document.getElementById("top11-create-form-v3787");
-
-    if(!form) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    if(window.FL_TOP11_SAVING_V3798) return;
-    window.FL_TOP11_SAVING_V3798 = true;
-
-    try{
-      btn.disabled = true;
-      btn.textContent = "Salvando...";
-
-      const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
-      const defaults = [
-        ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],
-        ["MEI",52,28],["MEI",52,50],["MEI",52,72],
-        ["PE",78,28],["CA",84,50],["PD",78,72]
-      ];
-
-      const temporada = String(form.temporada?.value || "").trim();
-      const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
-
-      const rows = [];
-      for(let i=0;i<11;i++){
-        const jogador = String(form[`jogador_${i}`]?.value || "").trim();
-        if(!jogador) continue;
-
-        rows.push({
-          carreira_id: active?.carreira_id || "",
-          carreira_temporada_id: carreiraTemporadaId,
-          temporada,
-          posicao_origem: origins[i],
-          posicao_tatica: String(form[`posicao_${i}`]?.value || defaults[i][0]).trim(),
-          jogador,
-          overall: String(form[`overall_${i}`]?.value || "").trim(),
-          clube: String(form[`clube_${i}`]?.value || "").trim(),
-          pais: String(form[`pais_${i}`]?.value || "").trim(),
-          criado: String(form[`criado_${i}`]?.value || "").trim(),
-          foto_url: String(form[`foto_url_${i}`]?.value || "").trim(),
-          x: defaults[i][1],
-          y: defaults[i][2],
-          mapa_url: TOP11_BG_V3798
+        return Object.assign({}, r, {
+          id: pick(r, ["id","ID"]) || `${key}-${idx+1}`,
+          temporada: pick(r, ["temporada","TEMPORADA"]) || pick(r, ["ano","ANO"]) || "",
+          ano: pick(r, ["ano","ANO"]) || pick(r, ["temporada","TEMPORADA"]) || "",
+          jogador: pick(r, ["jogador","JOGADOR","player","PLAYER"]) || "",
+          posicao_origem: pick(r, ["posicao_origem","POSICAO_ORIGEM"]) || s.orig,
+          posicao_tatica: pick(r, ["posicao_tatica","POSICAO_TATICA"]) || s.pos,
+          foto_url: pick(r, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]) || "",
+          criado: pick(r, ["criado","CRIADO","created"]) || "",
+          x: useSaved ? xRaw : s.x,
+          y: useSaved ? yRaw : s.y,
+          mapa_url: pick(r, ["mapa_url","MAPA_URL"]) || BG,
+          __slotIndex: idx,
+          __source: source
         });
-      }
-
-      if(!rows.length){
-        setStatus("Preencha pelo menos um jogador.", "error");
-        return;
-      }
-
-      setStatus("Salvando Top 11...", "loading");
-
-      const result = await apiPost({
-        action:"saveTop11CareerV2",
-        carreira_id: active?.carreira_id || "",
-        carreira_temporada_id: carreiraTemporadaId,
-        temporada,
-        mapa_url: TOP11_BG_V3798,
-        replace_existing:true,
-        rows
       });
 
-      if(!result || !result.ok){
-        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
-      }
-
-      if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
-
-      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r=>{
-        const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
-        const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
-        const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
-        return !(sameCareer && (sameSeasonId || sameSeason));
+      const label = arr[0]?.temporada || arr[0]?.ano || key.replace(/^(base|career):/,"");
+      outGroups.push({
+        key,
+        label,
+        season: label,
+        source,
+        sourceLabel: source === "base" ? "Base histórica" : "Carreira",
+        editable: source === "career",
+        carreira_temporada_id: source === "career" ? pick(arr[0], ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) : "",
+        rows: arr
       });
-
-      (result.data?.rows || rows).forEach(r=>window.db.TOP11_CARREIRA.push(r));
-
-      modal.remove();
-      setStatus("Top 11 salvo.", "ok");
-
-      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
-      else if(typeof renderTop11 === "function") renderTop11();
-    }catch(err){
-      console.error(err);
-      setStatus("Erro ao salvar Top 11: " + err.message, "error");
-    }finally{
-      window.FL_TOP11_SAVING_V3798 = false;
-      btn.disabled = false;
-      btn.textContent = "Salvar Top 11";
-    }
-  }
-
-  // Clique no jogador do Top 11 da carreira para editar.
-  document.addEventListener("click", function(e){
-    const card = e.target.closest(".top11-player-v3796");
-    if(!card) return;
-
-    const source = card.dataset.source || "";
-    const id = card.dataset.id || "";
-
-    if(source !== "career") return;
-
-    // Em modo de arraste, não abrir edição.
-    if(window.FL_TOP11_EDITING_V3787) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    openEditTop11PlayerModal(id);
-  }, true);
-
-  // Intercepta abertura de + Top11 para adicionar campos Criado/FOTO.
-  document.addEventListener("click", function(e){
-    const btn = e.target.closest("button");
-    if(!btn) return;
-
-    if(/\+\s*top\s*11/i.test(btn.textContent || "")){
-      setTimeout(enhanceCreateTop11Modal, 250);
-      setTimeout(enhanceCreateTop11Modal, 700);
-    }
-  }, true);
-
-  // Intercepta salvamento do modal +Top11 para enviar criado/foto_url.
-  document.addEventListener("click", saveTop11WithCreatedFromModal, true);
-
-  window.FL_openEditTop11PlayerModalV3798 = openEditTop11PlayerModal;
-  window.FL_previewTop11PlayerPhotoV3798 = previewTop11PlayerPhoto;
-  window.FL_openCreateTop11V3798 = openCreateTop11WithCreated;
-  window.FL_openCreateTop11V3795 = openCreateTop11WithCreated;
-  window.FL_openCreateTop11V3790 = openCreateTop11WithCreated;
-})();
-
-
-// ===== V3.8.01 — TOP11 RESTAURADO + IMPORTAÇÃO ISOLADA =====
-// Base visual: v3.7.98, que mantinha o Top 11 funcionando.
-// Correção aplicada sem mexer no render principal:
-// 1. Importar imagem afeta somente o jogador/linha atual.
-// 2. foto_url sempre vence a API.
-// 3. criado = SIM nunca busca API.
-// 4. Evita copiar a mesma URL para todos criados.
-// 5. Reforça render novo se o Top 11 antigo aparecer.
-
-(function(){
-  const TOP11_BG_V3801 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
-
-  function esc(v){
-    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
-    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
-  }
-
-  function attr(v){
-    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
-    return String(v ?? "").replace(/"/g,"&quot;");
-  }
-
-  function norm(v){
-    return String(v || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/[^a-z0-9]+/g,"");
-  }
-
-  function pick(row, keys){
-    for(const k of keys){
-      if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
-    }
-    const n = {};
-    Object.keys(row || {}).forEach(k => n[norm(k)] = row[k]);
-    for(const k of keys){
-      const nk = norm(k);
-      if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
-    }
-    return "";
-  }
-
-  function initials(name){
-    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
-  }
-
-  function isCreated(row){
-    const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
-    return ["sim","s","yes","y","true","1","criado","created"].includes(v);
-  }
-
-  function allCareerRows(){
-    if(typeof FL_top11CareerRowsV3797 === "function") return FL_top11CareerRowsV3797();
-    if(typeof FL_top11CareerRowsV3795 === "function") return FL_top11CareerRowsV3795();
-    if(typeof getTable === "function") return getTable("TOP11_CARREIRA") || [];
-    return window.db?.TOP11_CARREIRA || [];
-  }
-
-  function allBaseRows(){
-    if(typeof FL_top11BaseRowsV3797 === "function") return FL_top11BaseRowsV3797();
-    if(typeof FL_top11BaseRowsV3794 === "function") return FL_top11BaseRowsV3794();
-    if(typeof getTable === "function") return getTable("TOP11_BASE") || [];
-    return window.db?.TOP11_BASE || [];
-  }
-
-  function findRowForCard(card){
-    const id = String(card?.dataset?.id || "");
-    const source = String(card?.dataset?.source || "");
-    const name = String(card?.dataset?.player || "").trim().toLowerCase();
-    const rows = source === "career" ? allCareerRows() : allBaseRows();
-
-    return (
-      rows.find(r => id && String(r.id || "") === id) ||
-      rows.find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name) ||
-      null
-    );
-  }
-
-  function applyManualPhoto(photoEl, row, name){
-    if(!photoEl || !row) return false;
-
-    const foto = pick(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
-    const created = isCreated(row);
-
-    if(foto){
-      photoEl.dataset.manualLocked = "1";
-      photoEl.innerHTML = `<img src="${attr(foto)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-      return true;
-    }
-
-    if(created){
-      photoEl.dataset.manualLocked = "1";
-      photoEl.innerHTML = esc(initials(name));
-      return true;
-    }
-
-    return false;
-  }
-
-  function enforceCreatedAndManualPhotos(){
-    document.querySelectorAll(".top11-player-v3796").forEach(card=>{
-      const row = findRowForCard(card);
-      const name = card.dataset.player || pick(row || {}, ["jogador","JOGADOR"]) || "";
-      const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
-      applyManualPhoto(photo, row, name);
     });
 
-    document.querySelectorAll("[data-top11-best-photo]").forEach(photo=>{
-      const name = photo.dataset.top11BestPhoto || "";
-      const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
-      applyManualPhoto(photo, row, name);
+    return outGroups;
+  }
+
+  function baseRows(){
+    const raw = table("TOP11_BASE");
+
+    const wide = raw.filter(r => pick(r, ["ANO","ano","temporada","TEMPORADA"]) && (pick(r, ["GL"]) || pick(r, ["DEF"]) || pick(r, ["ATA8"])));
+    if(wide.length){
+      const cols = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+      const rows = [];
+      let id = 1;
+      wide.forEach(w => {
+        const season = pick(w, ["ANO","ano","temporada","TEMPORADA"]);
+        SLOT.forEach((s, idx) => {
+          const name = pick(w, [cols[idx]]);
+          if(!name) return;
+          rows.push({id:id++, ano:season, temporada:season, posicao_origem:s.orig, posicao_tatica:s.pos, jogador:name, x:s.x, y:s.y, mapa_url:BG});
+        });
+      });
+      return rows;
+    }
+
+    return raw.filter(r => pick(r, ["jogador","JOGADOR"]) && (pick(r, ["ano","ANO"]) || pick(r, ["temporada","TEMPORADA"])));
+  }
+
+  function careerRows(){
+    const cid = careerId();
+    return table("TOP11_CARREIRA").filter(r => {
+      const rcid = String(pick(r, ["carreira_id","CARREIRA_ID"]) || "");
+      return !rcid || !cid || rcid === cid;
+    }).filter(r => pick(r, ["jogador","JOGADOR"]));
+  }
+
+  function groups(){
+    const g = [
+      ...normalizeRowsBySeason(baseRows(), "base"),
+      ...normalizeRowsBySeason(careerRows(), "career")
+    ];
+
+    g.sort((a,b) => {
+      const s = String(b.season).localeCompare(String(a.season));
+      if(s) return s;
+      if(a.source !== b.source) return a.source === "career" ? -1 : 1;
+      return 0;
     });
+
+    if(!selectedKey && g.length) selectedKey = g[0].key;
+    if(selectedKey && !g.find(x => x.key === selectedKey) && g.length) selectedKey = g[0].key;
+    return g;
   }
 
-  async function safeFetchTop11Photo(name){
-    if(typeof FL_fetchPlayerPhotoV3790 !== "function") return "";
-    try{
-      return await FL_fetchPlayerPhotoV3790(name);
-    }catch(err){
-      return "";
-    }
+  function selectedGroup(){
+    const gs = groups();
+    return gs.find(g => g.key === selectedKey) || gs[0] || null;
   }
 
-  async function enrichTop11PhotosSafe(){
-    const cards = [...document.querySelectorAll(".top11-player-v3796")];
-
-    for(const card of cards){
-      const row = findRowForCard(card);
-      const name = card.dataset.player || pick(row || {}, ["jogador","JOGADOR"]) || "";
-      const photo = card.querySelector(".top11-photo-v3796,[data-top11-player-photo]");
-
-      if(applyManualPhoto(photo, row, name)) continue;
-      if(!photo || photo.querySelector("img")) continue;
-
-      const img = await safeFetchTop11Photo(name);
-      if(img && photo.isConnected && !photo.dataset.manualLocked){
-        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-      }
-    }
-
-    setTimeout(enforceCreatedAndManualPhotos, 80);
-  }
-
-  async function enrichTop11BestPhotosSafe(){
-    const nodes = [...document.querySelectorAll("[data-top11-best-photo]")];
-
-    for(const photo of nodes){
-      const name = photo.dataset.top11BestPhoto || "";
-      const row = allCareerRows().find(r => String(pick(r, ["jogador","JOGADOR"]) || "").trim().toLowerCase() === name.trim().toLowerCase());
-
-      if(applyManualPhoto(photo, row, name)) continue;
-      if(photo.querySelector("img")) continue;
-
-      const img = await safeFetchTop11Photo(name);
-      if(img && photo.isConnected && !photo.dataset.manualLocked){
-        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-      }
-    }
-
-    setTimeout(enforceCreatedAndManualPhotos, 80);
-  }
-
-  async function uploadToCloudinary(file){
+  async function uploadCloudinary(file){
     if(!file) return "";
-
     if(typeof CLOUD_NAME === "undefined" || typeof CLOUDINARY_UPLOAD_PRESET === "undefined"){
-      throw new Error("Cloudinary não configurado no dashboard.");
+      throw new Error("Cloudinary não configurado.");
     }
 
     const fd = new FormData();
     fd.append("file", file);
     fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
-    setStatus("Importando imagem do jogador...", "loading");
+    setStatus("Importando imagem...", "loading");
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-      method:"POST",
-      body:fd
-    });
-
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {method:"POST", body:fd});
     const json = await res.json();
-
-    if(!json.secure_url){
-      throw new Error(json.error?.message || "Erro ao importar imagem.");
-    }
+    if(!json.secure_url) throw new Error(json.error?.message || "Falha no upload.");
 
     setStatus("Imagem importada.", "ok");
     return json.secure_url;
   }
 
-  function getRowIndex(row){
-    const named = row.querySelector('[name^="jogador_"],[name^="foto_url_"],[name^="criado_"]');
-    if(named){
-      const m = String(named.name || "").match(/_(\d+)$/);
-      if(m) return Number(m[1]);
-    }
-    const rows = [...row.parentElement.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
-    return rows.indexOf(row);
-  }
+  async function fetchPhoto(name){
+    const key = norm(name);
+    if(!key) return "";
+    if(photoCache[key] !== undefined) return photoCache[key];
 
-  function cleanImportDuplicates(row, keepBtn){
-    row.querySelectorAll(".top11-import-btn-v3799,.top11-import-btn-v3800,.top11-import-btn-v3801").forEach(btn=>{
-      if(keepBtn && btn === keepBtn) return;
-      btn.remove();
-    });
-
-    row.querySelectorAll('input[type="file"][id*="top11"][id*="file"]').forEach((input, idx)=>{
-      if(idx > 0) input.remove();
-    });
-  }
-
-  function enhanceCreateModal(){
-    const form =
-      document.getElementById("top11-create-form-v3788") ||
-      document.getElementById("top11-create-form-v3787");
-
-    if(!form) return;
-
-    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
-
-    rows.forEach((row, fallbackIdx)=>{
-      const idx = getRowIndex(row);
-      const i = idx >= 0 ? idx : fallbackIdx;
-
-      let criadoSelect = row.querySelector(`[name="criado_${i}"]`) || row.querySelector('[name^="criado_"]');
-      if(!criadoSelect){
-        criadoSelect = document.createElement("select");
-        criadoSelect.name = `criado_${i}`;
-        criadoSelect.className = "top11-created-select-v3798";
-        criadoSelect.innerHTML = `<option value="">API</option><option value="SIM">Criado</option>`;
-        row.appendChild(criadoSelect);
-      }
-
-      let fotoInput = row.querySelector(`[name="foto_url_${i}"]`) || row.querySelector('[name^="foto_url_"]');
-      if(!fotoInput){
-        fotoInput = document.createElement("input");
-        fotoInput.name = `foto_url_${i}`;
-        row.appendChild(fotoInput);
-      }
-
-      fotoInput.readOnly = true;
-      fotoInput.placeholder = "Imagem importada";
-      fotoInput.classList.add("top11-auto-url-v3801");
-
-      let btn = row.querySelector(".top11-import-btn-v3801");
-      if(!btn){
-        btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = "Importar";
-        btn.className = "top11-import-btn-v3801";
-        fotoInput.insertAdjacentElement("afterend", btn);
-      }
-
-      cleanImportDuplicates(row, btn);
-
-      let file = row.querySelector(`#fl_top11_create_file_${i}_v3801`);
-      if(!file){
-        file = document.createElement("input");
-        file.type = "file";
-        file.id = `fl_top11_create_file_${i}_v3801`;
-        file.accept = "image/png,image/jpeg,image/webp";
-        file.style.display = "none";
-        row.appendChild(file);
-      }
-
-      btn.onclick = (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        file.click();
-      };
-
-      file.onchange = async ()=>{
-        const selected = file.files && file.files[0];
-        if(!selected) return;
-
-        try{
-          const url = await uploadToCloudinary(selected);
-
-          // Só esta linha recebe a URL.
-          fotoInput.value = url;
-          fotoInput.dataset.importedFor = String(i);
-          criadoSelect.value = "SIM";
-
-          btn.textContent = "Importado";
-          btn.classList.add("imported");
-
-          fotoInput.dispatchEvent(new Event("input", {bubbles:true}));
-          fotoInput.dispatchEvent(new Event("change", {bubbles:true}));
-        }catch(err){
-          console.error(err);
-          setStatus("Erro ao importar imagem: " + err.message, "error");
-        }finally{
-          file.value = "";
-        }
-      };
-    });
-  }
-
-  function enhanceEditModal(){
-    const modal = document.getElementById("fl-top11-player-edit-modal-v3798");
-    if(!modal) return;
-
-    const form = modal.querySelector("#fl-top11-player-edit-form-v3798");
-    if(!form) return;
-
-    const fotoInput = form.querySelector('[name="foto_url"]');
-    const criadoSelect = form.querySelector('[name="criado"]');
-    const preview = modal.querySelector("#fl-top11-player-preview-v3798");
-
-    if(!fotoInput) return;
-
-    fotoInput.readOnly = true;
-    fotoInput.placeholder = "Imagem importada";
-    fotoInput.classList.add("top11-auto-url-v3801");
-
-    const row = fotoInput.closest(".fl-url-row-v3798") || fotoInput.parentElement;
-
-    let btn = row.querySelector(".top11-import-btn-v3801");
-    if(!btn){
-      btn = row.querySelector("button") || document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "Importar";
-      btn.className = "top11-import-btn-v3801";
-      if(!btn.parentElement) row.appendChild(btn);
-    }else{
-      btn.textContent = "Importar";
-    }
-
-    let file = form.querySelector("#fl_top11_edit_file_v3801");
-    if(!file){
-      file = document.createElement("input");
-      file.type = "file";
-      file.id = "fl_top11_edit_file_v3801";
-      file.accept = "image/png,image/jpeg,image/webp";
-      file.style.display = "none";
-      form.appendChild(file);
-    }
-
-    btn.onclick = (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      file.click();
-    };
-
-    file.onchange = async ()=>{
-      const selected = file.files && file.files[0];
-      if(!selected) return;
-
+    if(typeof FL_fetchPlayerPhotoV3790 === "function"){
       try{
-        const url = await uploadToCloudinary(selected);
-
-        // Só o jogador aberto no modal recebe a URL.
-        fotoInput.value = url;
-        if(criadoSelect) criadoSelect.value = "SIM";
-
-        if(preview){
-          preview.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='Imagem inválida'">`;
-        }
-
-        btn.textContent = "Importado";
-        btn.classList.add("imported");
-
-        fotoInput.dispatchEvent(new Event("input", {bubbles:true}));
-        fotoInput.dispatchEvent(new Event("change", {bubbles:true}));
-      }catch(err){
-        console.error(err);
-        setStatus("Erro ao importar imagem: " + err.message, "error");
-      }finally{
-        file.value = "";
-      }
-    };
-  }
-
-  async function saveCreateModalIsolated(e){
-    const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
-    if(!btn) return;
-
-    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
-    if(!modal) return;
-
-    if(!/salvar top 11/i.test(btn.textContent || "") && btn.id !== "fl-top11-save-v3787" && btn.id !== "fl-top11-save-v3788") return;
-
-    const form =
-      document.getElementById("top11-create-form-v3788") ||
-      document.getElementById("top11-create-form-v3787");
-
-    if(!form) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-
-    if(window.FL_TOP11_SAVING_V3801) return;
-    window.FL_TOP11_SAVING_V3801 = true;
+        const img = await FL_fetchPlayerPhotoV3790(name);
+        photoCache[key] = img || "";
+        return photoCache[key];
+      }catch(e){}
+    }
 
     try{
-      btn.disabled = true;
-      btn.textContent = "Salvando...";
+      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
+      const data = await res.json();
+      const p = (data?.player || [])[0];
+      const img = p?.strCutout || p?.strRender || p?.strThumb || "";
+      photoCache[key] = img || "";
+      return img || "";
+    }catch(e){
+      photoCache[key] = "";
+      return "";
+    }
+  }
 
-      const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
-      const defaults = [
-        ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],
-        ["MEI",52,28],["MEI",52,50],["MEI",52,72],
-        ["PE",78,28],["CA",84,50],["PD",78,72]
-      ];
+  function photoInitial(row){
+    const name = row.jogador || "";
+    const manual = row.foto_url || "";
+    if(manual) return `<img src="${attr(manual)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+    return esc(initials(name));
+  }
 
-      const temporada = String(form.temporada?.value || "").trim();
-      const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
-      const createRows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+  async function enrichPhotos(){
+    const g = selectedGroup();
+    if(!g) return;
 
+    const cards = [...document.querySelectorAll(".top11-clean-player-v3806")];
+    for(const card of cards){
+      const idx = Number(card.dataset.idx);
+      const row = g.rows[idx];
+      if(!row) continue;
+
+      const photo = card.querySelector(".top11-clean-photo-v3806");
+      if(!photo) continue;
+
+      if(row.foto_url){
+        photo.dataset.locked = "1";
+        photo.innerHTML = `<img src="${attr(row.foto_url)}" onerror="this.parentElement.innerHTML='${esc(initials(row.jogador))}'">`;
+        continue;
+      }
+
+      if(isCreated(row)){
+        photo.dataset.locked = "1";
+        photo.innerHTML = esc(initials(row.jogador));
+        continue;
+      }
+
+      if(photo.querySelector("img")) continue;
+      const img = await fetchPhoto(row.jogador);
+      if(img && photo.isConnected && !photo.dataset.locked){
+        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(row.jogador))}'">`;
+      }
+    }
+
+    const best = [...document.querySelectorAll("[data-top11-best-name-v3806]")];
+    for(const node of best){
+      const name = node.dataset.top11BestNameV3806 || "";
+      const row = careerRows().find(r => String(pick(r,["jogador","JOGADOR"])).trim().toLowerCase() === name.trim().toLowerCase());
+
+      if(row && pick(row,["foto_url","FOTO_URL"])){
+        node.innerHTML = `<img src="${attr(pick(row,["foto_url","FOTO_URL"]))}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+        continue;
+      }
+      if(row && isCreated(row)){
+        node.innerHTML = esc(initials(name));
+        continue;
+      }
+      if(node.querySelector("img")) continue;
+      const img = await fetchPhoto(name);
+      if(img && node.isConnected){
+        node.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
+      }
+    }
+  }
+
+  function appearances(){
+    const rows = [
+      ...baseRows().map(r => Object.assign({__source:"base"}, r)),
+      ...careerRows().map(r => Object.assign({__source:"career"}, r))
+    ];
+
+    const map = new Map();
+
+    rows.forEach(r => {
+      const name = String(pick(r, ["jogador","JOGADOR"]) || "").trim();
+      if(!name) return;
+
+      const fn = posGroup(r);
+      if(bestFilter !== "TOTAL" && fn !== bestFilter) return;
+
+      const key = norm(name);
+      if(!map.has(key)) map.set(key, {jogador:name,total:0,base:0,carreira:0,funcoes:new Set(),anos:[]});
+      const item = map.get(key);
+      item.total++;
+      if(r.__source === "career") item.carreira++; else item.base++;
+      item.funcoes.add(fn);
+      const ano = pick(r, ["ano","ANO","temporada","TEMPORADA"]);
+      if(ano && !item.anos.includes(ano)) item.anos.push(ano);
+    });
+
+    return [...map.values()].sort((a,b) => b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
+  }
+
+  function bestHtml(){
+    const filters = [["TOTAL","Total"],["GOL","Goleiros"],["DEF","Defesa"],["MEI","Meio"],["ATA","Ataque"]];
+    const rows = appearances().slice(0,50);
+
+    return `
+      <section class="top11-clean-best-v3806" id="top11-clean-best-v3806">
+        <div class="top11-clean-best-head-v3806">
+          <div>
+            <h2>Melhores</h2>
+            <p>Mais aparições em Top 11.</p>
+          </div>
+          <div class="top11-clean-tabs-v3806">
+            ${filters.map(([id,label]) => `<button type="button" class="${bestFilter===id?'active':''}" data-top11-filter-v3806="${id}">${esc(label)}</button>`).join("")}
+          </div>
+        </div>
+        <div class="top11-clean-best-list-v3806">
+          ${rows.map((r,i) => `
+            <article class="top11-clean-best-card-v3806">
+              <span>${i+1}</span>
+              <div class="avatar" data-top11-best-name-v3806="${attr(r.jogador)}">${esc(initials(r.jogador))}</div>
+              <div class="info">
+                <strong>${esc(r.jogador)}</strong>
+                <small>${esc([...r.funcoes].join(" / "))} • ${r.base} base • ${r.carreira} carreira</small>
+                <em>${esc(r.anos.slice(0,8).join(" • "))}${r.anos.length>8?'...':''}</em>
+              </div>
+              <b>${r.total}x</b>
+            </article>
+          `).join("") || `<div class="top11-clean-empty-v3806">Sem dados.</div>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function pageEl(){
+    return document.getElementById("top11") || document.querySelector('[data-page="top11"]');
+  }
+
+  function render(){
+    if(rendering) return;
+    rendering = true;
+
+    try{
+      const page = pageEl();
+      if(!page) return;
+
+      const gs = groups();
+      const g = selectedGroup();
+
+      if(!g){
+        page.innerHTML = `
+          <section class="top11-clean-page-v3806">
+            <div class="top11-clean-head-v3806">
+              <div><h2>Top 11</h2><p>Nenhum dado encontrado em TOP11_BASE ou TOP11_CARREIRA.</p></div>
+              <button type="button" class="gold" id="top11-clean-add-v3806">+ Top 11</button>
+            </div>
+          </section>
+        `;
+        return;
+      }
+
+      const rows = g.rows || [];
+      const isEditing = editing && g.editable;
+
+      page.innerHTML = `
+        <section class="top11-clean-page-v3806">
+          <div class="top11-clean-head-v3806">
+            <div>
+              <h2>Top 11</h2>
+              <p>Histórico e carreira em um único seletor.</p>
+              <small>${rows.length}/11 jogadores neste Top 11.</small>
+            </div>
+            <div class="top11-clean-actions-v3806">
+              <select id="top11-clean-selector-v3806">
+                ${gs.map(x => `<option value="${attr(x.key)}" ${x.key===g.key?'selected':''}>${esc(x.label)} · ${esc(x.sourceLabel)}</option>`).join("")}
+              </select>
+              <button type="button" class="ghost" id="top11-clean-best-btn-v3806">Melhores</button>
+              ${g.editable ? `<button type="button" class="ghost" id="top11-clean-edit-v3806">${isEditing?'Cancelar edição':'Editar posições'}</button>` : ""}
+              <button type="button" class="gold" id="top11-clean-add-v3806">+ Top 11</button>
+            </div>
+          </div>
+
+          <div class="top11-clean-map-card-v3806">
+            <div class="top11-clean-toolbar-v3806">
+              <strong>Top 11 ${esc(g.label)}</strong>
+              <span>${esc(g.sourceLabel)}</span>
+              ${isEditing ? `<button type="button" class="gold" id="top11-clean-savepos-v3806">Salvar posições</button>` : ""}
+            </div>
+            <div class="top11-clean-pitch-v3806" id="top11-clean-pitch-v3806" style="background-image:linear-gradient(rgba(2,6,23,.08),rgba(2,6,23,.18)),url('${attr(BG)}')">
+              ${rows.map((r,idx) => `
+                <div class="top11-clean-player-v3806 ${isEditing?'editing':''}" data-idx="${idx}" data-id="${attr(r.id)}" style="left:${asPct(r.x) ?? SLOT[idx]?.x ?? 50}%; top:${asPct(r.y) ?? SLOT[idx]?.y ?? 50}%;">
+                  <div class="top11-clean-photo-v3806">${photoInitial(r)}</div>
+                  <div class="top11-clean-info-v3806">
+                    <b>${esc(r.jogador)}</b>
+                    <span>${esc(r.posicao_tatica || SLOT[idx]?.pos || "")}</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+
+          ${bestHtml()}
+        </section>
+      `;
+
+      bind();
+      if(isEditing) enableDrag();
+      setTimeout(enrichPhotos, 60);
+      setTimeout(enrichPhotos, 500);
+    }finally{
+      rendering = false;
+    }
+  }
+
+  function bind(){
+    const page = pageEl();
+    if(!page) return;
+
+    page.querySelector("#top11-clean-selector-v3806")?.addEventListener("change", e => {
+      selectedKey = e.target.value;
+      editing = false;
+      render();
+    });
+
+    page.querySelector("#top11-clean-best-btn-v3806")?.addEventListener("click", () => {
+      page.querySelector("#top11-clean-best-v3806")?.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+
+    page.querySelector("#top11-clean-edit-v3806")?.addEventListener("click", () => {
+      editing = !editing;
+      render();
+    });
+
+    page.querySelector("#top11-clean-savepos-v3806")?.addEventListener("click", savePositions);
+
+    page.querySelector("#top11-clean-add-v3806")?.addEventListener("click", openCreateModal);
+
+    page.querySelectorAll("[data-top11-filter-v3806]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        bestFilter = btn.dataset.top11FilterV3806 || "TOTAL";
+        render();
+        setTimeout(() => page.querySelector("#top11-clean-best-v3806")?.scrollIntoView({behavior:"smooth", block:"start"}), 40);
+      });
+    });
+
+    page.querySelectorAll(".top11-clean-player-v3806").forEach(card => {
+      card.addEventListener("click", e => {
+        if(editing) return;
+        const g = selectedGroup();
+        if(!g || !g.editable) return;
+        const row = g.rows[Number(card.dataset.idx)];
+        if(row) openEditModal(row);
+      });
+    });
+  }
+
+  function enableDrag(){
+    const pitch = document.getElementById("top11-clean-pitch-v3806");
+    if(!pitch) return;
+
+    pitch.querySelectorAll(".top11-clean-player-v3806").forEach(card => {
+      let drag = false;
+
+      const move = e => {
+        if(!drag) return;
+        const p = e.touches ? e.touches[0] : e;
+        const rect = pitch.getBoundingClientRect();
+        let x = ((p.clientX - rect.left)/rect.width)*100;
+        let y = ((p.clientY - rect.top)/rect.height)*100;
+        x = Math.max(4, Math.min(96, x));
+        y = Math.max(6, Math.min(94, y));
+        card.style.left = x + "%";
+        card.style.top = y + "%";
+        card.dataset.x = x.toFixed(2);
+        card.dataset.y = y.toFixed(2);
+      };
+
+      const stop = () => {
+        drag = false;
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", stop);
+      };
+
+      card.addEventListener("mousedown", e => {
+        e.preventDefault();
+        drag = true;
+        document.addEventListener("mousemove", move);
+        document.addEventListener("mouseup", stop);
+      });
+    });
+  }
+
+  async function savePositions(){
+    const g = selectedGroup();
+    if(!g || !g.editable) return;
+
+    const rows = [...document.querySelectorAll(".top11-clean-player-v3806")].map(card => {
+      const idx = Number(card.dataset.idx);
+      const row = Object.assign({}, g.rows[idx]);
+      const x = asPct(card.dataset.x) ?? asPct(card.style.left) ?? row.x;
+      const y = asPct(card.dataset.y) ?? asPct(card.style.top) ?? row.y;
+      row.x = x;
+      row.y = y;
+      return row;
+    });
+
+    await saveRows(g, rows, false);
+    editing = false;
+    render();
+  }
+
+  async function saveRows(group, rows, replace){
+    setStatus("Salvando Top 11...", "loading");
+
+    const result = await apiPost({
+      action:"saveTop11CareerV2",
+      carreira_id: careerId(),
+      carreira_temporada_id: group?.carreira_temporada_id || "",
+      temporada: group?.label || rows[0]?.temporada || "",
+      mapa_url: BG,
+      replace_existing: !!replace,
+      rows
+    });
+
+    if(!result || !result.ok) throw new Error(result?.error || "Falha ao salvar Top 11.");
+
+    if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
+
+    if(replace){
+      const season = group?.label || rows[0]?.temporada || "";
+      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r => String(pick(r,["temporada","TEMPORADA"])) !== String(season));
+    }
+
+    (result.data?.rows || rows).forEach(saved => {
+      const idx = window.db.TOP11_CARREIRA.findIndex(r => String(pick(r,["id","ID"])) === String(saved.id));
+      if(idx >= 0) window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], saved);
+      else window.db.TOP11_CARREIRA.push(saved);
+    });
+
+    setStatus("Top 11 salvo.", "ok");
+  }
+
+  function modalShell(title, body){
+    document.getElementById("top11-clean-modal-v3806")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "top11-clean-modal-v3806";
+    modal.className = "top11-clean-modal-v3806";
+    modal.innerHTML = `
+      <div class="top11-clean-backdrop-v3806"></div>
+      <div class="top11-clean-panel-v3806">
+        <button type="button" class="top11-clean-close-v3806">×</button>
+        <h2>${esc(title)}</h2>
+        ${body}
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector(".top11-clean-close-v3806").onclick = () => modal.remove();
+    modal.querySelector(".top11-clean-backdrop-v3806").onclick = () => modal.remove();
+    return modal;
+  }
+
+  function openEditModal(row){
+    const body = `
+      <form id="top11-clean-edit-form-v3806">
+        <label>Nome<input name="jogador" value="${attr(row.jogador)}" required></label>
+        <div class="top11-clean-form-grid-v3806">
+          <label>Posição
+            <select name="posicao_tatica">
+              ${["GOL","LE","ZAG","LD","VOL","MC","MEI","PE","CA","PD"].map(p => `<option value="${p}" ${String(row.posicao_tatica).toUpperCase()===p?'selected':''}>${p}</option>`).join("")}
+            </select>
+          </label>
+          <label>Origem
+            <select name="posicao_origem">
+              ${["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"].map(p => `<option value="${p}" ${String(row.posicao_origem).toUpperCase()===p?'selected':''}>${p}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <div class="top11-clean-form-grid-v3806">
+          <label>Imagem
+            <select name="criado">
+              <option value="" ${!isCreated(row)?'selected':''}>API</option>
+              <option value="SIM" ${isCreated(row)?'selected':''}>Criado</option>
+            </select>
+          </label>
+          <label>Overall<input name="overall" value="${attr(pick(row,["overall","OVERALL"]))}"></label>
+        </div>
+        <label>Foto
+          <div class="top11-clean-import-row-v3806">
+            <input name="foto_url" value="${attr(row.foto_url || "")}" readonly placeholder="Importe a imagem">
+            <button type="button" id="top11-clean-import-edit-v3806">Importar</button>
+          </div>
+        </label>
+        <div class="top11-clean-preview-v3806" id="top11-clean-preview-v3806">${photoInitial(row)}</div>
+        <div class="top11-clean-form-grid-v3806">
+          <label>Clube<input name="clube" value="${attr(pick(row,["clube","CLUBE"]))}"></label>
+          <label>País<input name="pais" value="${attr(pick(row,["pais","PAIS"]))}"></label>
+        </div>
+        <div class="top11-clean-modal-actions-v3806">
+          <button type="button" class="ghost" id="top11-clean-cancel-v3806">Cancelar</button>
+          <button type="submit" class="gold">Salvar jogador</button>
+        </div>
+        <input type="file" id="top11-clean-file-edit-v3806" accept="image/png,image/jpeg,image/webp" hidden>
+      </form>
+    `;
+    const modal = modalShell("Editar jogador do Top 11", body);
+    const form = modal.querySelector("#top11-clean-edit-form-v3806");
+    const file = modal.querySelector("#top11-clean-file-edit-v3806");
+
+    modal.querySelector("#top11-clean-cancel-v3806").onclick = () => modal.remove();
+    modal.querySelector("#top11-clean-import-edit-v3806").onclick = () => file.click();
+
+    file.onchange = async () => {
+      const f = file.files?.[0];
+      if(!f) return;
+      const url = await uploadCloudinary(f);
+      form.foto_url.value = url;
+      form.criado.value = "SIM";
+      modal.querySelector("#top11-clean-preview-v3806").innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='${esc(initials(form.jogador.value))}'">`;
+      file.value = "";
+    };
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+
+      const updated = Object.assign({}, row, {
+        jogador: form.jogador.value.trim(),
+        posicao_tatica: form.posicao_tatica.value,
+        posicao_origem: form.posicao_origem.value,
+        criado: form.criado.value,
+        foto_url: form.foto_url.value.trim(),
+        overall: form.overall.value.trim(),
+        clube: form.clube.value.trim(),
+        pais: form.pais.value.trim()
+      });
+
+      await saveRows(selectedGroup(), [updated], false);
+      modal.remove();
+      render();
+    };
+  }
+
+  function openCreateModal(){
+    const gs = groups().filter(g => g.source === "career");
+    const seasonOptions = (typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : table("CARREIRA_TEMPORADAS"))
+      .filter(s => !careerId() || String(pick(s,["carreira_id","CARREIRA_ID"]) || careerId()) === careerId());
+
+    const body = `
+      <form id="top11-clean-create-form-v3806">
+        <label>Temporada
+          ${seasonOptions.length ? `
+            <select name="temporada_select">
+              ${seasonOptions.map(s => `<option value="${attr(pick(s,["id","ID"]) || "")}" data-temp="${attr(pick(s,["temporada","TEMPORADA"]) || "")}">${esc(pick(s,["temporada","TEMPORADA"]) || pick(s,["clube","CLUBE"]) || "Temporada")}</option>`).join("")}
+            </select>
+          ` : ""}
+          <input name="temporada" value="${attr(seasonOptions[0] ? pick(seasonOptions[0],["temporada","TEMPORADA"]) : "")}" placeholder="Ex: 2034/2035" required>
+        </label>
+        <div class="top11-clean-create-grid-v3806">
+          ${SLOT.map((s,idx) => `
+            <div class="top11-clean-create-row-v3806" data-idx="${idx}">
+              <b>${idx+1}</b>
+              <input name="posicao_${idx}" value="${attr(s.pos)}">
+              <input name="jogador_${idx}" placeholder="Jogador">
+              <select name="criado_${idx}">
+                <option value="">API</option>
+                <option value="SIM">Criado</option>
+              </select>
+              <input name="foto_url_${idx}" readonly placeholder="Imagem importada">
+              <button type="button" data-import-idx="${idx}">Importar</button>
+              <input type="hidden" name="overall_${idx}">
+              <input type="hidden" name="clube_${idx}">
+              <input type="hidden" name="pais_${idx}">
+              <input type="file" id="top11-clean-file-${idx}-v3806" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+          `).join("")}
+        </div>
+        <div class="top11-clean-modal-actions-v3806">
+          <button type="button" class="ghost" id="top11-clean-create-cancel-v3806">Cancelar</button>
+          <button type="submit" class="gold">Salvar Top 11</button>
+        </div>
+      </form>
+    `;
+
+    const modal = modalShell("+ Top 11", body);
+    const form = modal.querySelector("#top11-clean-create-form-v3806");
+
+    modal.querySelector("#top11-clean-create-cancel-v3806").onclick = () => modal.remove();
+
+    const sel = form.temporada_select;
+    if(sel){
+      sel.onchange = () => {
+        const opt = sel.options[sel.selectedIndex];
+        form.temporada.value = opt?.dataset?.temp || "";
+      };
+    }
+
+    form.querySelectorAll("[data-import-idx]").forEach(btn => {
+      btn.onclick = () => {
+        const idx = btn.dataset.importIdx;
+        form.querySelector(`#top11-clean-file-${idx}-v3806`).click();
+      };
+    });
+
+    SLOT.forEach((s,idx) => {
+      const file = form.querySelector(`#top11-clean-file-${idx}-v3806`);
+      file.onchange = async () => {
+        const f = file.files?.[0];
+        if(!f) return;
+        const url = await uploadCloudinary(f);
+        form[`foto_url_${idx}`].value = url;
+        form[`criado_${idx}`].value = "SIM";
+        const btn = form.querySelector(`[data-import-idx="${idx}"]`);
+        if(btn) {
+          btn.textContent = "Importado";
+          btn.classList.add("imported");
+        }
+        file.value = "";
+      };
+    });
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+
+      const seasonId = form.temporada_select?.value || "";
+      const season = form.temporada.value.trim();
       const rows = [];
 
-      createRows.forEach((row, fallbackIdx)=>{
-        const idx = getRowIndex(row);
-        const i = idx >= 0 ? idx : fallbackIdx;
-        if(i < 0 || i > 10) return;
-
-        const jogadorInput = row.querySelector(`[name="jogador_${i}"]`) || row.querySelector('[name^="jogador_"]');
-        const posInput = row.querySelector(`[name="posicao_${i}"]`) || row.querySelector('[name^="posicao_"]');
-        const overallInput = row.querySelector(`[name="overall_${i}"]`) || row.querySelector('[name^="overall_"]');
-        const clubeInput = row.querySelector(`[name="clube_${i}"]`) || row.querySelector('[name^="clube_"]');
-        const paisInput = row.querySelector(`[name="pais_${i}"]`) || row.querySelector('[name^="pais_"]');
-        const criadoInput = row.querySelector(`[name="criado_${i}"]`) || row.querySelector('[name^="criado_"]');
-        const fotoInput = row.querySelector(`[name="foto_url_${i}"]`) || row.querySelector('[name^="foto_url_"]');
-
-        const jogador = String(jogadorInput?.value || "").trim();
-        if(!jogador) return;
-
+      SLOT.forEach((s,idx) => {
+        const name = form[`jogador_${idx}`].value.trim();
+        if(!name) return;
         rows.push({
-          carreira_id: active?.carreira_id || "",
-          carreira_temporada_id: carreiraTemporadaId,
-          temporada,
-          posicao_origem: origins[i],
-          posicao_tatica: String(posInput?.value || defaults[i]?.[0] || "").trim(),
-          jogador,
-          overall: String(overallInput?.value || "").trim(),
-          clube: String(clubeInput?.value || "").trim(),
-          pais: String(paisInput?.value || "").trim(),
-          criado: String(criadoInput?.value || "").trim(),
-          foto_url: String(fotoInput?.value || "").trim(),
-          x: defaults[i]?.[1] ?? "",
-          y: defaults[i]?.[2] ?? "",
-          mapa_url: TOP11_BG_V3801
+          carreira_id: careerId(),
+          carreira_temporada_id: seasonId,
+          temporada: season,
+          posicao_origem: s.orig,
+          posicao_tatica: form[`posicao_${idx}`].value.trim() || s.pos,
+          jogador: name,
+          overall: "",
+          clube: "",
+          pais: "",
+          criado: form[`criado_${idx}`].value,
+          foto_url: form[`foto_url_${idx}`].value.trim(),
+          x: s.x,
+          y: s.y,
+          mapa_url: BG
         });
       });
 
@@ -18330,111 +18221,48 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
         return;
       }
 
-      setStatus("Salvando Top 11...", "loading");
-
-      const result = await apiPost({
-        action:"saveTop11CareerV2",
-        carreira_id: active?.carreira_id || "",
-        carreira_temporada_id: carreiraTemporadaId,
-        temporada,
-        mapa_url: TOP11_BG_V3801,
-        replace_existing:true,
-        rows
-      });
-
-      if(!result || !result.ok){
-        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
-      }
-
-      if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
-
-      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r=>{
-        const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
-        const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
-        const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
-        return !(sameCareer && (sameSeasonId || sameSeason));
-      });
-
-      (result.data?.rows || rows).forEach(r=>window.db.TOP11_CARREIRA.push(r));
-
+      await saveRows({label:season, carreira_temporada_id:seasonId}, rows, true);
       modal.remove();
-      setStatus("Top 11 salvo.", "ok");
-
-      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
-      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
-      else if(typeof renderTop11 === "function") renderTop11();
-
-      setTimeout(enforceCreatedAndManualPhotos, 100);
-      setTimeout(enforceCreatedAndManualPhotos, 700);
-    }catch(err){
-      console.error(err);
-      setStatus("Erro ao salvar Top 11: " + err.message, "error");
-    }finally{
-      window.FL_TOP11_SAVING_V3801 = false;
-      btn.disabled = false;
-      btn.textContent = "Salvar Top 11";
-    }
+      selectedKey = seasonId ? `career:${seasonId}` : `career:${season}`;
+      render();
+    };
   }
 
-  function fixIfOldTop11Appears(){
-    const page = document.getElementById("top11");
-    if(!page) return;
+  // Overrides finais e seguros.
+  window.FL_RENDER_TOP11_CLEAN_V3806 = render;
+  window.renderTop11 = render;
+  window.FL_renderTop11NewV3796 = render;
+  window.FL_renderTop11NewV3797 = render;
+  window.FL_renderTop11UnifiedV3790 = render;
+  window.FL_renderTop11UnifiedV3792 = render;
+  window.FL_renderTop11UnifiedV3793 = render;
+  window.FL_renderTop11UnifiedV3794 = render;
+  window.FL_renderTop11UnifiedV3795 = render;
 
-    const hasOldEmptyGreen =
-      page.querySelector(".top11-create-card-v3787,.top11-create-empty-v3787") ||
-      (page.textContent || "").includes("Melhor onze da temporada.");
+  try { renderTop11 = render; } catch(e){}
 
-    const hasNewRender = page.querySelector(".top11-page-head-v3796,.top11-map-section-v3796");
-
-    if(hasOldEmptyGreen && !hasNewRender){
-      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
-      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
-    }
+  const oldRenderPage = window.renderPageById || (typeof renderPageById === "function" ? renderPageById : null);
+  if(oldRenderPage && !window.__top11CleanRenderPageV3806){
+    window.__top11CleanRenderPageV3806 = true;
+    window.renderPageById = function(pageId){
+      const id = String(pageId || "").toLowerCase().replace(/\s+/g,"");
+      if(id === "top11" || id.includes("top11")) {
+        setTimeout(render, 0);
+        return render();
+      }
+      return oldRenderPage.apply(this, arguments);
+    };
+    try { renderPageById = window.renderPageById; } catch(e){}
   }
 
-  const observer = new MutationObserver(()=>{
-    enhanceCreateModal();
-    enhanceEditModal();
-    enforceCreatedAndManualPhotos();
-    fixIfOldTop11Appears();
-  });
-
-  observer.observe(document.body, {childList:true, subtree:true});
-
-  document.addEventListener("click", function(e){
-    const btn = e.target.closest("button");
-    if(btn && /\+\s*top\s*11/i.test(btn.textContent || "")){
-      setTimeout(enhanceCreateModal, 120);
-      setTimeout(enhanceCreateModal, 450);
-      setTimeout(enhanceCreateModal, 900);
+  document.addEventListener("click", e => {
+    const target = e.target.closest("[data-page],button,a,.nav-item,.sidebar-item,.menu-item");
+    if(!target) return;
+    const data = String(target.dataset?.page || "").toLowerCase().replace(/\s+/g,"");
+    const text = String(target.textContent || "");
+    if(data === "top11" || data.includes("top11") || /top\s*11/i.test(text)){
+      setTimeout(render, 50);
+      setTimeout(render, 250);
     }
-
-    const card = e.target.closest(".top11-player-v3796");
-    if(card){
-      setTimeout(enhanceEditModal, 120);
-      setTimeout(enhanceEditModal, 450);
-    }
-
-    setTimeout(enforceCreatedAndManualPhotos, 250);
-    setTimeout(fixIfOldTop11Appears, 300);
   }, true);
-
-  document.addEventListener("click", saveCreateModalIsolated, true);
-
-  // Reforços sem mexer no render principal.
-  window.FL_enforceTop11CreatedPhotosV3801 = enforceCreatedAndManualPhotos;
-  window.FL_enhanceCreateTop11ModalV3801 = enhanceCreateModal;
-  window.FL_enhanceEditPlayerModalV3801 = enhanceEditModal;
-  window.FL_enrichTop11PhotosV3801 = enrichTop11PhotosSafe;
-  window.FL_enrichTop11BestPhotosV3801 = enrichTop11BestPhotosSafe;
-
-  // Só substitui enriquecimento de foto, não substitui render.
-  window.FL_enrichTop11PhotosV3790 = enrichTop11PhotosSafe;
-  window.FL_enrichTop11BestPhotosV3790 = enrichTop11BestPhotosSafe;
-
-  setTimeout(fixIfOldTop11Appears, 400);
-  setTimeout(enforceCreatedAndManualPhotos, 600);
-  setTimeout(fixIfOldTop11Appears, 1400);
-  setTimeout(enforceCreatedAndManualPhotos, 1600);
-  setInterval(enforceCreatedAndManualPhotos, 2500);
 })();
