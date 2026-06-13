@@ -1,4 +1,4 @@
-console.log('Football Legacy script carregado v3.8.09 top11 all time def geral');
+console.log('Football Legacy script carregado v3.8.03 syntax safe emergency');
 const API_URL = window.FOOTBALL_LEGACY_API || "/api/football-legacy";
 const CLOUD_NAME = window.CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = window.CLOUDINARY_UPLOAD_PRESET || "";
@@ -28,9 +28,9 @@ const schemas = {
 
 const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu"};
 
-function $(id){return document.getElementById(id)}
+var $ = function $(id){return document.getElementById(id)}
 
-function jsonpRequest(url, timeoutMs = 20000){
+var jsonpRequest = function jsonpRequest(url, timeoutMs = 20000){
   return new Promise((resolve, reject)=>{
     const callbackName = "__fl_jsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
     const separator = url.includes("?") ? "&" : "?";
@@ -40,7 +40,7 @@ function jsonpRequest(url, timeoutMs = 20000){
       reject(new Error("Tempo esgotado carregando Apps Script via JSONP"));
     }, timeoutMs);
 
-    function cleanup(){
+    var cleanup = function cleanup(){
       clearTimeout(timeout);
       if(script.parentNode) script.parentNode.removeChild(script);
       try{ delete window[callbackName]; }catch(e){ window[callbackName] = undefined; }
@@ -60,33 +60,33 @@ function jsonpRequest(url, timeoutMs = 20000){
     document.head.appendChild(script);
   });
 }
-function bind(id,event,handler){
+var bind = function bind(id,event,handler){
   const el = $(id);
   if(el) el.addEventListener(event, handler);
 }
-function setClick(id,handler){
+var setClick = function setClick(id,handler){
   bind(id,"click",handler);
 }
-function setStatus(msg,type=""){const el=$("statusBar"); if(el){el.textContent=msg; el.className="status-bar "+type}}
-function setText(id,v){const el=$(id); if(el) el.textContent=v}
-function num(v){const n=Number(String(v||"").replace(",", ".")); return isNaN(n)?0:n}
-function getTable(name){return db[name]||[]}
-function byId(table,id){return getTable(table).find(x=>String(x.id)===String(id))}
-function initials(name){return String(name||"FL").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase()}
-function compName(id){const c=byId("COMPETICOES",id); return c?c.nome:(id||"-")}
-function personagemName(id){const p=byId("PERSONAGENS",id); return p?p.nome:(id||"-")}
-function getUserUniverses(uid){return getTable("UNIVERSOS").filter(u=>String(u.usuario_id)===String(uid))}
-function getCareersForUser(uid){const ids=getUserUniverses(uid).map(u=>String(u.id)); return getTable("CARREIRAS").filter(c=>ids.includes(String(c.universo_id)))}
-function getActiveUser(){return byId("USUARIOS",active.usuario_id)||getTable("USUARIOS")[0]}
-function getActiveCareer(){return byId("CARREIRAS",active.carreira_id)||getCareersForUser(active.usuario_id)[0]||getTable("CARREIRAS")[0]}
-function getCareerCharacters(){const c=getActiveCareer(); return c?getTable("PERSONAGENS").filter(p=>String(p.carreira_id)===String(c.id)):[]}
-function getActiveProtagonist(){return byId("PERSONAGENS",active.protagonista_id)||getCareerCharacters().find(p=>p.tipo==="protagonista")||getCareerCharacters()[0]}
-function getCareerSeasons(){const c=getActiveCareer(); return c?getTable("TEMPORADAS").filter(t=>String(t.carreira_id)===String(c.id)):[]}
-function getCareerMedia(){const c=getActiveCareer(); return c?getTable("MIDIAS").filter(m=>String(m.carreira_id)===String(c.id)):[]}
-function getProtagonistStats(){const p=getActiveProtagonist(); return p?getTable("ESTATISTICAS").filter(s=>String(s.personagem_id)===String(p.id)):[]}
-function saveActive(){Object.entries(active).forEach(([k,v])=>localStorage.setItem("fl_active_"+k, v||""))}
+var setStatus = function setStatus(msg,type=""){const el=$("statusBar"); if(el){el.textContent=msg; el.className="status-bar "+type}}
+var setText = function setText(id,v){const el=$(id); if(el) el.textContent=v}
+var num = function num(v){const n=Number(String(v||"").replace(",", ".")); return isNaN(n)?0:n}
+var getTable = function getTable(name){return db[name]||[]}
+var byId = function byId(table,id){return getTable(table).find(x=>String(x.id)===String(id))}
+var initials = function initials(name){return String(name||"FL").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase()}
+var compName = function compName(id){const c=byId("COMPETICOES",id); return c?c.nome:(id||"-")}
+var personagemName = function personagemName(id){const p=byId("PERSONAGENS",id); return p?p.nome:(id||"-")}
+var getUserUniverses = function getUserUniverses(uid){return getTable("UNIVERSOS").filter(u=>String(u.usuario_id)===String(uid))}
+var getCareersForUser = function getCareersForUser(uid){const ids=getUserUniverses(uid).map(u=>String(u.id)); return getTable("CARREIRAS").filter(c=>ids.includes(String(c.universo_id)))}
+var getActiveUser = function getActiveUser(){return byId("USUARIOS",active.usuario_id)||getTable("USUARIOS")[0]}
+var getActiveCareer = function getActiveCareer(){return byId("CARREIRAS",active.carreira_id)||getCareersForUser(active.usuario_id)[0]||getTable("CARREIRAS")[0]}
+var getCareerCharacters = function getCareerCharacters(){const c=getActiveCareer(); return c?getTable("PERSONAGENS").filter(p=>String(p.carreira_id)===String(c.id)):[]}
+var getActiveProtagonist = function getActiveProtagonist(){return byId("PERSONAGENS",active.protagonista_id)||getCareerCharacters().find(p=>p.tipo==="protagonista")||getCareerCharacters()[0]}
+var getCareerSeasons = function getCareerSeasons(){const c=getActiveCareer(); return c?getTable("TEMPORADAS").filter(t=>String(t.carreira_id)===String(c.id)):[]}
+var getCareerMedia = function getCareerMedia(){const c=getActiveCareer(); return c?getTable("MIDIAS").filter(m=>String(m.carreira_id)===String(c.id)):[]}
+var getProtagonistStats = function getProtagonistStats(){const p=getActiveProtagonist(); return p?getTable("ESTATISTICAS").filter(s=>String(s.personagem_id)===String(p.id)):[]}
+var saveActive = function saveActive(){Object.entries(active).forEach(([k,v])=>localStorage.setItem("fl_active_"+k, v||""))}
 
-function ensureActive(){
+var ensureActive = function ensureActive(){
   const users=getTable("USUARIOS"); if(!active.usuario_id&&users[0]) active.usuario_id=String(users[0].id);
   let careers=getCareersForUser(active.usuario_id); if(!careers.length) careers=getTable("CARREIRAS");
   if(!active.carreira_id&&careers[0]) active.carreira_id=String(careers[0].id);
@@ -94,7 +94,7 @@ function ensureActive(){
   saveActive();
 }
 
-function escapeAttr(value){
+var escapeAttr = function escapeAttr(value){
   return String(value || "")
     .replace(/\\/g, "\\\\")
     .replace(/'/g, "\\'")
@@ -103,7 +103,7 @@ function escapeAttr(value){
     .replace(/>/g, "&gt;");
 }
 
-function escapeHtml(value){
+var escapeHtml = function escapeHtml(value){
   return String(value || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -113,14 +113,14 @@ function escapeHtml(value){
 }
 
 
-function seasonKey(value){const m=String(value||"").match(/\d{4}/g); return m?Number(m[m.length-1]):0}
-function compareSeasonsDesc(a,b){return seasonKey(b)-seasonKey(a)}
-function getAvailableSeasonsForActivePlayer(){
+var seasonKey = function seasonKey(value){const m=String(value||"").match(/\d{4}/g); return m?Number(m[m.length-1]):0}
+var compareSeasonsDesc = function compareSeasonsDesc(a,b){return seasonKey(b)-seasonKey(a)}
+var getAvailableSeasonsForActivePlayer = function getAvailableSeasonsForActivePlayer(){
   const stats=getProtagonistStats().map(s=>s.temporada).filter(Boolean);
   const seasons=getCareerSeasons().map(s=>s.temporada).filter(Boolean);
   return [...new Set([...stats,...seasons])].sort(compareSeasonsDesc);
 }
-function getCurrentSeason(stats=getProtagonistStats()){
+var getCurrentSeason = function getCurrentSeason(stats=getProtagonistStats()){
   const all=[...new Set([...stats.map(s=>s.temporada).filter(Boolean),...getCareerSeasons().map(s=>s.temporada).filter(Boolean)])].sort(compareSeasonsDesc);
   if(active.temporada&&all.includes(active.temporada)) return active.temporada;
   active.temporada=all[0]||""; saveActive(); return active.temporada;
@@ -141,14 +141,14 @@ const SUMMARY_TABLES = [
   "CAMPEOES"
 ];
 
-function normalizeDbAfterLoad(){
+var normalizeDbAfterLoad = function normalizeDbAfterLoad(){
   if(!db || typeof db !== "object") db = {};
   Object.keys(db).forEach(k=>{
     if(!Array.isArray(db[k])) db[k] = [];
   });
 }
 
-async function fetchApiAction(action){
+var fetchApiAction = async function fetchApiAction(action){
   const base = API_URL;
   const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
   console.log("Football Legacy API:", url);
@@ -175,7 +175,7 @@ async function fetchApiAction(action){
   return data.data || {};
 }
 
-function mergeDb(partial){
+var mergeDb = function mergeDb(partial){
   if(!db || typeof db !== "object") db = {};
   Object.keys(partial || {}).forEach(k=>{
     db[k] = Array.isArray(partial[k]) ? partial[k] : [];
@@ -183,7 +183,7 @@ function mergeDb(partial){
   normalizeDbAfterLoad();
 }
 
-function renderOnlyResumoAfterSummary(){
+var renderOnlyResumoAfterSummary = function renderOnlyResumoAfterSummary(){
   try{
     renderGlobalSelectorsOnly ? renderGlobalSelectorsOnly() : renderSelectors();
   }catch(err){
@@ -204,7 +204,7 @@ function renderOnlyResumoAfterSummary(){
   }
 }
 
-async function loadData(options={}){
+var loadData = async function loadData(options={}){
   setStatus("Carregando Resumo rápido...");
 
   let summaryLoaded = false;
@@ -263,14 +263,14 @@ async function loadData(options={}){
   }
 }
 
-async function forceRefreshData(){
+var forceRefreshData = async function forceRefreshData(){
   await loadData({force:true});
 }
 
 window.forceRefreshData = forceRefreshData;
 
 
-async function apiPost(payload){
+var apiPost = async function apiPost(payload){
   const res = await fetch(API_URL, {
     method:"POST",
     headers:{
@@ -291,12 +291,12 @@ async function apiPost(payload){
 let renderedPages = {};
 let currentPageId = "resumo";
 
-function getCurrentPageId(){
+var getCurrentPageId = function getCurrentPageId(){
   const activePage = document.querySelector(".page.active");
   return activePage ? activePage.id : (currentPageId || "resumo");
 }
 
-function renderGlobalSelectorsOnly(){
+var renderGlobalSelectorsOnly = function renderGlobalSelectorsOnly(){
   try{
     renderSelectors();
   }catch(err){
@@ -310,7 +310,7 @@ function renderGlobalSelectorsOnly(){
   }
 }
 
-function renderResumoFast(){
+var renderResumoFast = function renderResumoFast(){
   const tasks = [
     ["renderHero", ()=>renderHero()],
     ["renderSummaryCards", ()=>renderSummaryCards()],
@@ -323,7 +323,7 @@ function renderResumoFast(){
   });
 }
 
-function renderPageById(pageId, force=false){
+var renderPageById = function renderPageById(pageId, force=false){
   const page = pageId || getCurrentPageId() || "resumo";
 
   if(!force && renderedPages[page]) return;
@@ -352,7 +352,7 @@ function renderPageById(pageId, force=false){
   renderedPages[page] = true;
 }
 
-function renderAll(){
+var renderAll = function renderAll(){
   renderedPages = {};
   renderGlobalSelectorsOnly();
 
@@ -368,7 +368,7 @@ function renderAll(){
 
 
 
-function renderSelectors(){
+var renderSelectors = function renderSelectors(){
   const users=getTable("USUARIOS");
   if($("userSelect")) $("userSelect").innerHTML=users.map(u=>`<option value="${u.id}" ${String(u.id)===String(active.usuario_id)?"selected":""}>${u.nome||"Usuário "+u.id}</option>`).join("")||`<option>Nenhum usuário</option>`;
   let careers=getCareersForUser(active.usuario_id); if(!careers.length) careers=getTable("CARREIRAS");
@@ -377,7 +377,7 @@ function renderSelectors(){
   if($("protagonistSelect")) $("protagonistSelect").innerHTML=chars.map(p=>`<option value="${p.id}" ${String(p.id)===String(active.protagonista_id)?"selected":""}>${p.nome||"Personagem "+p.id}</option>`).join("")||`<option>Nenhum personagem</option>`;
 }
 
-function renderSeasonSelector(){
+var renderSeasonSelector = function renderSeasonSelector(){
   const select=$("seasonSelect"); if(!select) return;
   const seasons=getAvailableSeasonsForActivePlayer();
   const current=getCurrentSeason();
@@ -386,7 +386,7 @@ function renderSeasonSelector(){
   select.onchange=e=>{active.temporada=e.target.value;saveActive();renderDashboard();renderPlayedSeasons();renderStats()};
 }
 
-function renderDashboard(){
+var renderDashboard = function renderDashboard(){
   const user=getActiveUser(), career=getActiveCareer(), protagonist=getActiveProtagonist(), stats=getProtagonistStats();
   const season=getCurrentSeason(stats);
   const currentStats=season?stats.filter(s=>String(s.temporada)===String(season)):stats;
@@ -400,7 +400,7 @@ function renderDashboard(){
   setPlayerPhoto(protagonist); renderSeasonSelector();
 }
 
-function setPlayerPhoto(p){
+var setPlayerPhoto = function setPlayerPhoto(p){
   const img=$("mainPlayerPhoto"), fallback=$("mainInitials"); if(!img||!fallback)return;
   const url=p&&p.foto?String(p.foto).trim():"";
   img.onload=()=>{img.classList.add("visible");fallback.classList.add("hidden")};
@@ -410,7 +410,7 @@ function setPlayerPhoto(p){
 
 
 
-function setButtonSaving(btn, label="Salvando..."){
+var setButtonSaving = function setButtonSaving(btn, label="Salvando..."){
   if(!btn) return;
   btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
   btn.disabled = true;
@@ -418,7 +418,7 @@ function setButtonSaving(btn, label="Salvando..."){
   btn.textContent = label;
 }
 
-function clearButtonSaving(btn){
+var clearButtonSaving = function clearButtonSaving(btn){
   if(!btn) return;
   btn.disabled = false;
   btn.classList.remove("saving");
@@ -429,7 +429,7 @@ function clearButtonSaving(btn){
 }
 
 // ===== V3.6 SEASON STINTS / PASSAGENS POR TIME =====
-function monthYearToSeason(value){
+var monthYearToSeason = function monthYearToSeason(value){
   const v = String(value || "").trim();
   if(!v) return "";
 
@@ -466,7 +466,7 @@ function monthYearToSeason(value){
   return `${start}/${start+1}`;
 }
 
-function getCareerSeasonRecords(){
+var getCareerSeasonRecords = function getCareerSeasonRecords(){
   const carreira = getActiveCareer();
   if(!carreira) return [];
 
@@ -479,21 +479,21 @@ function getCareerSeasonRecords(){
     .filter(t=>String(t.carreira_id)===String(carreira.id));
 }
 
-function getSeasonRecordLabel(row){
+var getSeasonRecordLabel = function getSeasonRecordLabel(row){
   const inicio = row.data_inicio || row.periodo_inicio || "";
   const fim = row.data_fim || row.periodo_fim || "";
   const periodo = inicio || fim ? ` • ${inicio || "?"} até ${fim || "?"}` : "";
   return `${row.temporada || "-"} • ${row.clube_nome || row.time || "-"}${periodo}`;
 }
 
-function getCompetitionsFromSeasonRecord(row){
+var getCompetitionsFromSeasonRecord = function getCompetitionsFromSeasonRecord(row){
   return String(row.competicoes || "")
     .split(",")
     .map(x=>x.trim())
     .filter(Boolean);
 }
 
-function findCompetitionIdByName(name){
+var findCompetitionIdByName = function findCompetitionIdByName(name){
   const all = [...getTable("COMPETICOES"), ...getTable("COMPETICOES_BASE")];
   const n = String(name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const found = all.find(c=>{
@@ -504,7 +504,7 @@ function findCompetitionIdByName(name){
   return found ? found.id : "";
 }
 
-function getSeasonStatsForRecord(seasonRecord){
+var getSeasonStatsForRecord = function getSeasonStatsForRecord(seasonRecord){
   const p = getActiveProtagonist();
   if(!p || !seasonRecord) return [];
 
@@ -522,7 +522,7 @@ function getSeasonStatsForRecord(seasonRecord){
 }
 
 
-function renderPlayedSeasons(){
+var renderPlayedSeasons = function renderPlayedSeasons(){
   const container = $("playedSeasonsCards") || $("playedSeasonsTable");
   if(!container) return;
 
@@ -580,7 +580,7 @@ function renderPlayedSeasons(){
 }
 
 
-function trophyIcon(name){
+var trophyIcon = function trophyIcon(name){
   const n = String(name||"").toLowerCase();
   if(n.includes("champions")) return "🏆";
   if(n.includes("mundo") || n.includes("world")) return "🌍";
@@ -591,33 +591,33 @@ function trophyIcon(name){
   return "🏆";
 }
 
-function renderPersonagens(){
+var renderPersonagens = function renderPersonagens(){
   const el=$("personagens-list"); if(!el)return;
   const chars=getCareerCharacters();
   el.innerHTML=chars.map(p=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar" style="${p.foto?`background-image:url('${p.foto}')`:''}">${p.foto?'':initials(p.nome)}</div><div><h3><button class="clickable-player-name" onclick="openForm('personagem','${p.id}')">${p.nome||"-"}</button></h3><small>${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div><small>Nacionalidade: ${p.nacionalidade||"-"}</small><div class="entity-actions"><button onclick="setActiveProtagonist('${p.id}')">Selecionar</button><button onclick="openForm('personagem','${p.id}')">Editar</button><button class="delete" onclick="removeRecord('personagem','${p.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum personagem nesta carreira.");
 }
 
-function renderStats(){
+var renderStats = function renderStats(){
   const el=$("stats-table"); if(!el)return;
   const season=getCurrentSeason(); const rows=getProtagonistStats().filter(s=>!season||String(s.temporada)===String(season));
   el.innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
   rows.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return`<div class="table-row"><div>${s.temporada}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
 }
 
-function renderTrofeus(){
+var renderTrofeus = function renderTrofeus(){
   const el=$("trophy-grid"); if(!el)return;
   const rows=getTable("CAMPEOES");
   el.innerHTML=rows.map(t=>`<article class="trophy-card"><h3>${compName(t.competicao_id)}</h3><div style="font-size:36px;margin:12px 0">🏆</div><span>${t.temporada||"-"} • ${t.clube||"-"}</span><div class="entity-actions"><button onclick="openForm('campeao','${t.id}')">Editar</button><button class="delete" onclick="removeRecord('campeao','${t.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum título cadastrado.");
 }
 
-function renderTop11(){
+var renderTop11 = function renderTop11(){
   const el=$("top11Pitch"); if(!el)return;
   const season=getCurrentSeason(); const rows=getTable("TOP11").filter(r=>!season||String(r.temporada)===String(season));
   el.innerHTML=rows.map(p=>`<div class="field-player">${p.overall||"-"}<br><span>${p.posicao||""}</span><span>${p.jogador||"-"}</span></div>`).join("")||`<div class="field-player">+<br><span>Cadastre o Top 11</span></div>`;
 }
 
 
-function uniqueBallonRows(rows){
+var uniqueBallonRows = function uniqueBallonRows(rows){
   const map = new Map();
 
   rows
@@ -637,12 +637,12 @@ function uniqueBallonRows(rows){
 }
 
 
-function getBallonSeasons(){
+var getBallonSeasons = function getBallonSeasons(){
   return [...new Set(getTable("BOLA_DE_OURO").map(x=>x.temporada).filter(Boolean))]
     .sort(compareSeasonsDesc);
 }
 
-function getActiveBallonSeason(){
+var getActiveBallonSeason = function getActiveBallonSeason(){
   const seasons = getBallonSeasons();
 
   if(activeBallonSeason && seasons.includes(activeBallonSeason)){
@@ -661,7 +661,7 @@ function getActiveBallonSeason(){
   return activeBallonSeason;
 }
 
-function renderBallonSeasonSelector(){
+var renderBallonSeasonSelector = function renderBallonSeasonSelector(){
   const select = $("ballonSeasonSelect");
   if(!select) return;
 
@@ -681,7 +681,7 @@ function renderBallonSeasonSelector(){
   };
 }
 
-function renderBolaOuro(){
+var renderBolaOuro = function renderBolaOuro(){
   renderBallonSeasonSelector();
 
   const all=getTable("BOLA_DE_OURO");
@@ -725,27 +725,27 @@ function renderBolaOuro(){
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
 
-function renderClubes(){
+var renderClubes = function renderClubes(){
   const el=$("clubes-list"); if(!el)return;
   const rows=getTable("CLUBES");
   el.innerHTML=rows.map(c=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar">${c.escudo?`<img src="${c.escudo}">`:"🏟"}</div><div><h3>${c.nome||"-"}</h3><small>${c.pais||"-"}</small></div></div><small>Estádio: ${c.estadio||"-"}</small><div class="entity-actions"><button onclick="openForm('clube','${c.id}')">Editar</button><button class="delete" onclick="removeRecord('clube','${c.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum clube.");
 }
 
-function renderMuseu(){
+var renderMuseu = function renderMuseu(){
   const el=$("media-grid"); if(!el)return;
   const rows=getCareerMedia();
   el.innerHTML=rows.map(m=>`<article class="media-card"><div style="font-size:34px">${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button onclick="openForm('midia','${m.id}')">Editar</button><button class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia.");
 }
 
-function renderPrimaryButton(){
+var renderPrimaryButton = function renderPrimaryButton(){
   const btn=$("primaryCreateBtn"); if(!btn)return;
   const career=getActiveCareer();
   btn.textContent=career?"+ Criar Personagem":"+ Criar Carreira";
   btn.onclick=()=>career?openForm("personagem"):openQuickCareerForm();
 }
 
-function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
-function flagFrom(v){
+var emptyCard = function emptyCard(text){return `<article class="entity-card"><small>${text}</small></article>`}
+var flagFrom = function flagFrom(v){
   const raw = String(v || "").trim();
   if(!raw) return "🌐";
 
@@ -827,14 +827,14 @@ const modalBox = $("modalBox") || document.querySelector(".modal-box");
 const form = $("dynamic-form");
 const modalTitle = $("modal-title");
 
-function closeModal(){
+var closeModal = function closeModal(){
   if(modal) modal.classList.remove("active");
   if(modalBox) modalBox.classList.remove("wide");
   if(form) form.innerHTML = "";
 }
 
 
-function navigate(pageId){
+var navigate = function navigate(pageId){
   if(!pageId) return;
 
   currentPageId = pageId;
@@ -875,7 +875,7 @@ if(modal){
 
 
 // ===== V3.6.1 OVERRIDE: GENERIC FORM SAVE FIX =====
-function openForm(kind,id=null){
+var openForm = function openForm(kind,id=null){
   if(!modal || !form || !modalTitle){
     alert("Modal do dashboard não encontrado no HTML.");
     return;
@@ -958,14 +958,14 @@ function openForm(kind,id=null){
 }
 
 
-function openQuickCareerForm(){
+var openQuickCareerForm = function openQuickCareerForm(){
   modalTitle.textContent="Criar carreira";form.className="form-grid";
   form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar</button></div>`;
   form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());let u=getUserUniverses(active.usuario_id)[0];if(!u){const r=await apiPost({action:"create",table:"UNIVERSOS",record:{usuario_id:active.usuario_id,nome:data.jogo,jogo:data.jogo}});u=r.data}const r=await apiPost({action:"create",table:"CARREIRAS",record:{universo_id:u.id,nome:data.nome,descricao:data.descricao,status:"ativa"}});active.carreira_id=String(r.data.id);active.protagonista_id="";saveActive();closeModal();await loadData()};
   modal.classList.add("active");
 }
 
-function openTop11BatchForm(){
+var openTop11BatchForm = function openTop11BatchForm(){
   modalTitle.textContent="Novo Top 11";modalBox.classList.add("wide");form.className="form-grid top11-batch";
   const season=getCurrentSeason();
   const rows=Array.from({length:11},(_,i)=>i+1).map(i=>`<div class="batch-row"><strong>${i}</strong><input name="posicao_${i}" placeholder="POS"><input name="jogador_${i}" placeholder="Jogador"><input name="overall_${i}" type="number" placeholder="OVR"></div>`).join("");
@@ -974,7 +974,7 @@ function openTop11BatchForm(){
   modal.classList.add("active");
 }
 
-function openBallonBatchForm(){
+var openBallonBatchForm = function openBallonBatchForm(){
   modalTitle.textContent="Novo ranking Bola de Ouro";
   modalBox.classList.add("wide");
   form.className="form-grid ballon-batch";
@@ -987,7 +987,7 @@ function openBallonBatchForm(){
 
   const existingRows=uniqueBallonRows(getTable("BOLA_DE_OURO").filter(r=>String(r.temporada)===String(selectedSeason)));
 
-  function existing(pos,field){
+  var existing = function existing(pos,field){
     const row=existingRows.find(r=>String(r.posicao)===String(pos));
     return row ? String(row[field] || "").replace(/"/g,"&quot;") : "";
   }
@@ -1082,15 +1082,15 @@ loadData();
   modal.classList.add("active");
 }
 
-function openSeasonFlow(){
+var openSeasonFlow = function openSeasonFlow(){
   modalTitle.textContent="Nova temporada";form.className="form-grid";modalBox.classList.add("wide");
   form.innerHTML=`<div class="form-field"><label>Temporada</label><input name="temporada" placeholder="2025/2026"></div><div class="form-field"><label>Ano</label><input name="ano" placeholder="2026"></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar temporada</button></div>`;
   form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());const r=await apiPost({action:"create",table:"TEMPORADAS",record:{carreira_id:active.carreira_id,temporada:data.temporada,ano:data.ano,status:"ativa"}});active.temporada=data.temporada;saveActive();closeModal();await loadData()};
   modal.classList.add("active");
 }
 
-function triggerUpload(key){const input=$("file_"+key); if(input)input.click()}
-async function uploadToCloudinary(event,key){const file=event.target.files[0]; if(!file)return; const target=form.querySelector(`[name="${key}"]`); const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLOUDINARY_UPLOAD_PRESET);setStatus("Enviando mídia...");const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});const json=await res.json();if(!json.secure_url)throw new Error(json.error?.message||"Erro Cloudinary");target.value=json.secure_url;setStatus("Mídia enviada.","ok")}
+var triggerUpload = function triggerUpload(key){const input=$("file_"+key); if(input)input.click()}
+var uploadToCloudinary = async function uploadToCloudinary(event,key){const file=event.target.files[0]; if(!file)return; const target=form.querySelector(`[name="${key}"]`); const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLOUDINARY_UPLOAD_PRESET);setStatus("Enviando mídia...");const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});const json=await res.json();if(!json.secure_url)throw new Error(json.error?.message||"Erro Cloudinary");target.value=json.secure_url;setStatus("Mídia enviada.","ok")}
 
 if(typeof openForm !== "undefined") window.openForm = openForm;
 if(typeof removeRecord !== "undefined") window.removeRecord = removeRecord;
@@ -1114,15 +1114,15 @@ window.addEventListener('unhandledrejection', function(event){
 
 
 // ===== V3.5 BALLON GLOBAL + CAREER OVERRIDES =====
-function normalizeSeasonValue(value){
+var normalizeSeasonValue = function normalizeSeasonValue(value){
   return String(value || "").trim();
 }
 
-function getBallonBaseRows(){
+var getBallonBaseRows = function getBallonBaseRows(){
   return getTable("BOLA_DE_OURO_BASE").map(row=>Object.assign({__source:"base"}, row));
 }
 
-function getBallonCareerRows(){
+var getBallonCareerRows = function getBallonCareerRows(){
   const carreira = getActiveCareer();
   if(!carreira) return [];
 
@@ -1137,11 +1137,11 @@ function getBallonCareerRows(){
   return [...careerRows, ...legacyRows];
 }
 
-function getBallonAllRowsForCurrentView(){
+var getBallonAllRowsForCurrentView = function getBallonAllRowsForCurrentView(){
   return [...getBallonBaseRows(), ...getBallonCareerRows()];
 }
 
-function getBallonSeasons(){
+var getBallonSeasons = function getBallonSeasons(){
   return [...new Set(getBallonAllRowsForCurrentView().map(x=>normalizeSeasonValue(x.temporada)).filter(Boolean))]
     .sort((a,b)=>{
       const ay = Number(String(a).match(/\d{4}/)?.[0] || 0);
@@ -1150,7 +1150,7 @@ function getBallonSeasons(){
     });
 }
 
-function getActiveBallonSeason(){
+var getActiveBallonSeason = function getActiveBallonSeason(){
   const seasons = getBallonSeasons();
 
   if(activeBallonSeason && seasons.includes(activeBallonSeason)){
@@ -1169,7 +1169,7 @@ function getActiveBallonSeason(){
   return activeBallonSeason;
 }
 
-function renderBallonSeasonSelector(){
+var renderBallonSeasonSelector = function renderBallonSeasonSelector(){
   const select = $("ballonSeasonSelect");
   if(!select) return;
 
@@ -1189,7 +1189,7 @@ function renderBallonSeasonSelector(){
   };
 }
 
-function uniqueBallonRows(rows){
+var uniqueBallonRows = function uniqueBallonRows(rows){
   const map = new Map();
 
   rows
@@ -1208,7 +1208,7 @@ function uniqueBallonRows(rows){
   return [...map.values()].sort((a,b)=>num(a.posicao)-num(b.posicao));
 }
 
-function renderBolaOuro(){
+var renderBolaOuro = function renderBolaOuro(){
   renderBallonSeasonSelector();
 
   const all = getBallonAllRowsForCurrentView();
@@ -1256,7 +1256,7 @@ function renderBolaOuro(){
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
 
-function getBallonWinnersRanking(){
+var getBallonWinnersRanking = function getBallonWinnersRanking(){
   const rows = getBallonAllRowsForCurrentView()
     .filter(r=>String(r.posicao)==="1" && r.jogador && String(r.jogador).toLowerCase() !== "não concedido");
 
@@ -1288,7 +1288,7 @@ function getBallonWinnersRanking(){
     .map((item,index)=>Object.assign(item,{rank:index+1, fontes:[...item.fontes]}));
 }
 
-function openBestBallonModal(){
+var openBestBallonModal = function openBestBallonModal(){
   const modal = $("bestBallonModal");
   const list = $("bestBallonList");
   if(!modal || !list) return;
@@ -1316,12 +1316,12 @@ function openBestBallonModal(){
   modal.classList.add("active");
 }
 
-function closeBestBallonModal(){
+var closeBestBallonModal = function closeBestBallonModal(){
   const modal = $("bestBallonModal");
   if(modal) modal.classList.remove("active");
 }
 
-function openBallonBatchForm(){
+var openBallonBatchForm = function openBallonBatchForm(){
   modalTitle.textContent="Novo ranking Bola de Ouro";
   modalBox.classList.add("wide");
   form.className="form-grid ballon-batch";
@@ -1335,7 +1335,7 @@ function openBallonBatchForm(){
 
   const existingRows=uniqueBallonRows(getTable("BOLA_DE_OURO_CARREIRA").filter(r=>String(r.carreira_id)===String(carreira?.id || "") && String(r.temporada)===String(selectedSeason)));
 
-  function existing(pos,field){
+  var existing = function existing(pos,field){
     const row=existingRows.find(r=>String(r.posicao)===String(pos));
     return row ? String(row[field] || "").replace(/"/g,"&quot;") : "";
   }
@@ -1423,7 +1423,7 @@ function openBallonBatchForm(){
 
 
 // ===== V3.6 OVERRIDE: CRIAR/EDITAR TEMPORADA COMO PASSAGEM =====
-function openSeasonFlow(existingId=null){
+var openSeasonFlow = function openSeasonFlow(existingId=null){
   const carreira = getActiveCareer();
   const protagonista = getActiveProtagonist();
 
@@ -1509,7 +1509,7 @@ function openSeasonFlow(existingId=null){
   const temporadaInput = form.querySelector("[name='temporada']");
   const clubeSelect = form.querySelector("[name='clube_id']");
 
-  function updateSeasonFromDate(){
+  var updateSeasonFromDate = function updateSeasonFromDate(){
     if(!temporadaInput.value && inicioInput.value){
       temporadaInput.value = monthYearToSeason(inicioInput.value);
     }
@@ -1525,7 +1525,7 @@ function openSeasonFlow(existingId=null){
 
   renderSeasonStatsEditor(existing);
 
-  function renderSeasonStatsEditor(seasonRecord){
+  var renderSeasonStatsEditor = function renderSeasonStatsEditor(seasonRecord){
     const wrap = $("seasonStatsEditor");
     if(!wrap) return;
 
@@ -1640,7 +1640,7 @@ function openSeasonFlow(existingId=null){
   modal.classList.add("active");
 }
 
-function editSeasonRecord(id){
+var editSeasonRecord = function editSeasonRecord(id){
   openSeasonFlow(id);
 }
 
@@ -1649,15 +1649,15 @@ function editSeasonRecord(id){
 let selectedSeasonTeam = null;
 let selectedCompetitionsForSeason = [];
 
-function escapeName(value){
+var escapeName = function escapeName(value){
   return String(value || "").replace(/[^a-zA-Z0-9]/g,"_");
 }
 
-function unescapeCompKey(key){
+var unescapeCompKey = function unescapeCompKey(key){
   return String(key || "").replace(/_/g," ");
 }
 
-function competitionSuggestions(team){
+var competitionSuggestions = function competitionSuggestions(team){
   const list = [];
 
   if(team.league) list.push(team.league);
@@ -1687,7 +1687,7 @@ function competitionSuggestions(team){
   return [...new Set(list.filter(Boolean))];
 }
 
-async function searchTeamsForSeason(){
+var searchTeamsForSeason = async function searchTeamsForSeason(){
   const query = $("seasonTeamSearch")?.value?.trim();
   const results = $("seasonTeamResults");
 
@@ -1732,7 +1732,7 @@ async function searchTeamsForSeason(){
   }
 }
 
-function selectSeasonTeam(team){
+var selectSeasonTeam = function selectSeasonTeam(team){
   selectedSeasonTeam = team;
 
   const box = $("selectedTeamBox");
@@ -1751,7 +1751,7 @@ function selectSeasonTeam(team){
   renderCompetitionSuggestions(team);
 }
 
-function renderCompetitionSuggestions(team, existingComps=[]){
+var renderCompetitionSuggestions = function renderCompetitionSuggestions(team, existingComps=[]){
   const wrap = $("seasonCompetitionChecks");
 
   if(!wrap) return;
@@ -1771,11 +1771,11 @@ function renderCompetitionSuggestions(team, existingComps=[]){
   renderSeasonStatsRows();
 }
 
-function getSelectedSeasonCompetitions(){
+var getSelectedSeasonCompetitions = function getSelectedSeasonCompetitions(){
   return [...document.querySelectorAll("#seasonCompetitionChecks input:checked")].map(i=>i.value);
 }
 
-function renderSeasonStatsRows(existingStats=null){
+var renderSeasonStatsRows = function renderSeasonStatsRows(existingStats=null){
   const wrap = $("seasonStatsRows");
 
   if(!wrap) return;
@@ -1807,7 +1807,7 @@ function renderSeasonStatsRows(existingStats=null){
   }).join("");
 }
 
-function openSeasonFlow(existingId=null){
+var openSeasonFlow = function openSeasonFlow(existingId=null){
   const carreira = getActiveCareer();
   const protagonista = getActiveProtagonist();
 
@@ -1942,7 +1942,7 @@ function openSeasonFlow(existingId=null){
   modal.classList.add("active");
 }
 
-async function saveSeasonFlow(data, button, existing=null){
+var saveSeasonFlow = async function saveSeasonFlow(data, button, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
   if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
@@ -2053,11 +2053,11 @@ async function saveSeasonFlow(data, button, existing=null){
   saveActive();
 }
 
-function editSeasonRecord(id){
+var editSeasonRecord = function editSeasonRecord(id){
   openSeasonFlow(id);
 }
 
-function renderPlayedSeasons(){
+var renderPlayedSeasons = function renderPlayedSeasons(){
   const container = $("playedSeasonsCards") || $("playedSeasonsTable");
   if(!container) return;
 
@@ -2109,7 +2109,7 @@ function renderPlayedSeasons(){
 
 
 // ===== V3.6.4 RESUMO: JORNADA POR CLUBES =====
-function getActivePlayerSeasonRows(){
+var getActivePlayerSeasonRows = function getActivePlayerSeasonRows(){
   const p = getActiveProtagonist();
   if(!p) return [];
 
@@ -2122,13 +2122,13 @@ function getActivePlayerSeasonRows(){
     });
 }
 
-function compareSeasonsAsc(a,b){
+var compareSeasonsAsc = function compareSeasonsAsc(a,b){
   const ay = Number(String(a||"").match(/\d{4}/)?.[0] || 0);
   const by = Number(String(b||"").match(/\d{4}/)?.[0] || 0);
   return ay - by;
 }
 
-function buildClubJourney(){
+var buildClubJourney = function buildClubJourney(){
   const rows = getActivePlayerSeasonRows();
   const groups = [];
   const map = new Map();
@@ -2171,7 +2171,7 @@ function buildClubJourney(){
   return groups;
 }
 
-function renderHero(){
+var renderHero = function renderHero(){
   const p = getActiveProtagonist();
   const season = getCurrentSeason();
   const currentStats = getCurrentSeasonStats();
@@ -2223,7 +2223,7 @@ function renderHero(){
   }
 }
 
-function renderPlayedSeasons(){
+var renderPlayedSeasons = function renderPlayedSeasons(){
   const container = $("playedSeasonsCards") || $("playedSeasonsTable");
   if(!container) return;
 
@@ -2273,7 +2273,7 @@ function renderPlayedSeasons(){
   }).join("");
 }
 
-function openClubJourney(key){
+var openClubJourney = function openClubJourney(key){
   const journey = buildClubJourney();
   const club = journey.find(c=>String(c.key)===String(key));
 
@@ -2351,7 +2351,7 @@ function openClubJourney(key){
   modal.classList.add("active");
 }
 
-function closeClubJourney(){
+var closeClubJourney = function closeClubJourney(){
   const modal = $("clubJourneyModal");
   if(modal) modal.classList.remove("active");
 }
@@ -2363,13 +2363,13 @@ if($("clubJourneyModal")) $("clubJourneyModal").onclick = e => { if(e.target ===
 // ===== V3.6.5 FIX RESUMO + TITULOS =====
 currentPageId = "dashboard";
 
-function renderResumoFast(){
+var renderResumoFast = function renderResumoFast(){
   try{ renderDashboardJourney(); }catch(err){ console.error("Erro em renderDashboardJourney", err); }
   try{ renderSeasonSelector(); }catch(err){ console.error("Erro em renderSeasonSelector", err); }
   try{ renderPlayedSeasons(); }catch(err){ console.error("Erro em renderPlayedSeasons", err); }
 }
 
-function renderPageById(pageId, force=false){
+var renderPageById = function renderPageById(pageId, force=false){
   const page = pageId || getCurrentPageId() || "dashboard";
 
   if(!force && renderedPages[page]) return;
@@ -2397,13 +2397,13 @@ function renderPageById(pageId, force=false){
   renderedPages[page] = true;
 }
 
-function renderAll(){
+var renderAll = function renderAll(){
   renderedPages = {};
   renderGlobalSelectorsOnly();
   renderPageById("dashboard", true);
 }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -2457,14 +2457,14 @@ function renderDashboardJourney(){
   }
 }
 
-function getExistingChampionRecord(seasonId, comp){
+var getExistingChampionRecord = function getExistingChampionRecord(seasonId, comp){
   return getTable("CAMPEOES_CARREIRA").find(c =>
     String(c.carreira_temporada_id) === String(seasonId) &&
     String(c.competicao || "").toLowerCase() === String(comp || "").toLowerCase()
   );
 }
 
-function renderSeasonTitlesRows(existing=null){
+var renderSeasonTitlesRows = function renderSeasonTitlesRows(existing=null){
   const wrap = $("seasonTitlesRows");
   if(!wrap) return;
 
@@ -2497,7 +2497,7 @@ function renderSeasonTitlesRows(existing=null){
 }
 
 // Recria apenas o formulário de temporada, restaurando API + adicionando títulos.
-function openSeasonFlow(existingId=null){
+var openSeasonFlow = function openSeasonFlow(existingId=null){
   const carreira = getActiveCareer();
   const protagonista = getActiveProtagonist();
 
@@ -2650,7 +2650,7 @@ function openSeasonFlow(existingId=null){
   modal.classList.add("active");
 }
 
-async function saveSeasonTitlesFlow(data, existing=null){
+var saveSeasonTitlesFlow = async function saveSeasonTitlesFlow(data, existing=null){
   const comps = selectedCompetitionsForSeason.length ? selectedCompetitionsForSeason : getSelectedSeasonCompetitions();
   if(!comps.length) return;
 
@@ -2708,7 +2708,7 @@ async function saveSeasonTitlesFlow(data, existing=null){
   }
 }
 
-function closeClubJourney(){
+var closeClubJourney = function closeClubJourney(){
   const modal = $("clubJourneyModal");
   if(modal) modal.classList.remove("active");
 }
@@ -2743,12 +2743,12 @@ const MAIN_SEASON_TITLES = [
   "Eredivisie"
 ];
 
-function getSeasonTitleCompetitions(){
+var getSeasonTitleCompetitions = function getSeasonTitleCompetitions(){
   const selected = getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions() : [];
   return [...new Set([...selected, ...MAIN_SEASON_TITLES].filter(Boolean))];
 }
 
-function renderSeasonTitlesRows(existing=null){
+var renderSeasonTitlesRows = function renderSeasonTitlesRows(existing=null){
   const wrap = $("seasonTitlesRows");
   if(!wrap) return;
 
@@ -2792,7 +2792,7 @@ function renderSeasonTitlesRows(existing=null){
   `;
 }
 
-async function saveSeasonTitlesFlow(data, existing=null){
+var saveSeasonTitlesFlow = async function saveSeasonTitlesFlow(data, existing=null){
   const comps = getSeasonTitleCompetitions();
   if(!comps.length) return;
 
@@ -2850,7 +2850,7 @@ async function saveSeasonTitlesFlow(data, existing=null){
   }
 }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -2923,7 +2923,7 @@ const MAIN_RECORD_COMPETITIONS = [
   "Eredivisie"
 ];
 
-function getRecordsBaseRows(){
+var getRecordsBaseRows = function getRecordsBaseRows(){
   const personagem = getActiveProtagonist();
   if(!personagem) return [];
 
@@ -2940,25 +2940,25 @@ function getRecordsBaseRows(){
   return [...careerStats, ...legacyStats];
 }
 
-function getRecordsSeasonForStat(stat){
+var getRecordsSeasonForStat = function getRecordsSeasonForStat(stat){
   if(stat.temporada) return stat.temporada;
 
   const season = getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(stat.carreira_temporada_id));
   return season ? season.temporada : "";
 }
 
-function getRecordsClubForStat(stat){
+var getRecordsClubForStat = function getRecordsClubForStat(stat){
   if(stat.clube_nome) return stat.clube_nome;
 
   const season = getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(stat.carreira_temporada_id));
   return season ? season.clube_nome : "";
 }
 
-function getRecordsCompetitionForStat(stat){
+var getRecordsCompetitionForStat = function getRecordsCompetitionForStat(stat){
   return stat.competicao || compName(stat.competicao_id) || "";
 }
 
-function getRecordsScopeOptions(){
+var getRecordsScopeOptions = function getRecordsScopeOptions(){
   const stats = getRecordsBaseRows();
 
   const clubOptions = [...new Set(stats.map(getRecordsClubForStat).filter(Boolean))]
@@ -2979,7 +2979,7 @@ function getRecordsScopeOptions(){
   ];
 }
 
-function renderRecordsFilters(){
+var renderRecordsFilters = function renderRecordsFilters(){
   const select = $("recordsScopeSelect");
   if(!select) return;
 
@@ -3000,14 +3000,14 @@ function renderRecordsFilters(){
   };
 }
 
-function getSelectedRecordScope(){
+var getSelectedRecordScope = function getSelectedRecordScope(){
   const select = $("recordsScopeSelect");
   const value = select?.value || localStorage.getItem("fl_records_scope") || "all|all";
   const [type, ...rest] = String(value).split("|");
   return {type:type || "all", value:rest.join("|") || "all"};
 }
 
-function filterRecordsStatsByScope(stats, scope){
+var filterRecordsStatsByScope = function filterRecordsStatsByScope(stats, scope){
   if(!scope || scope.type === "all") return stats;
 
   if(scope.type === "club"){
@@ -3021,7 +3021,7 @@ function filterRecordsStatsByScope(stats, scope){
   return stats;
 }
 
-function aggregateRecordsByPlayer(stats){
+var aggregateRecordsByPlayer = function aggregateRecordsByPlayer(stats){
   const personagem = getActiveProtagonist();
   const name = personagem ? personagem.nome : "Protagonista";
   const map = new Map();
@@ -3060,7 +3060,7 @@ function aggregateRecordsByPlayer(stats){
   return [...map.values()];
 }
 
-function buildSingleSeasonGoalRecords(stats){
+var buildSingleSeasonGoalRecords = function buildSingleSeasonGoalRecords(stats){
   const personagem = getActiveProtagonist();
   const name = personagem ? personagem.nome : "Protagonista";
   const map = new Map();
@@ -3096,7 +3096,7 @@ function buildSingleSeasonGoalRecords(stats){
     .slice(0,3);
 }
 
-function renderRecordList(containerId, rows, metric, label){
+var renderRecordList = function renderRecordList(containerId, rows, metric, label){
   const el = $(containerId);
   if(!el) return;
 
@@ -3125,7 +3125,7 @@ function renderRecordList(containerId, rows, metric, label){
   `).join("");
 }
 
-function renderSingleSeasonGoalRecords(rows){
+var renderSingleSeasonGoalRecords = function renderSingleSeasonGoalRecords(rows){
   const el = $("recordsSeasonGoals");
   if(!el) return;
 
@@ -3149,7 +3149,7 @@ function renderSingleSeasonGoalRecords(rows){
   `).join("");
 }
 
-function renderRecords(){
+var renderRecords = function renderRecords(){
   renderRecordsFilters();
 
   const scope = getSelectedRecordScope();
@@ -3180,7 +3180,7 @@ function renderRecords(){
 
 
 // ===== V3.7.1 TROFEUS FIX =====
-function normalizeTextKey(value){
+var normalizeTextKey = function normalizeTextKey(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -3188,7 +3188,7 @@ function normalizeTextKey(value){
     .replace(/[^a-z0-9]/g,"");
 }
 
-function trophyImageForCompetition(name){
+var trophyImageForCompetition = function trophyImageForCompetition(name){
   const key = normalizeTextKey(name);
 
   const map = [
@@ -3220,7 +3220,7 @@ function trophyImageForCompetition(name){
   return found ? found[1] : "";
 }
 
-function trophyFallbackIcon(name){
+var trophyFallbackIcon = function trophyFallbackIcon(name){
   const key = normalizeTextKey(name);
   if(key.includes("champions")) return "🏆";
   if(key.includes("copa") || key.includes("cup")) return "🏆";
@@ -3229,7 +3229,7 @@ function trophyFallbackIcon(name){
   return "🏆";
 }
 
-function getCareerTrophyRows(){
+var getCareerTrophyRows = function getCareerTrophyRows(){
   const carreira = getActiveCareer();
   const rows = getTable("CAMPEOES_CARREIRA")
     .filter(t=>!carreira || String(t.carreira_id)===String(carreira.id))
@@ -3241,11 +3241,11 @@ function getCareerTrophyRows(){
   return [...rows, ...legacy];
 }
 
-function getSeasonByCareerSeasonId(id){
+var getSeasonByCareerSeasonId = function getSeasonByCareerSeasonId(id){
   return getTable("CARREIRA_TEMPORADAS").find(t=>String(t.id)===String(id)) || {};
 }
 
-function renderTrofeus(){
+var renderTrofeus = function renderTrofeus(){
   const wrap = $("trofeus-list") || $("trofeusGrid") || document.querySelector("#trofeus .cards-grid") || document.querySelector("#trofeus .content-card");
 
   if(!wrap) return;
@@ -3327,9 +3327,9 @@ function renderTrofeus(){
   `;
 }
 
-function Trueish(v){ return true; }
+var Trueish = function Trueish(v){ return true; }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -3378,7 +3378,7 @@ function renderDashboardJourney(){
 
 
 // ===== V3.7.2 RECORDS_BASE + CARREIRA =====
-function normalizeRecordCategory(cat){
+var normalizeRecordCategory = function normalizeRecordCategory(cat){
   const key = normalizeTextKey(cat);
   if(key.includes("artilheiro")) return "maior_artilheiro";
   if(key.includes("assist")) return "mais_assistencias";
@@ -3387,7 +3387,7 @@ function normalizeRecordCategory(cat){
   return cat || "";
 }
 
-function getRecordsBaseStaticRows(){
+var getRecordsBaseStaticRows = function getRecordsBaseStaticRows(){
   return getTable("RECORDS_BASE")
     .filter(r=>r && r.categoria)
     .map(r=>({
@@ -3407,7 +3407,7 @@ function getRecordsBaseStaticRows(){
     }));
 }
 
-function buildCareerRecordRows(){
+var buildCareerRecordRows = function buildCareerRecordRows(){
   const personagem = getActiveProtagonist();
   if(!personagem) return [];
 
@@ -3474,7 +3474,7 @@ function buildCareerRecordRows(){
   return rows.filter(r=>r.valor);
 }
 
-function getRecordsScopeOptions(){
+var getRecordsScopeOptions = function getRecordsScopeOptions(){
   const base = getRecordsBaseStaticRows();
   const stats = getRecordsBaseRows();
 
@@ -3497,7 +3497,7 @@ function getRecordsScopeOptions(){
   ];
 }
 
-function filterRecordRowsByScope(rows, scope){
+var filterRecordRowsByScope = function filterRecordRowsByScope(rows, scope){
   if(!scope || scope.type==="all") return rows;
 
   if(scope.type==="club"){
@@ -3517,7 +3517,7 @@ function filterRecordRowsByScope(rows, scope){
   return rows;
 }
 
-function renderRecordRowsList(containerId, allRows, category, label){
+var renderRecordRowsList = function renderRecordRowsList(containerId, allRows, category, label){
   const el = $(containerId);
   if(!el) return;
 
@@ -3546,7 +3546,7 @@ function renderRecordRowsList(containerId, allRows, category, label){
   `).join("");
 }
 
-function renderRecords(){
+var renderRecords = function renderRecords(){
   renderRecordsFilters();
 
   const scope = getSelectedRecordScope();
@@ -3574,7 +3574,7 @@ function renderRecords(){
 
 
 // ===== V3.7.3 RECORDS POR COMPETIÇÃO + TROFÉUS + TOTAIS NO RESUMO =====
-function normalizeScopeName(value){
+var normalizeScopeName = function normalizeScopeName(value){
   return normalizeTextKey(value)
     .replace("uefachampionsleague","championsleague")
     .replace("ucl","championsleague")
@@ -3585,22 +3585,22 @@ function normalizeScopeName(value){
     .replace("laligaea","laliga");
 }
 
-function sameScope(a,b){
+var sameScope = function sameScope(a,b){
   const aa = normalizeScopeName(a);
   const bb = normalizeScopeName(b);
   if(!aa || !bb) return false;
   return aa === bb || aa.includes(bb) || bb.includes(aa);
 }
 
-function getStatCompetitionName(stat){
+var getStatCompetitionName = function getStatCompetitionName(stat){
   return stat.competicao || compName(stat.competicao_id) || "";
 }
 
-function getStatClubName(stat){
+var getStatClubName = function getStatClubName(stat){
   return stat.clube_nome || getRecordsClubForStat(stat) || "";
 }
 
-function getCareerRowsForScope(scope){
+var getCareerRowsForScope = function getCareerRowsForScope(scope){
   const personagem = getActiveProtagonist();
   if(!personagem) return [];
 
@@ -3621,7 +3621,7 @@ function getCareerRowsForScope(scope){
   });
 }
 
-function buildCareerRecordRowsForScope(scope){
+var buildCareerRecordRowsForScope = function buildCareerRecordRowsForScope(scope){
   const personagem = getActiveProtagonist();
   if(!personagem) return [];
 
@@ -3719,7 +3719,7 @@ function buildCareerRecordRowsForScope(scope){
   return rows.filter(r=>num(r.valor));
 }
 
-function filterRecordRowsByScope(rows, scope){
+var filterRecordRowsByScope = function filterRecordRowsByScope(rows, scope){
   if(!scope || scope.type==="all") return rows;
 
   if(scope.type==="club"){
@@ -3739,7 +3739,7 @@ function filterRecordRowsByScope(rows, scope){
   return rows;
 }
 
-function renderRecords(){
+var renderRecords = function renderRecords(){
   renderRecordsFilters();
 
   const scope = getSelectedRecordScope();
@@ -3770,7 +3770,7 @@ function renderRecords(){
   renderRecordRowsList("recordsSeasonGoals", allRows, "gols_em_uma_temporada", "Gols");
 }
 
-function getCareerTotals(){
+var getCareerTotals = function getCareerTotals(){
   const stats = getRecordsBaseRows();
   return stats.reduce((acc,s)=>{
     acc.jogos += num(s.jogos);
@@ -3781,7 +3781,7 @@ function getCareerTotals(){
   },{jogos:0,gols:0,assistencias:0,cartoes:0});
 }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -3836,7 +3836,7 @@ function renderDashboardJourney(){
 }
 
 // Troféus: leitura mais tolerante da CAMPEOES_CARREIRA.
-function isWonTrophy(row){
+var isWonTrophy = function isWonTrophy(row){
   const status = String(row.status || "").toLowerCase();
   if(status.includes("titulo")) return true;
   if(status.includes("ganho")) return true;
@@ -3850,7 +3850,7 @@ function isWonTrophy(row){
   return false;
 }
 
-function getCareerTrophyRows(){
+var getCareerTrophyRows = function getCareerTrophyRows(){
   const carreira = getActiveCareer();
 
   const rows = getTable("CAMPEOES_CARREIRA")
@@ -3864,7 +3864,7 @@ function getCareerTrophyRows(){
   return [...rows, ...legacy];
 }
 
-function renderTrofeus(){
+var renderTrofeus = function renderTrofeus(){
   const wrap = $("trofeus-list") || $("trofeusGrid") || document.querySelector("#trofeus .cards-grid") || document.querySelector("#trofeus .content-card") || document.querySelector("#trofeus");
 
   if(!wrap) return;
@@ -3943,7 +3943,7 @@ function renderTrofeus(){
 
 
 // ===== V3.7.9 PLAYER CARD DOM FIX =====
-function findPlayerCardShell(){
+var findPlayerCardShell = function findPlayerCardShell(){
   const nameEl = $("mainCharacter") || $("protagonistCardName") || document.querySelector("[id*='Character']");
   if(!nameEl) return null;
 
@@ -3964,7 +3964,7 @@ function findPlayerCardShell(){
   return nameEl.parentElement;
 }
 
-function applyPlayerCardOverlay(protagonist){
+var applyPlayerCardOverlay = function applyPlayerCardOverlay(protagonist){
   const shell = findPlayerCardShell();
   if(!shell) return;
 
@@ -3985,7 +3985,7 @@ function applyPlayerCardOverlay(protagonist){
   `;
 }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -4044,7 +4044,7 @@ function renderDashboardJourney(){
 
 
 // ===== V3.7.11 BOLA DE OURO ESCUDO DO CLUBE + SUPERCOPA UEFA =====
-function normalizeClubKey(value){
+var normalizeClubKey = function normalizeClubKey(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -4053,7 +4053,7 @@ function normalizeClubKey(value){
     .replace(/[^a-z0-9]/g,"");
 }
 
-function clubBadgeStatic(name){
+var clubBadgeStatic = function clubBadgeStatic(name){
   const key = normalizeClubKey(name);
 
   const map = [
@@ -4097,7 +4097,7 @@ function clubBadgeStatic(name){
   return found ? found[1] : "";
 }
 
-function clubBadgeForBallon(row){
+var clubBadgeForBallon = function clubBadgeForBallon(row){
   const raw = row.clube || row.club || row.time || "";
   if(!raw) return "";
 
@@ -4113,7 +4113,7 @@ function clubBadgeForBallon(row){
   return (fromDb && fromDb.escudo) ? fromDb.escudo : clubBadgeStatic(firstClub || raw);
 }
 
-function renderBallonPlayerCell(row, sourceLabel=""){
+var renderBallonPlayerCell = function renderBallonPlayerCell(row, sourceLabel=""){
   const badge = clubBadgeForBallon(row);
   const name = row.jogador || row.player || "-";
   return `
@@ -4126,7 +4126,7 @@ function renderBallonPlayerCell(row, sourceLabel=""){
 }
 
 // Reforço: times europeus sempre sugerem Supercopa da UEFA.
-function competitionSuggestions(team){
+var competitionSuggestions = function competitionSuggestions(team){
   const list = [];
 
   if(team.league) list.push(team.league);
@@ -4171,7 +4171,7 @@ function competitionSuggestions(team){
 
 
 // ===== V3.7.13 COMPETITION SUGGESTIONS SAFE =====
-function competitionSuggestions(team){
+var competitionSuggestions = function competitionSuggestions(team){
   const list = [];
 
   if(team && team.league) list.push(team.league);
@@ -4227,7 +4227,7 @@ function competitionSuggestions(team){
   return [...new Set(list.filter(Boolean))];
 }
 
-function startFootballLegacy(){
+var startFootballLegacy = function startFootballLegacy(){
   try{
     console.log("Football Legacy iniciando...");
     console.log("API configurada:", API_URL);
@@ -4312,7 +4312,7 @@ if(document.readyState === "loading"){
 
 
 
-async function removeRecord(kind,id){
+var removeRecord = async function removeRecord(kind,id){
   if(!id && id !== 0){
     alert("ID não encontrado para excluir.");
     return;
@@ -4374,7 +4374,7 @@ if(typeof getCareerTrophyRows !== "undefined") window.getCareerTrophyRows = getC
 if(typeof getRecordsBaseStaticRows !== "undefined") window.getRecordsBaseStaticRows = getRecordsBaseStaticRows;
 
 // ===== V3.7.14 FORCE SUPERCOPA UEFA FOR EUROPEAN CLUBS =====
-function isEuropeanTeamForCompetitions(team){
+var isEuropeanTeamForCompetitions = function isEuropeanTeamForCompetitions(team){
   const country = String(team?.country || "").toLowerCase();
   const league = String(team?.league || "").toLowerCase();
   const name = String(team?.name || "").toLowerCase();
@@ -4406,7 +4406,7 @@ function isEuropeanTeamForCompetitions(team){
 }
 
 // Esta função fica no fim do arquivo de propósito para vencer versões anteriores.
-function competitionSuggestions(team){
+var competitionSuggestions = function competitionSuggestions(team){
   const list = [];
 
   if(team && team.league) list.push(team.league);
@@ -4457,7 +4457,7 @@ function competitionSuggestions(team){
 
 // Garante que se a tela já renderizou sem Supercopa, selecionar time reinsere.
 const __oldSelectSeasonTeamV3714 = typeof selectSeasonTeam === "function" ? selectSeasonTeam : null;
-function selectSeasonTeam(team){
+var selectSeasonTeam = function selectSeasonTeam(team){
   selectedSeasonTeam = team;
 
   const box = $("selectedTeamBox");
@@ -4479,12 +4479,12 @@ function selectSeasonTeam(team){
 
 
 // ===== V3.7.15 FIX SALVAR EDIÇÃO DE TEMPORADA =====
-function getCurrentSelectedCompetitionsFromModal(){
+var getCurrentSelectedCompetitionsFromModal = function getCurrentSelectedCompetitionsFromModal(){
   const checked = getSelectedSeasonCompetitions ? getSelectedSeasonCompetitions() : [];
   return [...new Set(checked.filter(Boolean))];
 }
 
-async function saveSeasonFlow(data, button, existing=null){
+var saveSeasonFlow = async function saveSeasonFlow(data, button, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
   if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
@@ -4611,7 +4611,7 @@ async function saveSeasonFlow(data, button, existing=null){
   return {id:carreiraTemporadaId, temporada, competicoes:comps};
 }
 
-async function saveSeasonTitlesFlow(data, existing=null){
+var saveSeasonTitlesFlow = async function saveSeasonTitlesFlow(data, existing=null){
   // CORREÇÃO: sempre usa os checks atuais, não o estado antigo do modal.
   const comps = getCurrentSelectedCompetitionsFromModal();
   if(!comps.length) return;
@@ -4697,11 +4697,11 @@ async function saveSeasonTitlesFlow(data, existing=null){
 
 
 // ===== V3.7.16 BOLA DE OURO: CLUBE DO JOGADOR =====
-function getBallonRowClub(row){
+var getBallonRowClub = function getBallonRowClub(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
-function getClubOptionsForSelect(selected=""){
+var getClubOptionsForSelect = function getClubOptionsForSelect(selected=""){
   const clubs = getTable("CLUBES");
   const unique = [];
   const seen = new Set();
@@ -4721,7 +4721,7 @@ function getClubOptionsForSelect(selected=""){
   `;
 }
 
-function syncClubManualFromSelect(){
+var syncClubManualFromSelect = function syncClubManualFromSelect(){
   const sel = $("ballonClubSelect");
   const input = $("ballonClubManual");
   if(sel && input && sel.value){
@@ -4729,11 +4729,11 @@ function syncClubManualFromSelect(){
   }
 }
 
-function getBallonClubFromForm(data){
+var getBallonClubFromForm = function getBallonClubFromForm(data){
   return data.clube || data.club || data.time || "";
 }
 
-function renderBallonPlayerCell(row, sourceLabel=""){
+var renderBallonPlayerCell = function renderBallonPlayerCell(row, sourceLabel=""){
   const badge = clubBadgeForBallon(row);
   const name = row.jogador || row.player || "-";
   const club = getBallonRowClub(row);
@@ -4747,7 +4747,7 @@ function renderBallonPlayerCell(row, sourceLabel=""){
 }
 
 // Reforça badge: usa coluna H/clube da base e campo clube dos rankings criados.
-function clubBadgeForBallon(row){
+var clubBadgeForBallon = function clubBadgeForBallon(row){
   const raw = getBallonRowClub(row);
   if(!raw) return "";
 
@@ -4764,7 +4764,7 @@ function clubBadgeForBallon(row){
 }
 
 // Abre/edita ranking da carreira com campo clube.
-function openBallonRankingForm(existingId=null){
+var openBallonRankingForm = function openBallonRankingForm(existingId=null){
   const carreira = getActiveCareer();
   if(!carreira){
     alert("Selecione uma carreira antes.");
@@ -4884,17 +4884,17 @@ function openBallonRankingForm(existingId=null){
   modal.classList.add("active");
 }
 
-function extractYearFromSeason(season){
+var extractYearFromSeason = function extractYearFromSeason(season){
   const nums = String(season || "").match(/\d{4}/g);
   if(!nums || !nums.length) return "";
   return nums.length > 1 ? nums[1] : nums[0];
 }
 
 // Compatibilidade com nomes antigos de função/botão.
-function openBallonForm(id=null){ openBallonRankingForm(id); }
-function openBolaOuroForm(id=null){ openBallonRankingForm(id); }
-function editBallonRanking(id){ openBallonRankingForm(id); }
-function editBolaOuroRanking(id){ openBallonRankingForm(id); }
+var openBallonForm = function openBallonForm(id=null){ openBallonRankingForm(id); }
+var openBolaOuroForm = function openBolaOuroForm(id=null){ openBallonRankingForm(id); }
+var editBallonRanking = function editBallonRanking(id){ openBallonRankingForm(id); }
+var editBolaOuroRanking = function editBolaOuroRanking(id){ openBallonRankingForm(id); }
 
 window.openBallonRankingForm = openBallonRankingForm;
 window.openBallonForm = openBallonForm;
@@ -4906,7 +4906,7 @@ window.syncClubManualFromSelect = syncClubManualFromSelect;
 
 
 // ===== V3.7.17 BOLA DE OURO: NOVO RANKING LIMPO + CLUBE EM LOTE =====
-function getBallonAvailableSeasons(){
+var getBallonAvailableSeasons = function getBallonAvailableSeasons(){
   const base = getTable("TEMPORADAS_BASE").map(t=>t.temporada).filter(Boolean);
   const career = getTable("CARREIRA_TEMPORADAS")
     .filter(t=>!active.carreira_id || String(t.carreira_id)===String(active.carreira_id))
@@ -4922,7 +4922,7 @@ function getBallonAvailableSeasons(){
     .sort((a,b)=>compareSeasonsDesc(a,b));
 }
 
-function openBallonBatchForm(options={}){
+var openBallonBatchForm = function openBallonBatchForm(options={}){
   const carreira = getActiveCareer();
 
   if(!carreira){
@@ -5067,28 +5067,28 @@ function openBallonBatchForm(options={}){
   modal.classList.add("active");
 }
 
-function openNewBallonRanking(){
+var openNewBallonRanking = function openNewBallonRanking(){
   openBallonBatchForm({editExisting:false});
 }
 
-function openEditBallonRankingSeason(season){
+var openEditBallonRankingSeason = function openEditBallonRankingSeason(season){
   openBallonBatchForm({editExisting:true, editSeason:season});
 }
 
 // Compatibilidade com botões antigos.
-function openBallonRankingForm(id=null){
+var openBallonRankingForm = function openBallonRankingForm(id=null){
   if(id){
     return openBallonFormSingle(id);
   }
   return openNewBallonRanking();
 }
 
-function openBolaOuroRankingForm(id=null){
+var openBolaOuroRankingForm = function openBolaOuroRankingForm(id=null){
   return openBallonRankingForm(id);
 }
 
 // Formulário individual antigo preservado como fallback para botão editar de uma linha.
-function openBallonFormSingle(existingId=null){
+var openBallonFormSingle = function openBallonFormSingle(existingId=null){
   const existing = existingId
     ? getTable("BOLA_DE_OURO_CARREIRA").find(r=>String(r.id)===String(existingId))
     : null;
@@ -5202,7 +5202,7 @@ window.openBallonFormSingle = openBallonFormSingle;
 // id, carreira_id, temporada, ano, posicao, jogador, pais,
 // idade_na_premiacao, valor_mercado, imagem_url, observacao, clube
 
-function normalizeBallonCareerRecord(record){
+var normalizeBallonCareerRecord = function normalizeBallonCareerRecord(record){
   return {
     carreira_id: record.carreira_id || active.carreira_id || "",
     temporada: record.temporada || "",
@@ -5218,12 +5218,12 @@ function normalizeBallonCareerRecord(record){
   };
 }
 
-function getBallonRowClub(row){
+var getBallonRowClub = function getBallonRowClub(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
 // Reaplica salvamento em lote com clube na propriedade final `clube`.
-function openBallonBatchForm(options={}){
+var openBallonBatchForm = function openBallonBatchForm(options={}){
   const carreira = getActiveCareer();
 
   if(!carreira){
@@ -5360,7 +5360,7 @@ function openBallonBatchForm(options={}){
   modal.classList.add("active");
 }
 
-function openBallonFormSingle(existingId=null){
+var openBallonFormSingle = function openBallonFormSingle(existingId=null){
   const existing = existingId
     ? getTable("BOLA_DE_OURO_CARREIRA").find(r=>String(r.id)===String(existingId))
     : null;
@@ -5470,14 +5470,14 @@ function openBallonFormSingle(existingId=null){
 // Versão de limpeza: sem summary, sem lazy load, sem wrapper em navigate/renderPageById/openSeasonFlow.
 // Carrega action=all direto para eliminar Maximum call stack size exceeded.
 
-function normalizeDbAfterLoad(){
+var normalizeDbAfterLoad = function normalizeDbAfterLoad(){
   if(!db || typeof db !== "object") db = {};
   Object.keys(db).forEach(k=>{
     if(!Array.isArray(db[k])) db[k] = [];
   });
 }
 
-async function fetchAllFromSheetsClean(){
+var fetchAllFromSheetsClean = async function fetchAllFromSheetsClean(){
   const base = API_URL;
   const url = `${base}${base.includes("?") ? "&" : "?"}action=all&cache=${Date.now()}`;
   console.log("Football Legacy API action=all clean:", url);
@@ -5504,7 +5504,7 @@ async function fetchAllFromSheetsClean(){
   return data.data || {};
 }
 
-async function loadData(){
+var loadData = async function loadData(){
   setStatus("Carregando dados do Google Sheets...");
 
   try{
@@ -5528,20 +5528,20 @@ async function loadData(){
   }
 }
 
-async function forceRefreshData(){
+var forceRefreshData = async function forceRefreshData(){
   await loadData();
 }
 
 // Bola de Ouro: usa ano inicial da temporada.
 // 2025/2026 -> 2025.
-function getAwardYearFromSeason(value){
+var getAwardYearFromSeason = function getAwardYearFromSeason(value){
   const text = String(value || "");
   const years = text.match(/\d{4}/g);
   if(!years || !years.length) return "";
   return years[0];
 }
 
-function getCareerSeasonBallonOptions(){
+var getCareerSeasonBallonOptions = function getCareerSeasonBallonOptions(){
   const rows = [];
 
   getTable("CARREIRA_TEMPORADAS")
@@ -5575,7 +5575,7 @@ function getCareerSeasonBallonOptions(){
   return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
 }
 
-function normalizeBallonCareerRecord(record){
+var normalizeBallonCareerRecord = function normalizeBallonCareerRecord(record){
   const year = getAwardYearFromSeason(record.ano || record.temporada || "");
   return {
     carreira_id: record.carreira_id || active.carreira_id || "",
@@ -5592,7 +5592,7 @@ function normalizeBallonCareerRecord(record){
   };
 }
 
-function syncLocalTableAfterSave(payload, res){
+var syncLocalTableAfterSave = function syncLocalTableAfterSave(payload, res){
   try{
     if(!payload || !payload.table || !db) return;
     const table = payload.table;
@@ -5633,11 +5633,11 @@ if(__apiPostOriginalV3731 && !window.__apiPostWrappedV3731){
   };
 }
 
-function getBallonRowClub(row){
+var getBallonRowClub = function getBallonRowClub(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
-function openBallonBatchForm(options={}){
+var openBallonBatchForm = function openBallonBatchForm(options={}){
   const carreira = getActiveCareer();
 
   if(!carreira){
@@ -5775,8 +5775,8 @@ function openBallonBatchForm(options={}){
   modal.classList.add("active");
 }
 
-function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
-function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
+var openNewBallonRanking = function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
+var openEditBallonRankingSeason = function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
 
 window.forceRefreshData = forceRefreshData;
 window.getAwardYearFromSeason = getAwardYearFromSeason;
@@ -5799,7 +5799,7 @@ window.addEventListener("unhandledrejection", function(e){
 // Não mexe em Bola de Ouro, carregamento geral ou Apps Script.
 // Corrige o fluxo de Adicionar/Editar Temporada.
 
-function renderSeasonStatsRows(existingStats=null){
+var renderSeasonStatsRows = function renderSeasonStatsRows(existingStats=null){
   const wrap = $("seasonStatsRows");
   if(!wrap) return;
 
@@ -5837,7 +5837,7 @@ function renderSeasonStatsRows(existingStats=null){
   if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
 }
 
-function renderCompetitionSuggestions(team, existingComps=[]){
+var renderCompetitionSuggestions = function renderCompetitionSuggestions(team, existingComps=[]){
   const wrap = $("seasonCompetitionChecks");
   if(!wrap) return;
 
@@ -5857,7 +5857,7 @@ function renderCompetitionSuggestions(team, existingComps=[]){
   renderSeasonStatsRows(window.__editingSeasonStats || null);
 }
 
-function unlockSeasonSaveButton(btn){
+var unlockSeasonSaveButton = function unlockSeasonSaveButton(btn){
   try{
     if(!btn) btn = $("saveBtn");
     if(!btn) return;
@@ -5872,7 +5872,7 @@ function unlockSeasonSaveButton(btn){
   }catch(err){}
 }
 
-function refreshAfterSeasonSaveInBackground(){
+var refreshAfterSeasonSaveInBackground = function refreshAfterSeasonSaveInBackground(){
   setTimeout(async ()=>{
     try{
       await loadData();
@@ -5883,7 +5883,7 @@ function refreshAfterSeasonSaveInBackground(){
   }, 100);
 }
 
-function openSeasonFlow(existingId=null){
+var openSeasonFlow = function openSeasonFlow(existingId=null){
   const carreira = getActiveCareer();
   const protagonista = getActiveProtagonist();
 
@@ -6066,14 +6066,14 @@ window.addEventListener("unhandledrejection", function(){
 // 2025/2026 -> 2026
 // 2026/2027 -> 2027
 
-function getAwardYearFromSeason(value){
+var getAwardYearFromSeason = function getAwardYearFromSeason(value){
   const text = String(value || "");
   const years = text.match(/\d{4}/g);
   if(!years || !years.length) return "";
   return years.length > 1 ? years[years.length - 1] : years[0];
 }
 
-function getCareerSeasonBallonOptions(){
+var getCareerSeasonBallonOptions = function getCareerSeasonBallonOptions(){
   const rows = [];
 
   getTable("CARREIRA_TEMPORADAS")
@@ -6126,7 +6126,7 @@ function getCareerSeasonBallonOptions(){
   return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
 }
 
-function normalizeBallonCareerRecord(record){
+var normalizeBallonCareerRecord = function normalizeBallonCareerRecord(record){
   const year = getAwardYearFromSeason(record.ano || record.temporada || "");
   return {
     carreira_id: record.carreira_id || active.carreira_id || "",
@@ -6153,7 +6153,7 @@ window.getCareerSeasonBallonOptions = getCareerSeasonBallonOptions;
 // Agora: ranking inteiro = 1 request.
 // Requer Apps Script v3.5.7 com action=batch.
 
-async function apiBatchPost(operations){
+var apiBatchPost = async function apiBatchPost(operations){
   const payload = {
     action:"batch",
     operations
@@ -6162,14 +6162,14 @@ async function apiBatchPost(operations){
   return await apiPost(payload);
 }
 
-function getAwardYearFromSeason(value){
+var getAwardYearFromSeason = function getAwardYearFromSeason(value){
   const text = String(value || "");
   const years = text.match(/\d{4}/g);
   if(!years || !years.length) return "";
   return years.length > 1 ? years[years.length - 1] : years[0];
 }
 
-function getCareerSeasonBallonOptions(){
+var getCareerSeasonBallonOptions = function getCareerSeasonBallonOptions(){
   const rows = [];
 
   getTable("CARREIRA_TEMPORADAS")
@@ -6220,7 +6220,7 @@ function getCareerSeasonBallonOptions(){
   return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year));
 }
 
-function normalizeBallonCareerRecord(record){
+var normalizeBallonCareerRecord = function normalizeBallonCareerRecord(record){
   const year = getAwardYearFromSeason(record.ano || record.temporada || "");
   return {
     carreira_id: record.carreira_id || active.carreira_id || "",
@@ -6237,11 +6237,11 @@ function normalizeBallonCareerRecord(record){
   };
 }
 
-function getBallonRowClub(row){
+var getBallonRowClub = function getBallonRowClub(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
-function syncBatchResultsLocal(operations, response){
+var syncBatchResultsLocal = function syncBatchResultsLocal(operations, response){
   try{
     const results = response?.results || response?.data?.results || [];
 
@@ -6272,7 +6272,7 @@ function syncBatchResultsLocal(operations, response){
   }
 }
 
-function openBallonBatchForm(options={}){
+var openBallonBatchForm = function openBallonBatchForm(options={}){
   const carreira = getActiveCareer();
 
   if(!carreira){
@@ -6420,8 +6420,8 @@ function openBallonBatchForm(options={}){
   modal.classList.add("active");
 }
 
-function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
-function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
+var openNewBallonRanking = function openNewBallonRanking(){ openBallonBatchForm({editExisting:false}); }
+var openEditBallonRankingSeason = function openEditBallonRankingSeason(season){ openBallonBatchForm({editExisting:true, editSeason:getAwardYearFromSeason(season)}); }
 
 window.openBallonBatchForm = openBallonBatchForm;
 window.openNewBallonRanking = openNewBallonRanking;
@@ -6434,7 +6434,7 @@ window.getAwardYearFromSeason = getAwardYearFromSeason;
 // Temporada inteira = 1 chamada ao Apps Script.
 // Requer Apps Script v3.5.8 com action=saveSeasonFull.
 
-function normalizeCompetitionLabelV3736(name){
+var normalizeCompetitionLabelV3736 = function normalizeCompetitionLabelV3736(name){
   const raw = String(name || "").trim();
 
   const key = raw
@@ -6457,7 +6457,7 @@ function normalizeCompetitionLabelV3736(name){
   return aliases[key] || raw;
 }
 
-function compKeyV3736(name){
+var compKeyV3736 = function compKeyV3736(name){
   return String(normalizeCompetitionLabelV3736(name) || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
@@ -6466,13 +6466,13 @@ function compKeyV3736(name){
     .replace(/^_+|_+$/g,"");
 }
 
-function getSelectedSeasonCompetitionsV3736(){
+var getSelectedSeasonCompetitionsV3736 = function getSelectedSeasonCompetitionsV3736(){
   const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
   const values = checks.map(ch=>normalizeCompetitionLabelV3736(ch.value || ch.dataset.competition || ch.name || ""));
   return [...new Set(values.filter(Boolean))];
 }
 
-function buildSeasonFullPayloadV3736(data, existing=null){
+var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
   if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
@@ -6530,7 +6530,7 @@ function buildSeasonFullPayloadV3736(data, existing=null){
   };
 }
 
-function syncSeasonFullLocalV3736(result){
+var syncSeasonFullLocalV3736 = function syncSeasonFullLocalV3736(result){
   try{
     const data = result?.data || result || {};
     if(!data) return;
@@ -6590,7 +6590,7 @@ function syncSeasonFullLocalV3736(result){
   }
 }
 
-async function saveSeasonFullV3736(data, existing=null){
+var saveSeasonFullV3736 = async function saveSeasonFullV3736(data, existing=null){
   const payload = buildSeasonFullPayloadV3736(data, existing);
   const res = await apiPost(payload);
   if(!res.ok) throw new Error(res.error || "Erro ao salvar temporada em lote.");
@@ -6598,7 +6598,7 @@ async function saveSeasonFullV3736(data, existing=null){
   return res.data || res;
 }
 
-function openSeasonFlow(existingId=null){
+var openSeasonFlow = function openSeasonFlow(existingId=null){
   const carreira = getActiveCareer();
   const protagonista = getActiveProtagonist();
 
@@ -6763,7 +6763,7 @@ window.saveSeasonFullV3736 = saveSeasonFullV3736;
 // Corrige caso competição marcada apareça no modal, mas não gere linha em ESTATISTICAS_CARREIRA.
 // Exemplo: Coppa Italia marcada e preenchida, mas não salva.
 
-function normalizeCompetitionLabelV3737(name){
+var normalizeCompetitionLabelV3737 = function normalizeCompetitionLabelV3737(name){
   const raw = String(name || "").trim();
 
   const key = raw
@@ -6786,7 +6786,7 @@ function normalizeCompetitionLabelV3737(name){
   return aliases[key] || raw;
 }
 
-function compKeyV3737(name){
+var compKeyV3737 = function compKeyV3737(name){
   return String(normalizeCompetitionLabelV3737(name) || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
@@ -6795,7 +6795,7 @@ function compKeyV3737(name){
     .replace(/^_+|_+$/g,"");
 }
 
-function getCheckboxCompetitionNameV3737(ch){
+var getCheckboxCompetitionNameV3737 = function getCheckboxCompetitionNameV3737(ch){
   if(!ch) return "";
 
   let value = ch.dataset?.competition || ch.value || ch.name || "";
@@ -6813,7 +6813,7 @@ function getCheckboxCompetitionNameV3737(ch){
   return normalizeCompetitionLabelV3737(value);
 }
 
-function getSelectedSeasonCompetitionsV3736(){
+var getSelectedSeasonCompetitionsV3736 = function getSelectedSeasonCompetitionsV3736(){
   const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
 
   const values = checks.map(getCheckboxCompetitionNameV3737)
@@ -6824,11 +6824,11 @@ function getSelectedSeasonCompetitionsV3736(){
 }
 
 // Compatibilidade caso outra função use esse nome.
-function getSelectedSeasonCompetitions(){
+var getSelectedSeasonCompetitions = function getSelectedSeasonCompetitions(){
   return getSelectedSeasonCompetitionsV3736();
 }
 
-function getPossibleKeysForCompV3737(comp){
+var getPossibleKeysForCompV3737 = function getPossibleKeysForCompV3737(comp){
   const raw = String(comp || "");
   const keys = new Set();
 
@@ -6854,7 +6854,7 @@ function getPossibleKeysForCompV3737(comp){
   return [...keys].filter(Boolean);
 }
 
-function getDataByCompFieldV3737(data, field, comp){
+var getDataByCompFieldV3737 = function getDataByCompFieldV3737(data, field, comp){
   const keys = getPossibleKeysForCompV3737(comp);
 
   for(const key of keys){
@@ -6879,7 +6879,7 @@ function getDataByCompFieldV3737(data, field, comp){
   return "";
 }
 
-function buildSeasonFullPayloadV3736(data, existing=null){
+var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
   if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
@@ -6955,7 +6955,7 @@ window.buildSeasonFullPayloadV3736 = buildSeasonFullPayloadV3736;
 // Corrige Coppa Italia / Supercoppa Italiana / qualquer competição que aparece no modal
 // mas não salva ou volta em branco. Agora o payload lê a linha visual, não o name do input.
 
-function normalizeCompetitionLabelV3738(name){
+var normalizeCompetitionLabelV3738 = function normalizeCompetitionLabelV3738(name){
   const raw = String(name || "").trim();
 
   const key = raw
@@ -6982,7 +6982,7 @@ function normalizeCompetitionLabelV3738(name){
   return aliases[key] || raw;
 }
 
-function compKeyV3738(name){
+var compKeyV3738 = function compKeyV3738(name){
   return String(normalizeCompetitionLabelV3738(name) || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
@@ -6991,11 +6991,11 @@ function compKeyV3738(name){
     .replace(/^_+|_+$/g,"");
 }
 
-function sameCompetitionV3738(a,b){
+var sameCompetitionV3738 = function sameCompetitionV3738(a,b){
   return compKeyV3738(a) === compKeyV3738(b);
 }
 
-function getSelectedSeasonCompetitionsV3736(){
+var getSelectedSeasonCompetitionsV3736 = function getSelectedSeasonCompetitionsV3736(){
   const checks = [...document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked")];
 
   const values = checks.map(ch=>{
@@ -7018,14 +7018,14 @@ function getSelectedSeasonCompetitionsV3736(){
   return [...new Set(values)];
 }
 
-function getExistingStatForCompV3738(stats, comp){
+var getExistingStatForCompV3738 = function getExistingStatForCompV3738(stats, comp){
   return (stats || []).find(s=>{
     const name = s.competicao || compName(s.competicao_id) || "";
     return sameCompetitionV3738(name, comp);
   }) || {};
 }
 
-function renderSeasonStatsRows(existingStats=null){
+var renderSeasonStatsRows = function renderSeasonStatsRows(existingStats=null){
   const wrap = $("seasonStatsRows");
   if(!wrap) return;
 
@@ -7061,7 +7061,7 @@ function renderSeasonStatsRows(existingStats=null){
   if(typeof renderSeasonTitlesRows === "function") renderSeasonTitlesRows(window.__editingSeasonRecord || null);
 }
 
-function readSeasonStatsRowsFromDomV3738(){
+var readSeasonStatsRowsFromDomV3738 = function readSeasonStatsRowsFromDomV3738(){
   const rows = [...document.querySelectorAll("#seasonStatsRows .season-stats-row, #seasonStatsRows .season-stat-row")];
 
   return rows.map(row=>{
@@ -7097,7 +7097,7 @@ function readSeasonStatsRowsFromDomV3738(){
   }).filter(s=>s.competicao);
 }
 
-function readSeasonTitlesRowsFromDomV3738(){
+var readSeasonTitlesRowsFromDomV3738 = function readSeasonTitlesRowsFromDomV3738(){
   const rows = [...document.querySelectorAll("#seasonTitlesRows .season-title-row, #seasonTitlesRows .title-row, #seasonTitlesRows > div")];
 
   return rows.map(row=>{
@@ -7124,7 +7124,7 @@ function readSeasonTitlesRowsFromDomV3738(){
   }).filter(Boolean);
 }
 
-function buildSeasonFullPayloadV3736(data, existing=null){
+var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
   if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
@@ -7250,7 +7250,7 @@ window.addEventListener("unhandledrejection", function(e){
 // Não chama getSelectedSeasonCompetitions, não chama getSelectedSeasonCompetitionsV3736,
 // não chama renderSeasonStatsRows. Logo, não tem recursão.
 
-function normalizeCompetitionNameSafeV3741(value){
+var normalizeCompetitionNameSafeV3741 = function normalizeCompetitionNameSafeV3741(value){
   const raw = String(value || "").trim();
 
   const key = raw
@@ -7277,7 +7277,7 @@ function normalizeCompetitionNameSafeV3741(value){
   return aliases[key] || raw;
 }
 
-function getSelectedSeasonCompetitionsV3736(){
+var getSelectedSeasonCompetitionsV3736 = function getSelectedSeasonCompetitionsV3736(){
   const checks = Array.from(document.querySelectorAll("#seasonCompetitionChecks input[type='checkbox']:checked"));
 
   const values = checks.map(ch=>{
@@ -7305,7 +7305,7 @@ function getSelectedSeasonCompetitionsV3736(){
   return Array.from(new Set(values));
 }
 
-function getSelectedSeasonCompetitions(){
+var getSelectedSeasonCompetitions = function getSelectedSeasonCompetitions(){
   return getSelectedSeasonCompetitionsV3736();
 }
 
@@ -7324,14 +7324,14 @@ window.getSelectedSeasonCompetitions = getSelectedSeasonCompetitions;
 let FL_FULL_DB_LOADED = false;
 let FL_FULL_DB_LOADING = false;
 
-function normalizeDbAfterLoadV3742(){
+var normalizeDbAfterLoadV3742 = function normalizeDbAfterLoadV3742(){
   if(!db || typeof db !== "object") db = {};
   Object.keys(db).forEach(k=>{
     if(!Array.isArray(db[k])) db[k] = [];
   });
 }
 
-async function fetchActionV3742(action){
+var fetchActionV3742 = async function fetchActionV3742(action){
   const base = API_URL;
   const url = `${base}${base.includes("?") ? "&" : "?"}action=${encodeURIComponent(action)}&cache=${Date.now()}`;
   console.log("Football Legacy API v3.7.42:", url);
@@ -7357,7 +7357,7 @@ async function fetchActionV3742(action){
   return data.data || {};
 }
 
-function mergeDbV3742(partial){
+var mergeDbV3742 = function mergeDbV3742(partial){
   if(!db || typeof db !== "object") db = {};
   Object.keys(partial || {}).forEach(k=>{
     db[k] = Array.isArray(partial[k]) ? partial[k] : [];
@@ -7365,7 +7365,7 @@ function mergeDbV3742(partial){
   normalizeDbAfterLoadV3742();
 }
 
-async function loadData(){
+var loadData = async function loadData(){
   setStatus("Carregando resumo...");
 
   try{
@@ -7402,7 +7402,7 @@ async function loadData(){
   }
 }
 
-async function loadFullDbV3742(reason=""){
+var loadFullDbV3742 = async function loadFullDbV3742(reason=""){
   if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
 
   FL_FULL_DB_LOADING = true;
@@ -7423,7 +7423,7 @@ async function loadFullDbV3742(reason=""){
   }
 }
 
-async function forceRefreshData(){
+var forceRefreshData = async function forceRefreshData(){
   FL_FULL_DB_LOADED = false;
   await loadFullDbV3742("atualização manual");
 }
@@ -7462,7 +7462,7 @@ document.addEventListener("click", function(e){
 
 let FL_BG_FULL_TIMER = null;
 
-async function loadData(){
+var loadData = async function loadData(){
   setStatus("Carregando resumo...");
 
   try{
@@ -7506,7 +7506,7 @@ async function loadData(){
   }
 }
 
-async function loadFullDbV3743Background(){
+var loadFullDbV3743Background = async function loadFullDbV3743Background(){
   if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
 
   FL_FULL_DB_LOADING = true;
@@ -7547,7 +7547,7 @@ async function loadFullDbV3743Background(){
   }
 }
 
-async function loadFullDbV3742(reason=""){
+var loadFullDbV3742 = async function loadFullDbV3742(reason=""){
   if(FL_FULL_DB_LOADED || FL_FULL_DB_LOADING) return;
 
   FL_FULL_DB_LOADING = true;
@@ -7568,7 +7568,7 @@ async function loadFullDbV3742(reason=""){
   }
 }
 
-async function forceRefreshData(){
+var forceRefreshData = async function forceRefreshData(){
   FL_FULL_DB_LOADED = false;
   if(FL_BG_FULL_TIMER) clearTimeout(FL_BG_FULL_TIMER);
   await loadFullDbV3742("atualização manual");
@@ -7587,7 +7587,7 @@ window.loadFullDbV3743Background = loadFullDbV3743Background;
 
 const clubBadgeCacheV3744 = {};
 
-function normalizeClubKeyV3744(value){
+var normalizeClubKeyV3744 = function normalizeClubKeyV3744(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -7596,11 +7596,11 @@ function normalizeClubKeyV3744(value){
     .replace(/[^a-z0-9]/g,"");
 }
 
-function getBallonClubNameV3744(row){
+var getBallonClubNameV3744 = function getBallonClubNameV3744(row){
   return row.clube || row.club || row.time || row.equipe || "";
 }
 
-function getClubBadgeFromDbV3744(clubName){
+var getClubBadgeFromDbV3744 = function getClubBadgeFromDbV3744(clubName){
   if(!clubName) return "";
 
   const first = String(clubName).split("/")[0].split(",")[0].trim();
@@ -7615,7 +7615,7 @@ function getClubBadgeFromDbV3744(clubName){
   return found?.escudo || "";
 }
 
-function getClubBadgeStaticV3744(clubName){
+var getClubBadgeStaticV3744 = function getClubBadgeStaticV3744(clubName){
   const key = normalizeClubKeyV3744(clubName);
 
   const map = {
@@ -7653,12 +7653,12 @@ function getClubBadgeStaticV3744(clubName){
   return map[key] || "";
 }
 
-function getClubBadgeInitialV3744(clubName){
+var getClubBadgeInitialV3744 = function getClubBadgeInitialV3744(clubName){
   if(!clubName) return "";
   return getClubBadgeFromDbV3744(clubName) || getClubBadgeStaticV3744(clubName) || "";
 }
 
-async function fetchClubBadgeApiV3744(clubName){
+var fetchClubBadgeApiV3744 = async function fetchClubBadgeApiV3744(clubName){
   const first = String(clubName || "").split("/")[0].split(",")[0].trim();
   const key = normalizeClubKeyV3744(first);
 
@@ -7689,7 +7689,7 @@ async function fetchClubBadgeApiV3744(clubName){
   }
 }
 
-function ballonClubBadgeHtmlV3744(row){
+var ballonClubBadgeHtmlV3744 = function ballonClubBadgeHtmlV3744(row){
   const club = getBallonClubNameV3744(row);
   if(!club) return "";
 
@@ -7703,7 +7703,7 @@ function ballonClubBadgeHtmlV3744(row){
   return `<span class="ballon-club-badge-placeholder-v3744" data-club="${safeClub}" title="${safeClub}"></span>`;
 }
 
-async function enrichBallonClubBadgesV3744(){
+var enrichBallonClubBadgesV3744 = async function enrichBallonClubBadgesV3744(){
   const placeholders = [...document.querySelectorAll(".ballon-club-badge-placeholder-v3744[data-club]")];
 
   for(const ph of placeholders){
@@ -7721,7 +7721,7 @@ async function enrichBallonClubBadgesV3744(){
   }
 }
 
-function renderBolaOuro(){
+var renderBolaOuro = function renderBolaOuro(){
   renderBallonSeasonSelector();
 
   const all = getBallonAllRowsForCurrentView();
@@ -7770,7 +7770,7 @@ function renderBolaOuro(){
   enrichBallonClubBadgesV3744();
 }
 
-function renderRecordRowsList(containerId, allRows, category, label){
+var renderRecordRowsList = function renderRecordRowsList(containerId, allRows, category, label){
   const el = $(containerId);
   if(!el) return;
 
@@ -7824,7 +7824,7 @@ window.renderRecordRowsList = renderRecordRowsList;
 // Objetivo: impedir sobras de DOM/patcheamento ao trocar de aba.
 // Não injeta seleção, previsão ou idade. Apenas limpa resíduos e restaura navegação estável.
 
-function flCleanInjectedGarbageV3759(){
+var flCleanInjectedGarbageV3759 = function flCleanInjectedGarbageV3759(){
   try{
     document.querySelectorAll([
       ".selection-season-cell-v3756",
@@ -7913,7 +7913,7 @@ const NATIONAL_TEAM_BADGES_V3760 = {
   uruguay:"https://r2.thesportsdb.com/images/media/team/badge/xqgw8j1678283317.png"
 };
 
-function flKeyV3760(value){
+var flKeyV3760 = function flKeyV3760(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -7921,7 +7921,7 @@ function flKeyV3760(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function normalizeSelectionNameV3760(value){
+var normalizeSelectionNameV3760 = function normalizeSelectionNameV3760(value){
   const raw = String(value || "").trim();
   const key = flKeyV3760(raw);
   const aliases = {
@@ -7939,12 +7939,12 @@ function normalizeSelectionNameV3760(value){
   return aliases[key] || raw;
 }
 
-function getSelectionBadgeV3760(name){
+var getSelectionBadgeV3760 = function getSelectionBadgeV3760(name){
   const norm = normalizeSelectionNameV3760(name);
   return NATIONAL_TEAM_BADGES_V3760[flKeyV3760(norm)] || "";
 }
 
-function getPlayerImageV3760(p){
+var getPlayerImageV3760 = function getPlayerImageV3760(p){
   if(!p) return "";
   return (
     p.foto ||
@@ -7958,7 +7958,7 @@ function getPlayerImageV3760(p){
   );
 }
 
-function getActivePlayerSelectionV3760(){
+var getActivePlayerSelectionV3760 = function getActivePlayerSelectionV3760(){
   const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
   if(!p) return "";
   return normalizeSelectionNameV3760(
@@ -7966,7 +7966,7 @@ function getActivePlayerSelectionV3760(){
   );
 }
 
-function getSelectionRowsV3760(){
+var getSelectionRowsV3760 = function getSelectionRowsV3760(){
   const carreiraId = active?.carreira_id || "";
   const personagemId = active?.protagonista_id || "";
   return getTable("SELECOES_CARREIRA").filter(r =>
@@ -7975,7 +7975,7 @@ function getSelectionRowsV3760(){
   );
 }
 
-function getSelectionRowForSeasonV3760(season){
+var getSelectionRowForSeasonV3760 = function getSelectionRowForSeasonV3760(season){
   if(!season) return null;
   return getSelectionRowsV3760().find(r =>
     String(r.carreira_temporada_id || "") === String(season.id || "") ||
@@ -7983,7 +7983,7 @@ function getSelectionRowForSeasonV3760(season){
   ) || null;
 }
 
-function getSelectionTotalsV3760(){
+var getSelectionTotalsV3760 = function getSelectionTotalsV3760(){
   return getSelectionRowsV3760().reduce((acc,r)=>{
     acc.selecao = normalizeSelectionNameV3760(r.selecao || acc.selecao);
     acc.jogos += Number(r.jogos || 0);
@@ -8000,7 +8000,7 @@ function getSelectionTotalsV3760(){
   });
 }
 
-function parseBirthV3760(value){
+var parseBirthV3760 = function parseBirthV3760(value){
   const raw = String(value || "").trim();
   if(!raw) return null;
   if(/^\d{1,3}$/.test(raw)) return {ageFixed:Number(raw)};
@@ -8018,13 +8018,13 @@ function parseBirthV3760(value){
   return null;
 }
 
-function getBirthValueV3760(){
+var getBirthValueV3760 = function getBirthValueV3760(){
   const p = typeof getActiveProtagonist === "function" ? getActiveProtagonist() : null;
   if(!p) return "";
   return p.data_nascimento || p.idade || p.nascimento || p.aniversario || "";
 }
 
-function getSeasonStartV3760(season){
+var getSeasonStartV3760 = function getSeasonStartV3760(season){
   const raw = String(season?.data_inicio || "").trim();
   let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
   if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
@@ -8039,7 +8039,7 @@ function getSeasonStartV3760(season){
   return null;
 }
 
-function calcAgeAtSeasonV3760(season){
+var calcAgeAtSeasonV3760 = function calcAgeAtSeasonV3760(season){
   const birth = parseBirthV3760(getBirthValueV3760());
   const start = getSeasonStartV3760(season);
   if(!birth) return "";
@@ -8052,7 +8052,7 @@ function calcAgeAtSeasonV3760(season){
   return age;
 }
 
-function getSeasonAggregatesV3760(){
+var getSeasonAggregatesV3760 = function getSeasonAggregatesV3760(){
   const rows = getCareerSeasonRecords();
   return rows.map(season=>{
     const stats = getSeasonStatsForRecord(season);
@@ -8066,7 +8066,7 @@ function getSeasonAggregatesV3760(){
   }).filter(x=>x.jogos || x.gols || x.assistencias);
 }
 
-function getCareerTotalsV3760(){
+var getCareerTotalsV3760 = function getCareerTotalsV3760(){
   const rows = getSeasonAggregatesV3760();
   return rows.reduce((acc,r)=>{
     acc.jogos += r.jogos;
@@ -8076,7 +8076,7 @@ function getCareerTotalsV3760(){
   },{jogos:0,gols:0,assistencias:0});
 }
 
-function buildProjectionV3760(){
+var buildProjectionV3760 = function buildProjectionV3760(){
   const rows = getSeasonAggregatesV3760();
   const totals = getCareerTotalsV3760();
   const seasonCount = Math.max(1, rows.length || 1);
@@ -8119,7 +8119,7 @@ function buildProjectionV3760(){
   };
 }
 
-function applyPlayerCardOverlay(protagonist){
+var applyPlayerCardOverlay = function applyPlayerCardOverlay(protagonist){
   const shell = findPlayerCardShell ? findPlayerCardShell() : null;
   if(!shell) return;
 
@@ -8140,7 +8140,7 @@ function applyPlayerCardOverlay(protagonist){
   `;
 }
 
-function renderMetricGroupV3760(title, data, extra=""){
+var renderMetricGroupV3760 = function renderMetricGroupV3760(title, data, extra=""){
   return `
     <div class="metric-group-v3760">
       <div class="metric-group-title-v3760">${escapeHtml(title)}${extra ? `<span>${escapeHtml(extra)}</span>` : ""}</div>
@@ -8153,7 +8153,7 @@ function renderMetricGroupV3760(title, data, extra=""){
   `;
 }
 
-function renderDashboardJourney(){
+var renderDashboardJourney = function renderDashboardJourney(){
   const user = getActiveUser();
   const career = getActiveCareer();
   const protagonist = getActiveProtagonist();
@@ -8219,7 +8219,7 @@ function renderDashboardJourney(){
   }
 }
 
-function renderSelectionCellV3760(season){
+var renderSelectionCellV3760 = function renderSelectionCellV3760(season){
   const row = getSelectionRowForSeasonV3760(season);
   const selecao = normalizeSelectionNameV3760(row?.selecao || getActivePlayerSelectionV3760());
   const badge = getSelectionBadgeV3760(selecao);
@@ -8241,7 +8241,7 @@ function renderSelectionCellV3760(season){
   `;
 }
 
-function renderPlayedSeasons(){
+var renderPlayedSeasons = function renderPlayedSeasons(){
   const container = $("playedSeasonsCards") || $("playedSeasonsTable");
   if(!container) return;
 
@@ -8295,7 +8295,7 @@ function renderPlayedSeasons(){
   }).join("");
 }
 
-function openSelectionSeasonModalV3760(seasonId){
+var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seasonId){
   const season = getCareerSeasonRecords().find(s=>String(s.id)===String(seasonId));
   if(!season){
     alert("Temporada não encontrada.");
@@ -8407,7 +8407,7 @@ function openSelectionSeasonModalV3760(seasonId){
   modal.classList.add("active");
 }
 
-function injectSelectionFieldOnPersonagemFormV3760(){
+var injectSelectionFieldOnPersonagemFormV3760 = function injectSelectionFieldOnPersonagemFormV3760(){
   try{
     if(!form || !modal?.classList?.contains("active")) return;
     const names = [...form.querySelectorAll("input,select,textarea")]
@@ -8481,7 +8481,7 @@ window.openSelectionSeasonModalV3760 = openSelectionSeasonModalV3760;
 // - usa action direta saveBallonCareerRankingV2;
 // - não altera formatação.
 
-function FL_normText_3766(value){
+var FL_normText_3766 = function FL_normText_3766(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -8489,7 +8489,7 @@ function FL_normText_3766(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_cleanUrl_3766(value){
+var FL_cleanUrl_3766 = function FL_cleanUrl_3766(value){
   const raw = String(value || "").trim();
   if(!raw) return "";
   if(raw.toLowerCase().includes("fakepath")) return "";
@@ -8497,7 +8497,7 @@ function FL_cleanUrl_3766(value){
   return "";
 }
 
-function FL_normalizeBallonSeason_3766(value){
+var FL_normalizeBallonSeason_3766 = function FL_normalizeBallonSeason_3766(value){
   const raw = String(value || "").trim();
   let m = raw.match(/-\s*(\d{4})$/);
   if(m) return m[1];
@@ -8511,7 +8511,7 @@ function FL_normalizeBallonSeason_3766(value){
   return raw;
 }
 
-function FL_getBallonSeason_3766(){
+var FL_getBallonSeason_3766 = function FL_getBallonSeason_3766(){
   const root = form || document;
   const candidates = [
     root.querySelector("[name='temporada']"),
@@ -8528,7 +8528,7 @@ function FL_getBallonSeason_3766(){
   return "";
 }
 
-function FL_getBallonWinnerImage_3766(){
+var FL_getBallonWinnerImage_3766 = function FL_getBallonWinnerImage_3766(){
   const root = form || document;
 
   const candidates = [
@@ -8558,7 +8558,7 @@ function FL_getBallonWinnerImage_3766(){
   return "";
 }
 
-function FL_getInputsByMeaning_3766(row){
+var FL_getInputsByMeaning_3766 = function FL_getInputsByMeaning_3766(row){
   const inputs = [...row.querySelectorAll("input,select,textarea")]
     .filter(i => i.type !== "file");
 
@@ -8585,7 +8585,7 @@ function FL_getInputsByMeaning_3766(row){
   };
 }
 
-function FL_isBallonRankingRow_3766(row){
+var FL_isBallonRankingRow_3766 = function FL_isBallonRankingRow_3766(row){
   const inputs = [...row.querySelectorAll("input,select,textarea")]
     .filter(i => i.type !== "file");
 
@@ -8604,7 +8604,7 @@ function FL_isBallonRankingRow_3766(row){
   );
 }
 
-function FL_getBallonRows_3766(){
+var FL_getBallonRows_3766 = function FL_getBallonRows_3766(){
   const root = form || document;
 
   let rowEls = [
@@ -8684,7 +8684,7 @@ function FL_getBallonRows_3766(){
   return rows.slice(0,10);
 }
 
-async function FL_saveBallonRanking_3766(){
+var FL_saveBallonRanking_3766 = async function FL_saveBallonRanking_3766(){
   const btn = $("saveBtn") || document.querySelector(".gold-btn") || document.querySelector("button[type='submit']");
   if(btn && btn.disabled) return;
 
@@ -8758,7 +8758,7 @@ document.addEventListener("submit", function(e){
 // Adiciona um X discreto em cada card de Temporadas jogadas.
 // Ao confirmar, apaga a temporada e dados vinculados da planilha.
 
-async function deleteCareerSeasonFullV3767(seasonId){
+var deleteCareerSeasonFullV3767 = async function deleteCareerSeasonFullV3767(seasonId){
   const season = (typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : getTable("CARREIRA_TEMPORADAS"))
     .find(s => String(s.id) === String(seasonId));
 
@@ -8808,7 +8808,7 @@ async function deleteCareerSeasonFullV3767(seasonId){
   }
 }
 
-function injectDeleteSeasonButtonsV3767(){
+var injectDeleteSeasonButtonsV3767 = function injectDeleteSeasonButtonsV3767(){
   try{
     const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : [];
     if(!seasons.length) return;
@@ -8886,7 +8886,7 @@ window.injectDeleteSeasonButtonsV3767 = injectDeleteSeasonButtonsV3767;
 // Agora o ID vem diretamente do botão Editar temporada do mesmo card:
 // editSeasonRecord('ID')
 
-function getSeasonIdFromCardEditButtonV3770(card){
+var getSeasonIdFromCardEditButtonV3770 = function getSeasonIdFromCardEditButtonV3770(card){
   if(!card) return "";
 
   const buttons = [...card.querySelectorAll("button, a")]
@@ -8901,7 +8901,7 @@ function getSeasonIdFromCardEditButtonV3770(card){
   return "";
 }
 
-function findSeasonCardByEditButtonV3770(btn){
+var findSeasonCardByEditButtonV3770 = function findSeasonCardByEditButtonV3770(btn){
   let el = btn.parentElement;
 
   for(let i=0; i<8 && el; i++){
@@ -8923,7 +8923,7 @@ function findSeasonCardByEditButtonV3770(btn){
   return btn.closest("article, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card") || btn.parentElement;
 }
 
-function injectDeleteSeasonButtonsV3770(){
+var injectDeleteSeasonButtonsV3770 = function injectDeleteSeasonButtonsV3770(){
   try{
     // Remove botões antigos que foram criados por heurística errada.
     document.querySelectorAll(".delete-season-x-v3767").forEach(btn => btn.remove());
@@ -8991,7 +8991,7 @@ window.injectDeleteSeasonButtonsV3770 = injectDeleteSeasonButtonsV3770;
 // Remove/desativa X genéricos das outras seções.
 // Mantém apenas o X correto de temporada jogada, criado pela v3.7.70.
 
-function removeScatteredCareerDeleteXV3771(){
+var removeScatteredCareerDeleteXV3771 = function removeScatteredCareerDeleteXV3771(){
   try{
     document.querySelectorAll(".delete-career-item-x-v3769").forEach(el => el.remove());
 
@@ -9049,7 +9049,7 @@ window.removeScatteredCareerDeleteXV3771 = removeScatteredCareerDeleteXV3771;
 // 4) não mexer na formatação visual boa;
 // 5) manter compatibilidade com Apps Script v3.5.29.
 
-function flSafeNoopV3772(){}
+var flSafeNoopV3772 = function flSafeNoopV3772(){}
 
 // Alguns builds antigos chamam funções que podem não existir depois da limpeza.
 // Isso quebrava a troca de abas e deixava só o card do jogador na tela.
@@ -9063,7 +9063,7 @@ if(typeof renderMuseu !== "function") window.renderMuseu = flSafeNoopV3772;
 if(typeof renderClubes !== "function" && typeof renderClubs === "function") window.renderClubes = renderClubs;
 if(typeof renderClubes !== "function") window.renderClubes = flSafeNoopV3772;
 
-function removeScatteredCareerDeleteXV3772(){
+var removeScatteredCareerDeleteXV3772 = function removeScatteredCareerDeleteXV3772(){
   try{
     // Remove de vez X genéricos espalhados de CAMPEOES/SELECOES/TOP11/BOLA.
     document.querySelectorAll(".delete-career-item-x-v3769").forEach(el => el.remove());
@@ -9073,14 +9073,14 @@ function removeScatteredCareerDeleteXV3772(){
   }
 }
 
-function cleanupWrongSeasonXV3772(){
+var cleanupWrongSeasonXV3772 = function cleanupWrongSeasonXV3772(){
   try{
     // Remove os X antigos que usavam heurística por texto e podiam apontar para outra temporada.
     document.querySelectorAll(".delete-season-x-v3767").forEach(el => el.remove());
   }catch(err){}
 }
 
-function getSeasonIdFromCardEditButtonV3772(card){
+var getSeasonIdFromCardEditButtonV3772 = function getSeasonIdFromCardEditButtonV3772(card){
   if(!card) return "";
 
   const buttons = [...card.querySelectorAll("button, a")]
@@ -9095,7 +9095,7 @@ function getSeasonIdFromCardEditButtonV3772(card){
   return "";
 }
 
-function findSeasonCardByEditButtonV3772(btn){
+var findSeasonCardByEditButtonV3772 = function findSeasonCardByEditButtonV3772(btn){
   let el = btn.parentElement;
 
   for(let i=0; i<10 && el; i++){
@@ -9117,7 +9117,7 @@ function findSeasonCardByEditButtonV3772(btn){
   return btn.closest("article, .season-card, .played-season-card, .career-season-card, .season-row-card, .temporada-card") || btn.parentElement;
 }
 
-function injectDeleteSeasonButtonsV3772(){
+var injectDeleteSeasonButtonsV3772 = function injectDeleteSeasonButtonsV3772(){
   try{
     cleanupWrongSeasonXV3772();
 
@@ -9171,7 +9171,7 @@ function injectDeleteSeasonButtonsV3772(){
 
 // Corrige tela quebrada ao trocar de aba.
 // O bug acontecia quando uma renderização falhava e sobrava apenas card do jogador.
-function cleanupOrphanPlayerCardOnNonResumoV3772(){
+var cleanupOrphanPlayerCardOnNonResumoV3772 = function cleanupOrphanPlayerCardOnNonResumoV3772(){
   try{
     const activeNav = [...document.querySelectorAll(".active, .selected, [aria-current='page']")]
       .map(el => (el.textContent || "").toLowerCase())
@@ -9205,7 +9205,7 @@ function cleanupOrphanPlayerCardOnNonResumoV3772(){
   }
 }
 
-function stableTabsAfterRenderV3772(){
+var stableTabsAfterRenderV3772 = function stableTabsAfterRenderV3772(){
   removeScatteredCareerDeleteXV3772();
   cleanupWrongSeasonXV3772();
 
@@ -9249,7 +9249,7 @@ window.stableTabsAfterRenderV3772 = stableTabsAfterRenderV3772;
 // 1) Ao selecionar temporada já existente no Bola de Ouro, preenche o ranking.
 // 2) Remove limpeza agressiva de card do jogador que causava tela vazia/piscada.
 
-function FL_normV3773(value){
+var FL_normV3773 = function FL_normV3773(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -9257,7 +9257,7 @@ function FL_normV3773(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_normalizeSeasonV3773(value){
+var FL_normalizeSeasonV3773 = function FL_normalizeSeasonV3773(value){
   const raw = String(value || "").trim();
 
   let m = raw.match(/-\s*(\d{4})$/);
@@ -9272,14 +9272,14 @@ function FL_normalizeSeasonV3773(value){
   return raw;
 }
 
-function FL_isBallonModalV3773(){
+var FL_isBallonModalV3773 = function FL_isBallonModalV3773(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
 
   return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || txt.includes("jogador") && txt.includes("valor");
 }
 
-function FL_getBallonSeasonInputV3773(){
+var FL_getBallonSeasonInputV3773 = function FL_getBallonSeasonInputV3773(){
   const root = form || document;
 
   return (
@@ -9290,12 +9290,12 @@ function FL_getBallonSeasonInputV3773(){
   );
 }
 
-function FL_getBallonSeasonCurrentV3773(){
+var FL_getBallonSeasonCurrentV3773 = function FL_getBallonSeasonCurrentV3773(){
   const input = FL_getBallonSeasonInputV3773();
   return FL_normalizeSeasonV3773(input?.value || "");
 }
 
-function FL_getExistingBallonRowsV3773(season){
+var FL_getExistingBallonRowsV3773 = function FL_getExistingBallonRowsV3773(season){
   const normalized = FL_normalizeSeasonV3773(season);
 
   const rows = (db.BOLA_DE_OURO_CARREIRA || [])
@@ -9309,7 +9309,7 @@ function FL_getExistingBallonRowsV3773(season){
   return rows;
 }
 
-function FL_findAncestorWithInputsV3773(input){
+var FL_findAncestorWithInputsV3773 = function FL_findAncestorWithInputsV3773(input){
   let el = input;
 
   for(let i=0; i<8 && el; i++){
@@ -9326,7 +9326,7 @@ function FL_findAncestorWithInputsV3773(input){
   return input.closest("tr,.ballon-form-row,.ballon-row-form,.ranking-row,.form-ranking-row,.ballon-player-row,.ranking-player-row,div");
 }
 
-function FL_getBallonInputRowsV3773(){
+var FL_getBallonInputRowsV3773 = function FL_getBallonInputRowsV3773(){
   const root = form || document;
 
   let rowEls = [
@@ -9362,7 +9362,7 @@ function FL_getBallonInputRowsV3773(){
   return rowEls.slice(0, 10);
 }
 
-function FL_inputByMeaningV3773(row, patterns, fallbackIndex){
+var FL_inputByMeaningV3773 = function FL_inputByMeaningV3773(row, patterns, fallbackIndex){
   const inputs = [...row.querySelectorAll("input,select,textarea")].filter(i => i.type !== "file");
 
   for(const input of inputs){
@@ -9374,7 +9374,7 @@ function FL_inputByMeaningV3773(row, patterns, fallbackIndex){
   return inputs[fallbackIndex] || null;
 }
 
-function FL_setInputValueV3773(input, value){
+var FL_setInputValueV3773 = function FL_setInputValueV3773(input, value){
   if(!input) return;
 
   input.value = value || "";
@@ -9382,7 +9382,7 @@ function FL_setInputValueV3773(input, value){
   input.dispatchEvent(new Event("change", {bubbles:true}));
 }
 
-function FL_getBallonImageInputV3773(){
+var FL_getBallonImageInputV3773 = function FL_getBallonImageInputV3773(){
   const root = form || document;
 
   const candidates = [
@@ -9409,7 +9409,7 @@ function FL_getBallonImageInputV3773(){
   return null;
 }
 
-function FL_prefillBallonFromExistingV3773(){
+var FL_prefillBallonFromExistingV3773 = function FL_prefillBallonFromExistingV3773(){
   try{
     if(!FL_isBallonModalV3773()) return;
 
@@ -9471,7 +9471,7 @@ function FL_prefillBallonFromExistingV3773(){
   }
 }
 
-function FL_attachBallonPrefillListenersV3773(){
+var FL_attachBallonPrefillListenersV3773 = function FL_attachBallonPrefillListenersV3773(){
   try{
     if(!FL_isBallonModalV3773()) return;
 
@@ -9538,7 +9538,7 @@ window.FL_attachBallonPrefillListenersV3773 = FL_attachBallonPrefillListenersV37
 let FL_BALLON_FILLING_V3776 = false;
 let FL_BALLON_LAST_SEASON_V3776 = "";
 
-function FL_keyV3776(value){
+var FL_keyV3776 = function FL_keyV3776(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -9546,13 +9546,13 @@ function FL_keyV3776(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_isBallonModalV3776(){
+var FL_isBallonModalV3776 = function FL_isBallonModalV3776(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
   return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
 }
 
-function FL_normalizeSeasonV3776(value){
+var FL_normalizeSeasonV3776 = function FL_normalizeSeasonV3776(value){
   const raw = String(value || "").trim();
 
   let m = raw.match(/-\s*(\d{4})$/);
@@ -9567,7 +9567,7 @@ function FL_normalizeSeasonV3776(value){
   return raw;
 }
 
-function FL_getSeasonInputV3776(){
+var FL_getSeasonInputV3776 = function FL_getSeasonInputV3776(){
   const root = form || document;
 
   return (
@@ -9578,12 +9578,12 @@ function FL_getSeasonInputV3776(){
   );
 }
 
-function FL_getSeasonV3776(){
+var FL_getSeasonV3776 = function FL_getSeasonV3776(){
   const input = FL_getSeasonInputV3776();
   return FL_normalizeSeasonV3776(input?.value || "");
 }
 
-function FL_getSavedBallonRowsV3776(season){
+var FL_getSavedBallonRowsV3776 = function FL_getSavedBallonRowsV3776(season){
   const normalized = FL_normalizeSeasonV3776(season);
 
   return (db.BOLA_DE_OURO_CARREIRA || [])
@@ -9595,7 +9595,7 @@ function FL_getSavedBallonRowsV3776(season){
     .sort((a,b) => Number(a.posicao || 999) - Number(b.posicao || 999));
 }
 
-function FL_typeV3776(input){
+var FL_typeV3776 = function FL_typeV3776(input){
   const key = FL_keyV3776([
     input.name,
     input.id,
@@ -9615,7 +9615,7 @@ function FL_typeV3776(input){
   return "";
 }
 
-function FL_getBallonColumnsV3776(){
+var FL_getBallonColumnsV3776 = function FL_getBallonColumnsV3776(){
   const root = form || document;
   const result = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
 
@@ -9654,12 +9654,12 @@ function FL_getBallonColumnsV3776(){
   return result;
 }
 
-function FL_setSilentV3776(input, value){
+var FL_setSilentV3776 = function FL_setSilentV3776(input, value){
   if(!input) return;
   input.value = value || "";
 }
 
-function FL_clearRowsV3776(){
+var FL_clearRowsV3776 = function FL_clearRowsV3776(){
   const c = FL_getBallonColumnsV3776();
 
   for(let i=0;i<10;i++){
@@ -9671,7 +9671,7 @@ function FL_clearRowsV3776(){
   }
 }
 
-function FL_getImageInputV3776(){
+var FL_getImageInputV3776 = function FL_getImageInputV3776(){
   const root = form || document;
   const inputs = [...root.querySelectorAll("input,select,textarea")]
     .filter(input => input.type !== "file");
@@ -9679,7 +9679,7 @@ function FL_getImageInputV3776(){
   return inputs.find(input => FL_typeV3776(input) === "image") || null;
 }
 
-function FL_setImageV3776(value){
+var FL_setImageV3776 = function FL_setImageV3776(value){
   const input = FL_getImageInputV3776();
   if(!input) return;
 
@@ -9687,7 +9687,7 @@ function FL_setImageV3776(value){
   FL_setSilentV3776(input, clean || "");
 }
 
-function FL_loadBallonSeasonV3776(force=false){
+var FL_loadBallonSeasonV3776 = function FL_loadBallonSeasonV3776(force=false){
   try{
     if(!FL_isBallonModalV3776()) return;
 
@@ -9736,7 +9736,7 @@ function FL_loadBallonSeasonV3776(force=false){
   }
 }
 
-function FL_attachBallonStableSelectorV3776(){
+var FL_attachBallonStableSelectorV3776 = function FL_attachBallonStableSelectorV3776(){
   try{
     if(!FL_isBallonModalV3776()) return;
 
@@ -9806,7 +9806,7 @@ let FL_BALLON_USER_DIRTY_V3777 = false;
 let FL_BALLON_PROGRAMMATIC_FILL_V3777 = false;
 let FL_BALLON_ATTACH_DONE_V3777 = false;
 
-function FL_keyV3777(value){
+var FL_keyV3777 = function FL_keyV3777(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -9814,13 +9814,13 @@ function FL_keyV3777(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_isBallonModalV3777(){
+var FL_isBallonModalV3777 = function FL_isBallonModalV3777(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
   return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
 }
 
-function FL_normalizeSeasonV3777(value){
+var FL_normalizeSeasonV3777 = function FL_normalizeSeasonV3777(value){
   const raw = String(value || "").trim();
 
   let m = raw.match(/-\s*(\d{4})$/);
@@ -9835,7 +9835,7 @@ function FL_normalizeSeasonV3777(value){
   return raw;
 }
 
-function FL_getSeasonInputV3777(){
+var FL_getSeasonInputV3777 = function FL_getSeasonInputV3777(){
   const root = form || document;
   return (
     root.querySelector("[name='temporada']") ||
@@ -9845,12 +9845,12 @@ function FL_getSeasonInputV3777(){
   );
 }
 
-function FL_getSeasonV3777(){
+var FL_getSeasonV3777 = function FL_getSeasonV3777(){
   const input = FL_getSeasonInputV3777();
   return FL_normalizeSeasonV3777(input?.value || "");
 }
 
-function FL_getSavedRowsV3777(season){
+var FL_getSavedRowsV3777 = function FL_getSavedRowsV3777(season){
   const normalized = FL_normalizeSeasonV3777(season);
 
   return (db.BOLA_DE_OURO_CARREIRA || [])
@@ -9862,7 +9862,7 @@ function FL_getSavedRowsV3777(season){
     .sort((a,b) => Number(a.posicao || 999) - Number(b.posicao || 999));
 }
 
-function FL_fieldTypeV3777(input){
+var FL_fieldTypeV3777 = function FL_fieldTypeV3777(input){
   const key = FL_keyV3777([
     input.name,
     input.id,
@@ -9882,7 +9882,7 @@ function FL_fieldTypeV3777(input){
   return "";
 }
 
-function FL_columnsV3777(){
+var FL_columnsV3777 = function FL_columnsV3777(){
   const root = form || document;
   const result = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
 
@@ -9921,19 +9921,19 @@ function FL_columnsV3777(){
   return result;
 }
 
-function FL_setSilentV3777(input, value){
+var FL_setSilentV3777 = function FL_setSilentV3777(input, value){
   if(!input) return;
   input.value = value || "";
 }
 
-function FL_getImageInputV3777(){
+var FL_getImageInputV3777 = function FL_getImageInputV3777(){
   const root = form || document;
   const inputs = [...root.querySelectorAll("input,select,textarea")]
     .filter(input => input.type !== "file");
   return inputs.find(input => FL_fieldTypeV3777(input) === "image") || null;
 }
 
-function FL_clearRowsV3777(){
+var FL_clearRowsV3777 = function FL_clearRowsV3777(){
   const c = FL_columnsV3777();
 
   for(let i=0;i<10;i++){
@@ -9947,7 +9947,7 @@ function FL_clearRowsV3777(){
   FL_setSilentV3777(FL_getImageInputV3777(), "");
 }
 
-function FL_fillSeasonV3777(season){
+var FL_fillSeasonV3777 = function FL_fillSeasonV3777(season){
   try{
     if(!FL_isBallonModalV3777()) return;
 
@@ -10003,7 +10003,7 @@ function FL_fillSeasonV3777(season){
   }
 }
 
-function FL_handleSeasonChangedV3777(){
+var FL_handleSeasonChangedV3777 = function FL_handleSeasonChangedV3777(){
   if(!FL_isBallonModalV3777()) return;
 
   const season = FL_getSeasonV3777();
@@ -10018,7 +10018,7 @@ function FL_handleSeasonChangedV3777(){
   }
 }
 
-function FL_markDirtyIfUserEditV3777(e){
+var FL_markDirtyIfUserEditV3777 = function FL_markDirtyIfUserEditV3777(e){
   if(!FL_isBallonModalV3777()) return;
   if(FL_BALLON_PROGRAMMATIC_FILL_V3777) return;
 
@@ -10037,7 +10037,7 @@ function FL_markDirtyIfUserEditV3777(e){
   }
 }
 
-function FL_attachBallonNoOverwriteV3777(){
+var FL_attachBallonNoOverwriteV3777 = function FL_attachBallonNoOverwriteV3777(){
   try{
     if(!FL_isBallonModalV3777()) return;
 
@@ -10107,7 +10107,7 @@ window.FL_attachBallonNoOverwriteV3777 = FL_attachBallonNoOverwriteV3777;
 // Agora o payload usa:
 // jogador[i], país[i], clube[i], idade[i], valor[i]
 
-function FL_keyV3778(value){
+var FL_keyV3778 = function FL_keyV3778(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -10115,13 +10115,13 @@ function FL_keyV3778(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_isBallonModalV3778(){
+var FL_isBallonModalV3778 = function FL_isBallonModalV3778(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
   return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
 }
 
-function FL_fieldTypeV3778(input){
+var FL_fieldTypeV3778 = function FL_fieldTypeV3778(input){
   const key = FL_keyV3778([
     input.name,
     input.id,
@@ -10143,7 +10143,7 @@ function FL_fieldTypeV3778(input){
   return "";
 }
 
-function FL_columnsV3778(){
+var FL_columnsV3778 = function FL_columnsV3778(){
   const root = form || document;
   const result = { jogador: [], pais: [], clube: [], idade: [], valor: [] };
 
@@ -10186,7 +10186,7 @@ function FL_columnsV3778(){
   return result;
 }
 
-function FL_cleanUrlV3778(value){
+var FL_cleanUrlV3778 = function FL_cleanUrlV3778(value){
   const raw = String(value || "").trim();
   if(!raw) return "";
   if(raw.toLowerCase().includes("fakepath")) return "";
@@ -10194,7 +10194,7 @@ function FL_cleanUrlV3778(value){
   return "";
 }
 
-function FL_getBallonImageV3778(){
+var FL_getBallonImageV3778 = function FL_getBallonImageV3778(){
   const root = form || document;
 
   const candidates = [...root.querySelectorAll("input,select,textarea")]
@@ -10209,7 +10209,7 @@ function FL_getBallonImageV3778(){
   return "";
 }
 
-function FL_normalizeSeasonV3778(value){
+var FL_normalizeSeasonV3778 = function FL_normalizeSeasonV3778(value){
   const raw = String(value || "").trim();
 
   let m = raw.match(/-\s*(\d{4})$/);
@@ -10224,7 +10224,7 @@ function FL_normalizeSeasonV3778(value){
   return raw;
 }
 
-function FL_getBallonSeasonV3778(){
+var FL_getBallonSeasonV3778 = function FL_getBallonSeasonV3778(){
   const root = form || document;
   const input =
     root.querySelector("[name='temporada']") ||
@@ -10235,7 +10235,7 @@ function FL_getBallonSeasonV3778(){
   return FL_normalizeSeasonV3778(input?.value || "");
 }
 
-function FL_getBallonRowsForSaveV3778(){
+var FL_getBallonRowsForSaveV3778 = function FL_getBallonRowsForSaveV3778(){
   const c = FL_columnsV3778();
   const rows = [];
 
@@ -10268,7 +10268,7 @@ function FL_getBallonRowsForSaveV3778(){
   return rows;
 }
 
-async function FL_saveBallonRankingV3778(){
+var FL_saveBallonRankingV3778 = async function FL_saveBallonRankingV3778(){
   const btn = $("saveBtn") || document.querySelector(".gold-btn") || document.querySelector("button[type='submit']");
   if(btn && btn.disabled) return;
 
@@ -10339,7 +10339,7 @@ document.addEventListener("submit", function(e){
 // Causa: renderAll antigo renderizava o Resumo mesmo quando a aba ativa era Bola de Ouro.
 // Agora renderAll renderiza a aba atual.
 
-function FL_getCurrentPageV3779(){
+var FL_getCurrentPageV3779 = function FL_getCurrentPageV3779(){
   try{
     if(typeof currentPageId !== "undefined" && currentPageId) return currentPageId;
 
@@ -10355,7 +10355,7 @@ function FL_getCurrentPageV3779(){
   }
 }
 
-function FL_setActivePageV3779(pageId){
+var FL_setActivePageV3779 = function FL_setActivePageV3779(pageId){
   const page = pageId || "dashboard";
 
   try{
@@ -10386,7 +10386,7 @@ function FL_setActivePageV3779(pageId){
   }
 }
 
-function FL_afterPageRenderV3779(pageId){
+var FL_afterPageRenderV3779 = function FL_afterPageRenderV3779(pageId){
   const page = pageId || FL_getCurrentPageV3779();
 
   document.body.dataset.currentPage = page;
@@ -10497,7 +10497,7 @@ window.FL_afterPageRenderV3779 = FL_afterPageRenderV3779;
 let FL_BALLON_BEST_MODE_V3780 = "player";
 const FL_BADGE_CACHE_V3780 = {};
 
-function FL_normV3780(value){
+var FL_normV3780 = function FL_normV3780(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -10505,15 +10505,15 @@ function FL_normV3780(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3780(value){
+var FL_escapeV3780 = function FL_escapeV3780(value){
   return escapeHtml ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3780(value){
+var FL_escapeAttrV3780 = function FL_escapeAttrV3780(value){
   return escapeAttr ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_normalizeSelectionNameV3780(value){
+var FL_normalizeSelectionNameV3780 = function FL_normalizeSelectionNameV3780(value){
   const raw = String(value || "").trim();
   const k = FL_normV3780(raw);
   const aliases = {
@@ -10536,7 +10536,7 @@ function FL_normalizeSelectionNameV3780(value){
   return aliases[k] || raw;
 }
 
-function FL_countryCodeV3780(name){
+var FL_countryCodeV3780 = function FL_countryCodeV3780(name){
   const k = FL_normV3780(FL_normalizeSelectionNameV3780(name));
   const map = {
     brasil:"br", argentina:"ar", franca:"fr", espanha:"es", portugal:"pt",
@@ -10549,13 +10549,13 @@ function FL_countryCodeV3780(name){
   return map[k] || "";
 }
 
-function FL_flagEmojiV3780(name){
+var FL_flagEmojiV3780 = function FL_flagEmojiV3780(name){
   const code = FL_countryCodeV3780(name);
   if(!code || code.includes("-")) return "🌐";
   return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
 }
 
-function FL_badgeFallbackV3780(name){
+var FL_badgeFallbackV3780 = function FL_badgeFallbackV3780(name){
   const norm = FL_normalizeSelectionNameV3780(name);
   const k = FL_normV3780(norm);
   const direct = {
@@ -10584,7 +10584,7 @@ function FL_badgeFallbackV3780(name){
 window.normalizeSelectionNameV3760 = FL_normalizeSelectionNameV3780;
 window.getSelectionBadgeV3760 = FL_badgeFallbackV3780;
 
-async function FL_fetchNationalBadgeV3780(name){
+var FL_fetchNationalBadgeV3780 = async function FL_fetchNationalBadgeV3780(name){
   const norm = FL_normalizeSelectionNameV3780(name);
   const k = FL_normV3780(norm);
   if(!k) return "";
@@ -10625,7 +10625,7 @@ async function FL_fetchNationalBadgeV3780(name){
   return fallback;
 }
 
-function FL_injectNationalBadgesV3780(){
+var FL_injectNationalBadgesV3780 = function FL_injectNationalBadgesV3780(){
   const nodes = [...document.querySelectorAll("[data-national-team-v3780]")];
 
   nodes.forEach(async node=>{
@@ -10641,7 +10641,7 @@ function FL_injectNationalBadgesV3780(){
 }
 
 // ---------- Seleção: dedupe para não somar dobrado ----------
-function FL_selectionRowsV3780(){
+var FL_selectionRowsV3780 = function FL_selectionRowsV3780(){
   const carreiraId = active?.carreira_id || "";
   const personagemId = active?.protagonista_id || "";
 
@@ -10666,7 +10666,7 @@ function FL_selectionRowsV3780(){
 
 window.getSelectionRowsV3760 = FL_selectionRowsV3780;
 
-function FL_selectionTotalsV3780(){
+var FL_selectionTotalsV3780 = function FL_selectionTotalsV3780(){
   const rows = FL_selectionRowsV3780();
   return rows.reduce((acc,r)=>{
     acc.selecao = FL_normalizeSelectionNameV3780(r.selecao || acc.selecao);
@@ -10790,7 +10790,7 @@ if(__openSelectionSeasonModalV3760_v3780 && !window.__selectionModalV3780Wrapped
 }
 
 // ---------- Troféus com imagem ----------
-function FL_trophyImageV3780(name){
+var FL_trophyImageV3780 = function FL_trophyImageV3780(name){
   const n = FL_normV3780(name);
 
   const file = (filename) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=240`;
@@ -10813,7 +10813,7 @@ function FL_trophyImageV3780(name){
   return file("Association_football_trophy.jpg");
 }
 
-function FL_titleRowsV3780(){
+var FL_titleRowsV3780 = function FL_titleRowsV3780(){
   const clubTitles = (getTable("CAMPEOES_CARREIRA") || []).map(t=>({
     id:`club-${t.id || `${t.temporada}-${t.competicao}`}`,
     tipo:"clube",
@@ -10846,7 +10846,7 @@ function FL_titleRowsV3780(){
     .sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
 }
 
-function renderTrofeus(){
+var renderTrofeus = function renderTrofeus(){
   const el = $("trophy-grid");
   if(!el) return;
 
@@ -10867,7 +10867,7 @@ function renderTrofeus(){
 }
 
 // ---------- Bola de Ouro melhores ----------
-function FL_ballonRowsAllV3780(){
+var FL_ballonRowsAllV3780 = function FL_ballonRowsAllV3780(){
   const rows = getTable("BOLA_DE_OURO") || [];
   const map = new Map();
 
@@ -10882,7 +10882,7 @@ function FL_ballonRowsAllV3780(){
   return [...map.values()].filter(r=>r.jogador || r.clube || r.pais || r.nacionalidade);
 }
 
-function FL_groupBallonV3780(mode){
+var FL_groupBallonV3780 = function FL_groupBallonV3780(mode){
   const rows = FL_ballonRowsAllV3780();
   const map = new Map();
 
@@ -10947,7 +10947,7 @@ function FL_groupBallonV3780(mode){
   ).slice(0,10);
 }
 
-function FL_renderBallonBestViewsV3780(){
+var FL_renderBallonBestViewsV3780 = function FL_renderBallonBestViewsV3780(){
   const host = $("ballon-best-v3780") || document.createElement("section");
   host.id = "ballon-best-v3780";
   host.className = "ballon-best-v3780";
@@ -11037,7 +11037,7 @@ let FL_TOP11_EDITING_V3781 = false;
 let FL_TOP11_CURRENT_MAP_V3781 = "";
 const FL_PLAYER_PHOTO_CACHE_V3781 = {};
 
-function FL_normV3781(value){
+var FL_normV3781 = function FL_normV3781(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -11045,31 +11045,31 @@ function FL_normV3781(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3781(value){
+var FL_escapeV3781 = function FL_escapeV3781(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3781(value){
+var FL_escapeAttrV3781 = function FL_escapeAttrV3781(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_activeCareerIdV3781(){
+var FL_activeCareerIdV3781 = function FL_activeCareerIdV3781(){
   return active?.carreira_id || "";
 }
 
-function FL_activeSeasonIdV3781(){
+var FL_activeSeasonIdV3781 = function FL_activeSeasonIdV3781(){
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
   return seasons[0]?.id || "";
 }
 
-function FL_top11RowsV3781(){
+var FL_top11RowsV3781 = function FL_top11RowsV3781(){
   const carreiraId = FL_activeCareerIdV3781();
   return (getTable("TOP11_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_top11CurrentRowsV3781(){
+var FL_top11CurrentRowsV3781 = function FL_top11CurrentRowsV3781(){
   const rows = FL_top11RowsV3781();
 
   if(!rows.length) return [];
@@ -11087,7 +11087,7 @@ function FL_top11CurrentRowsV3781(){
   return filtered.sort((a,b)=>Number(a.id || 0)-Number(b.id || 0));
 }
 
-function FL_defaultTop11PositionsV3781(){
+var FL_defaultTop11PositionsV3781 = function FL_defaultTop11PositionsV3781(){
   return [
     ["GOL",50,88],
     ["LD",78,70],["ZAG",60,72],["ZAG",40,72],["LE",22,70],
@@ -11097,7 +11097,7 @@ function FL_defaultTop11PositionsV3781(){
   ];
 }
 
-async function FL_fetchPlayerPhotoV3781(name){
+var FL_fetchPlayerPhotoV3781 = async function FL_fetchPlayerPhotoV3781(name){
   const clean = String(name || "").trim();
   const key = FL_normV3781(clean);
   if(!key) return "";
@@ -11122,12 +11122,12 @@ async function FL_fetchPlayerPhotoV3781(name){
   }
 }
 
-function FL_initialsV3781(name){
+var FL_initialsV3781 = function FL_initialsV3781(name){
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return (parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "");
 }
 
-function FL_top11PlayerCardV3781(row, idx){
+var FL_top11PlayerCardV3781 = function FL_top11PlayerCardV3781(row, idx){
   const defaults = FL_defaultTop11PositionsV3781();
   const d = defaults[idx] || ["POS",50,50];
 
@@ -11155,7 +11155,7 @@ function FL_top11PlayerCardV3781(row, idx){
   `;
 }
 
-function FL_renderTop11MapV3781(){
+var FL_renderTop11MapV3781 = function FL_renderTop11MapV3781(){
   const page = $("top11");
   if(!page) return;
 
@@ -11207,18 +11207,18 @@ function FL_renderTop11MapV3781(){
   FL_enrichTop11PhotosV3781();
 }
 
-function FL_applyTop11MapV3781(){
+var FL_applyTop11MapV3781 = function FL_applyTop11MapV3781(){
   const input = $("top11-map-url-input-v3781");
   FL_TOP11_CURRENT_MAP_V3781 = input?.value || "";
   FL_renderTop11MapV3781();
 }
 
-function FL_toggleTop11EditV3781(){
+var FL_toggleTop11EditV3781 = function FL_toggleTop11EditV3781(){
   FL_TOP11_EDITING_V3781 = !FL_TOP11_EDITING_V3781;
   FL_renderTop11MapV3781();
 }
 
-function FL_enableTop11DragV3781(){
+var FL_enableTop11DragV3781 = function FL_enableTop11DragV3781(){
   const pitch = document.querySelector(".top11-pitch-v3781");
   if(!pitch) return;
 
@@ -11270,7 +11270,7 @@ function FL_enableTop11DragV3781(){
   });
 }
 
-async function FL_enrichTop11PhotosV3781(){
+var FL_enrichTop11PhotosV3781 = async function FL_enrichTop11PhotosV3781(){
   const cards = [...document.querySelectorAll(".top11-player-v3781")];
 
   for(const card of cards){
@@ -11292,7 +11292,7 @@ async function FL_enrichTop11PhotosV3781(){
   }
 }
 
-async function FL_saveTop11PositionsV3781(){
+var FL_saveTop11PositionsV3781 = async function FL_saveTop11PositionsV3781(){
   const rows = FL_top11CurrentRowsV3781();
   const cards = [...document.querySelectorAll(".top11-player-v3781")];
 
@@ -11373,7 +11373,7 @@ window.FL_applyTop11MapV3781 = FL_applyTop11MapV3781;
 // - Campeões de outros times não entram mais no Hall.
 // - Aba Estatísticas vira painel de maiores ligas/torneios com Top 5 vencedores.
 
-function FL_normV3782(value){
+var FL_normV3782 = function FL_normV3782(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -11381,37 +11381,37 @@ function FL_normV3782(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3782(value){
+var FL_escapeV3782 = function FL_escapeV3782(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3782(value){
+var FL_escapeAttrV3782 = function FL_escapeAttrV3782(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_activeCareerIdV3782(){
+var FL_activeCareerIdV3782 = function FL_activeCareerIdV3782(){
   return active?.carreira_id || "";
 }
 
-function FL_careerSeasonsV3782(){
+var FL_careerSeasonsV3782 = function FL_careerSeasonsV3782(){
   const carreiraId = FL_activeCareerIdV3782();
   return (getTable("CARREIRA_TEMPORADAS") || []).filter(s =>
     !carreiraId || String(s.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_seasonByIdV3782(){
+var FL_seasonByIdV3782 = function FL_seasonByIdV3782(){
   const map = new Map();
   FL_careerSeasonsV3782().forEach(s => map.set(String(s.id || ""), s));
   return map;
 }
 
-function FL_isTruthyWonV3782(value){
+var FL_isTruthyWonV3782 = function FL_isTruthyWonV3782(value){
   const v = FL_normV3782(value);
   return ["sim","true","1","yes","y","ganhei","venci","campeao","campeao"].includes(v);
 }
 
-function FL_isWonChampionRecordV3782(record){
+var FL_isWonChampionRecordV3782 = function FL_isWonChampionRecordV3782(record){
   const seasonMap = FL_seasonByIdV3782();
   const season = seasonMap.get(String(record.carreira_temporada_id || ""));
 
@@ -11435,7 +11435,7 @@ function FL_isWonChampionRecordV3782(record){
   return false;
 }
 
-function FL_trophyImageV3782(name){
+var FL_trophyImageV3782 = function FL_trophyImageV3782(name){
   const n = FL_normV3782(name);
   const file = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=260`;
 
@@ -11456,7 +11456,7 @@ function FL_trophyImageV3782(name){
   return file("Association_football_trophy.jpg");
 }
 
-function FL_wonTitleRowsV3782(){
+var FL_wonTitleRowsV3782 = function FL_wonTitleRowsV3782(){
   const carreiraId = FL_activeCareerIdV3782();
 
   const clubTitles = (getTable("CAMPEOES_CARREIRA") || [])
@@ -11502,7 +11502,7 @@ function FL_wonTitleRowsV3782(){
     });
 }
 
-function renderTrofeus(){
+var renderTrofeus = function renderTrofeus(){
   const el = $("trophy-grid");
   if(!el) return;
 
@@ -11538,21 +11538,21 @@ const FL_MAJOR_COMPETITIONS_V3782 = [
   {name:"Copa América", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"}
 ];
 
-function FL_matchMajorCompV3782(comp){
+var FL_matchMajorCompV3782 = function FL_matchMajorCompV3782(comp){
   const c = FL_normV3782(comp);
   return FL_MAJOR_COMPETITIONS_V3782.find(item =>
     item.aliases.some(a => c.includes(FL_normV3782(a)) || FL_normV3782(a).includes(c))
   );
 }
 
-function FL_championsRowsV3782(){
+var FL_championsRowsV3782 = function FL_championsRowsV3782(){
   const carreiraId = FL_activeCareerIdV3782();
   return (getTable("CAMPEOES_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_topWinnersByCompetitionV3782(major){
+var FL_topWinnersByCompetitionV3782 = function FL_topWinnersByCompetitionV3782(major){
   const map = new Map();
 
   FL_championsRowsV3782().forEach(r=>{
@@ -11579,7 +11579,7 @@ function FL_topWinnersByCompetitionV3782(major){
     .slice(0,5);
 }
 
-function FL_renderEstatisticasMajorLeaguesV3782(){
+var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajorLeaguesV3782(){
   const page = $("estatisticas");
   if(!page) return;
 
@@ -11631,7 +11631,7 @@ function FL_renderEstatisticasMajorLeaguesV3782(){
   if(oldTable) oldTable.closest(".content-card, .section-card")?.classList.add("stats-old-hidden-v3782");
 }
 
-function renderEstatisticas(){
+var renderEstatisticas = function renderEstatisticas(){
   FL_renderEstatisticasMajorLeaguesV3782();
 }
 
@@ -11648,7 +11648,7 @@ window.renderStats = renderEstatisticas;
 
 let FL_BALLON_BEST_MODE_V3783 = "player";
 
-function FL_normV3783(value){
+var FL_normV3783 = function FL_normV3783(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -11656,16 +11656,16 @@ function FL_normV3783(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3783(value){
+var FL_escapeV3783 = function FL_escapeV3783(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3783(value){
+var FL_escapeAttrV3783 = function FL_escapeAttrV3783(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
 // ---------- Seleções: fallback forte ----------
-function FL_selectionBadgeStrongV3783(name){
+var FL_selectionBadgeStrongV3783 = function FL_selectionBadgeStrongV3783(name){
   const k = FL_normV3783(name);
 
   const commons = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=180`;
@@ -11712,7 +11712,7 @@ function FL_selectionBadgeStrongV3783(name){
 window.getSelectionBadgeV3760 = FL_selectionBadgeStrongV3783;
 window.FL_badgeFallbackV3780 = FL_selectionBadgeStrongV3783;
 
-async function FL_fetchNationalBadgeV3783(name){
+var FL_fetchNationalBadgeV3783 = async function FL_fetchNationalBadgeV3783(name){
   const fallback = FL_selectionBadgeStrongV3783(name);
   const k = FL_normV3783(name);
 
@@ -11731,7 +11731,7 @@ async function FL_fetchNationalBadgeV3783(name){
 
 window.FL_fetchNationalBadgeV3780 = FL_fetchNationalBadgeV3783;
 
-function FL_fixBrazilSelectionBadgesV3783(){
+var FL_fixBrazilSelectionBadgesV3783 = function FL_fixBrazilSelectionBadgesV3783(){
   const badge = FL_selectionBadgeStrongV3783("Brasil");
 
   // Corrige placeholders que possuem texto Brasil/Brazil dentro de cards de seleção.
@@ -11763,7 +11763,7 @@ function FL_fixBrazilSelectionBadgesV3783(){
 }
 
 // ---------- Estatísticas: adiciona Brasileirão ----------
-function FL_ensureBrasileiraoStatsV3783(){
+var FL_ensureBrasileiraoStatsV3783 = function FL_ensureBrasileiraoStatsV3783(){
   try{
     if(!Array.isArray(FL_MAJOR_COMPETITIONS_V3782)) return;
     if(FL_MAJOR_COMPETITIONS_V3782.some(c => FL_normV3783(c.name).includes("brasileirao"))) return;
@@ -11779,7 +11779,7 @@ function FL_ensureBrasileiraoStatsV3783(){
 }
 
 // ---------- Bola de Ouro: modal correto ----------
-function FL_ballonRowsAllV3783(){
+var FL_ballonRowsAllV3783 = function FL_ballonRowsAllV3783(){
   const career = (getTable("BOLA_DE_OURO_CARREIRA") || []).map(r=>Object.assign({__source:"career"}, r));
   const base = (typeof getTable === "function" ? (getTable("BOLA_DE_OURO_BASE") || getTable("BOLA_DE_OURO") || []) : []).map(r=>Object.assign({__source:"real"}, r));
 
@@ -11796,7 +11796,7 @@ function FL_ballonRowsAllV3783(){
   return [...map.values()].filter(r=>r.jogador || r.clube || r.pais || r.nacionalidade);
 }
 
-function FL_groupBallonBestV3783(mode){
+var FL_groupBallonBestV3783 = function FL_groupBallonBestV3783(mode){
   const rows = FL_ballonRowsAllV3783();
   const map = new Map();
 
@@ -11867,7 +11867,7 @@ function FL_groupBallonBestV3783(mode){
   );
 }
 
-function FL_ballonModeLabelV3783(mode){
+var FL_ballonModeLabelV3783 = function FL_ballonModeLabelV3783(mode){
   const labels = {
     player:"Por jogador",
     second:"Mais vezes 2º lugar",
@@ -11879,7 +11879,7 @@ function FL_ballonModeLabelV3783(mode){
   return labels[mode] || "Melhores";
 }
 
-function FL_renderBallonBestModalV3783(){
+var FL_renderBallonBestModalV3783 = function FL_renderBallonBestModalV3783(){
   let modal = document.getElementById("fl-ballon-best-modal-v3783");
   if(!modal){
     modal = document.createElement("div");
@@ -11933,17 +11933,17 @@ function FL_renderBallonBestModalV3783(){
   `;
 }
 
-function FL_closeBallonBestModalV3783(){
+var FL_closeBallonBestModalV3783 = function FL_closeBallonBestModalV3783(){
   document.getElementById("fl-ballon-best-modal-v3783")?.remove();
 }
 
-function FL_hideInlineBallonBestV3783(){
+var FL_hideInlineBallonBestV3783 = function FL_hideInlineBallonBestV3783(){
   document.querySelectorAll("#ballon-best-v3780,.ballon-best-v3780").forEach(el=>{
     el.remove();
   });
 }
 
-function FL_bindBestButtonV3783(){
+var FL_bindBestButtonV3783 = function FL_bindBestButtonV3783(){
   document.querySelectorAll("button,a").forEach(btn=>{
     const txt = (btn.textContent || "").toLowerCase();
     if(!txt.includes("os melhores")) return;
@@ -12003,7 +12003,7 @@ window.FL_fixBrazilSelectionBadgesV3783 = FL_fixBrazilSelectionBadgesV3783;
 // Corrige bug onde conteúdo de Troféus/Estatísticas continuava aparecendo em Records ou outras abas.
 // Regra: só a aba ativa pode ficar visível. Blocos temporários são removidos ao sair da aba.
 
-function FL_currentPageV3784(){
+var FL_currentPageV3784 = function FL_currentPageV3784(){
   try{
     if(typeof currentPageId !== "undefined" && currentPageId) return currentPageId;
   }catch(err){}
@@ -12017,7 +12017,7 @@ function FL_currentPageV3784(){
   return document.body.dataset.currentPage || "dashboard";
 }
 
-function FL_pageIdsV3784(){
+var FL_pageIdsV3784 = function FL_pageIdsV3784(){
   return [
     "dashboard",
     "resumo",
@@ -12032,7 +12032,7 @@ function FL_pageIdsV3784(){
   ];
 }
 
-function FL_removeForeignDynamicBlocksV3784(activePage){
+var FL_removeForeignDynamicBlocksV3784 = function FL_removeForeignDynamicBlocksV3784(activePage){
   try{
     // Estatísticas nova só pode existir na aba estatisticas.
     if(activePage !== "estatisticas"){
@@ -12055,7 +12055,7 @@ function FL_removeForeignDynamicBlocksV3784(activePage){
   }
 }
 
-function FL_forceOnlyActivePageV3784(pageId){
+var FL_forceOnlyActivePageV3784 = function FL_forceOnlyActivePageV3784(pageId){
   const activePage = pageId || FL_currentPageV3784() || "dashboard";
   document.body.dataset.currentPage = activePage;
 
@@ -12093,7 +12093,7 @@ function FL_forceOnlyActivePageV3784(pageId){
   FL_removeForeignDynamicBlocksV3784(activePage);
 }
 
-function FL_renderActivePageV3784(pageId, force=false){
+var FL_renderActivePageV3784 = function FL_renderActivePageV3784(pageId, force=false){
   const page = pageId || FL_currentPageV3784() || "dashboard";
 
   FL_forceOnlyActivePageV3784(page);
@@ -12181,7 +12181,7 @@ document.addEventListener("click", function(e){
 }, true);
 
 // Reforços após qualquer render tardio.
-function FL_periodicIsolationV3784(){
+var FL_periodicIsolationV3784 = function FL_periodicIsolationV3784(){
   const page = FL_currentPageV3784() || document.body.dataset.currentPage || "dashboard";
   FL_forceOnlyActivePageV3784(page);
 }
@@ -12202,7 +12202,7 @@ window.FL_renderActivePageV3784 = FL_renderActivePageV3784;
 
 const FL_CLUB_BADGE_CACHE_V3785 = {};
 
-function FL_normV3785(value){
+var FL_normV3785 = function FL_normV3785(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -12210,16 +12210,16 @@ function FL_normV3785(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3785(value){
+var FL_escapeV3785 = function FL_escapeV3785(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3785(value){
+var FL_escapeAttrV3785 = function FL_escapeAttrV3785(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
 // ---------- Escudo seleção: não espalhar ----------
-function FL_removeScatteredBrazilBadgesV3785(){
+var FL_removeScatteredBrazilBadgesV3785 = function FL_removeScatteredBrazilBadgesV3785(){
   document.querySelectorAll(".selection-badge-fixed-v3783").forEach(el => el.remove());
 }
 
@@ -12240,7 +12240,7 @@ window.FL_fixBrazilSelectionBadgesV3783 = function(){
   });
 };
 
-function FL_selectionBadgeUrlV3785(name){
+var FL_selectionBadgeUrlV3785 = function FL_selectionBadgeUrlV3785(name){
   const k = FL_normV3785(name);
   const commons = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=180`;
 
@@ -12277,7 +12277,7 @@ window.getSelectionBadgeV3760 = FL_selectionBadgeUrlV3785;
 window.FL_badgeFallbackV3780 = FL_selectionBadgeUrlV3785;
 
 // ---------- País/bandeira ----------
-function FL_countryCodeV3785(name){
+var FL_countryCodeV3785 = function FL_countryCodeV3785(name){
   const k = FL_normV3785(name);
   const map = {
     brasil:"br", brazil:"br", brasileiro:"br", brasileira:"br",
@@ -12312,19 +12312,19 @@ function FL_countryCodeV3785(name){
   return map[k] || "";
 }
 
-function FL_countryEmojiV3785(name){
+var FL_countryEmojiV3785 = function FL_countryEmojiV3785(name){
   const code = FL_countryCodeV3785(name);
   if(!code || code.includes("-")) return "🌐";
   return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
 }
 
-function FL_countryFlagUrlV3785(name){
+var FL_countryFlagUrlV3785 = function FL_countryFlagUrlV3785(name){
   const code = FL_countryCodeV3785(name);
   return code && !code.includes("-") ? `https://flagcdn.com/w80/${code}.png` : "";
 }
 
 // ---------- Clubes: TheSportsDB + fallback ----------
-function FL_clubBadgeFallbackV3785(name){
+var FL_clubBadgeFallbackV3785 = function FL_clubBadgeFallbackV3785(name){
   const k = FL_normV3785(name);
   const wiki = filename => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=180`;
 
@@ -12377,7 +12377,7 @@ function FL_clubBadgeFallbackV3785(name){
   return map[k] || "";
 }
 
-async function FL_fetchClubBadgeV3785(name){
+var FL_fetchClubBadgeV3785 = async function FL_fetchClubBadgeV3785(name){
   const clean = String(name || "").trim();
   const key = FL_normV3785(clean);
   if(!key) return "";
@@ -12415,7 +12415,7 @@ async function FL_fetchClubBadgeV3785(name){
 }
 
 // ---------- Modal Melhores melhorado ----------
-function FL_ballonRowsAllV3785(){
+var FL_ballonRowsAllV3785 = function FL_ballonRowsAllV3785(){
   const career = (getTable("BOLA_DE_OURO_CARREIRA") || []).map(r=>Object.assign({__source:"career"}, r));
   const base = (getTable("BOLA_DE_OURO_BASE") || getTable("BOLA_DE_OURO") || []).map(r=>Object.assign({__source:"real"}, r));
 
@@ -12432,7 +12432,7 @@ function FL_ballonRowsAllV3785(){
   return [...map.values()].filter(r=>r.jogador || r.clube || r.pais || r.nacionalidade);
 }
 
-function FL_groupBallonBestV3785(mode){
+var FL_groupBallonBestV3785 = function FL_groupBallonBestV3785(mode){
   const rows = FL_ballonRowsAllV3785();
   const map = new Map();
 
@@ -12523,7 +12523,7 @@ function FL_groupBallonBestV3785(mode){
   );
 }
 
-function FL_iconHtmlBallonV3785(row, mode){
+var FL_iconHtmlBallonV3785 = function FL_iconHtmlBallonV3785(row, mode){
   const country = row.country || row.label || "";
   const club = row.club || row.label || "";
 
@@ -12537,7 +12537,7 @@ function FL_iconHtmlBallonV3785(row, mode){
   return `<span class="fl-ballon-icon-v3785 flag">${flag ? `<img src="${FL_escapeAttrV3785(flag)}" onerror="this.parentElement.innerHTML='${emoji}'">` : emoji}</span>`;
 }
 
-function FL_modeLabelBallonV3785(mode){
+var FL_modeLabelBallonV3785 = function FL_modeLabelBallonV3785(mode){
   const labels = {
     player:"Por jogador",
     second:"Mais vezes 2º lugar",
@@ -12549,7 +12549,7 @@ function FL_modeLabelBallonV3785(mode){
   return labels[mode] || "Melhores";
 }
 
-function FL_renderBallonBestModalV3785(){
+var FL_renderBallonBestModalV3785 = function FL_renderBallonBestModalV3785(){
   let modal = document.getElementById("fl-ballon-best-modal-v3783");
   if(!modal){
     modal = document.createElement("div");
@@ -12607,7 +12607,7 @@ function FL_renderBallonBestModalV3785(){
   FL_enrichBallonClubBadgesV3785();
 }
 
-async function FL_enrichBallonClubBadgesV3785(){
+var FL_enrichBallonClubBadgesV3785 = async function FL_enrichBallonClubBadgesV3785(){
   const nodes = [...document.querySelectorAll("[data-club-badge-v3785]")];
 
   for(const node of nodes){
@@ -12659,7 +12659,7 @@ window.FL_removeScatteredBrazilBadgesV3785 = FL_removeScatteredBrazilBadgesV3785
 let FL_TOP11_EDITING_V3786 = false;
 let FL_TOP11_MAP_URL_V3786 = "";
 
-function FL_normV3786(value){
+var FL_normV3786 = function FL_normV3786(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -12667,24 +12667,24 @@ function FL_normV3786(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3786(value){
+var FL_escapeV3786 = function FL_escapeV3786(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3786(value){
+var FL_escapeAttrV3786 = function FL_escapeAttrV3786(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_activeCareerIdV3786(){
+var FL_activeCareerIdV3786 = function FL_activeCareerIdV3786(){
   return active?.carreira_id || "";
 }
 
-function FL_activeSeasonIdV3786(){
+var FL_activeSeasonIdV3786 = function FL_activeSeasonIdV3786(){
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
   return seasons[0]?.id || "";
 }
 
-function FL_removeSeasonIsoDatesV3786(){
+var FL_removeSeasonIsoDatesV3786 = function FL_removeSeasonIsoDatesV3786(){
   try{
     const candidates = [...document.querySelectorAll("#dashboard *,.season-card *,.career-season-card *,.played-season-card *,.season-row-card *")];
     candidates.forEach(el=>{
@@ -12699,14 +12699,14 @@ function FL_removeSeasonIsoDatesV3786(){
   }
 }
 
-function FL_top11RowsV3786(){
+var FL_top11RowsV3786 = function FL_top11RowsV3786(){
   const carreiraId = FL_activeCareerIdV3786();
   return (getTable("TOP11_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_latestTop11RowsV3786(){
+var FL_latestTop11RowsV3786 = function FL_latestTop11RowsV3786(){
   const rows = FL_top11RowsV3786();
   if(!rows.length) return [];
 
@@ -12730,7 +12730,7 @@ function FL_latestTop11RowsV3786(){
   });
 }
 
-function FL_defaultTop11PositionsV3786(){
+var FL_defaultTop11PositionsV3786 = function FL_defaultTop11PositionsV3786(){
   return [
     ["GOL",50,88],
     ["LD",78,70],["ZAG",60,72],["ZAG",40,72],["LE",22,70],
@@ -12740,12 +12740,12 @@ function FL_defaultTop11PositionsV3786(){
   ];
 }
 
-function FL_initialsV3786(name){
+var FL_initialsV3786 = function FL_initialsV3786(name){
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-async function FL_fetchPlayerPhotoV3786(name){
+var FL_fetchPlayerPhotoV3786 = async function FL_fetchPlayerPhotoV3786(name){
   if(typeof FL_fetchPlayerPhotoV3781 === "function"){
     try{ return await FL_fetchPlayerPhotoV3781(name); }catch(err){}
   }
@@ -12763,7 +12763,7 @@ async function FL_fetchPlayerPhotoV3786(name){
   }
 }
 
-function FL_top11CardHtmlV3786(row, idx){
+var FL_top11CardHtmlV3786 = function FL_top11CardHtmlV3786(row, idx){
   const d = FL_defaultTop11PositionsV3786()[idx] || ["POS",50,50];
 
   const x = row.x !== undefined && row.x !== "" ? Number(row.x) : d[1];
@@ -12791,7 +12791,7 @@ function FL_top11CardHtmlV3786(row, idx){
   `;
 }
 
-function FL_renderTop11CleanV3786(){
+var FL_renderTop11CleanV3786 = function FL_renderTop11CleanV3786(){
   const page = $("top11");
   if(!page) return;
 
@@ -12835,17 +12835,17 @@ function FL_renderTop11CleanV3786(){
   FL_enrichTop11PhotosV3786();
 }
 
-function FL_toggleTop11EditV3786(){
+var FL_toggleTop11EditV3786 = function FL_toggleTop11EditV3786(){
   FL_TOP11_EDITING_V3786 = !FL_TOP11_EDITING_V3786;
   FL_renderTop11CleanV3786();
 }
 
-function FL_applyTop11MapV3786(){
+var FL_applyTop11MapV3786 = function FL_applyTop11MapV3786(){
   FL_TOP11_MAP_URL_V3786 = $("top11-map-url-input-v3786")?.value || "";
   FL_renderTop11CleanV3786();
 }
 
-function FL_enableTop11DragV3786(){
+var FL_enableTop11DragV3786 = function FL_enableTop11DragV3786(){
   const pitch = document.querySelector(".top11-pitch-v3786");
   if(!pitch) return;
 
@@ -12897,7 +12897,7 @@ function FL_enableTop11DragV3786(){
   });
 }
 
-async function FL_enrichTop11PhotosV3786(){
+var FL_enrichTop11PhotosV3786 = async function FL_enrichTop11PhotosV3786(){
   const cards = [...document.querySelectorAll(".top11-player-v3786")];
 
   for(const card of cards){
@@ -12919,7 +12919,7 @@ async function FL_enrichTop11PhotosV3786(){
   }
 }
 
-function FL_openCreateTop11V3786(){
+var FL_openCreateTop11V3786 = function FL_openCreateTop11V3786(){
   const defaults = FL_defaultTop11PositionsV3786();
   const seasons = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
   const currentSeason = seasons[0] || {};
@@ -12951,7 +12951,7 @@ function FL_openCreateTop11V3786(){
   });
 }
 
-async function FL_saveNewTop11V3786(){
+var FL_saveNewTop11V3786 = async function FL_saveNewTop11V3786(){
   const f = $("top11-create-form-v3786");
   if(!f) return;
 
@@ -13019,7 +13019,7 @@ async function FL_saveNewTop11V3786(){
   }
 }
 
-async function FL_saveTop11PositionsV3786(){
+var FL_saveTop11PositionsV3786 = async function FL_saveTop11PositionsV3786(){
   const rows = FL_latestTop11RowsV3786();
   const cards = [...document.querySelectorAll(".top11-player-v3786")];
 
@@ -13116,7 +13116,7 @@ const FL_TOP11_FIXED_BG_V3787 = "https://res.cloudinary.com/duq0dyp6b/image/uplo
 let FL_TOP11_EDITING_V3787 = false;
 let FL_TOP11_SELECTED_KEY_V3787 = "";
 
-function FL_normV3787(value){
+var FL_normV3787 = function FL_normV3787(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -13124,38 +13124,38 @@ function FL_normV3787(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3787(value){
+var FL_escapeV3787 = function FL_escapeV3787(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3787(value){
+var FL_escapeAttrV3787 = function FL_escapeAttrV3787(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_activeCareerIdV3787(){
+var FL_activeCareerIdV3787 = function FL_activeCareerIdV3787(){
   return active?.carreira_id || "";
 }
 
-function FL_careerSeasonsV3787(){
+var FL_careerSeasonsV3787 = function FL_careerSeasonsV3787(){
   const carreiraId = FL_activeCareerIdV3787();
   const rows = typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : (getTable("CARREIRA_TEMPORADAS") || []);
 
   return rows.filter(s => !carreiraId || String(s.carreira_id || "") === String(carreiraId));
 }
 
-function FL_top11RowsAllV3787(){
+var FL_top11RowsAllV3787 = function FL_top11RowsAllV3787(){
   const carreiraId = FL_activeCareerIdV3787();
   return (getTable("TOP11_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_top11KeyV3787(row){
+var FL_top11KeyV3787 = function FL_top11KeyV3787(row){
   if(row.carreira_temporada_id) return `id:${row.carreira_temporada_id}`;
   return `temp:${row.temporada || "sem-temporada"}`;
 }
 
-function FL_top11GroupsV3787(){
+var FL_top11GroupsV3787 = function FL_top11GroupsV3787(){
   const map = new Map();
 
   FL_top11RowsAllV3787().forEach(r=>{
@@ -13182,14 +13182,14 @@ function FL_top11GroupsV3787(){
   return groups;
 }
 
-function FL_selectedTop11GroupV3787(){
+var FL_selectedTop11GroupV3787 = function FL_selectedTop11GroupV3787(){
   const groups = FL_top11GroupsV3787();
   if(!groups.length) return null;
 
   return groups.find(g => g.key === FL_TOP11_SELECTED_KEY_V3787) || groups[0];
 }
 
-function FL_selectedTop11RowsV3787(){
+var FL_selectedTop11RowsV3787 = function FL_selectedTop11RowsV3787(){
   const group = FL_selectedTop11GroupV3787();
   if(!group) return [];
 
@@ -13201,7 +13201,7 @@ function FL_selectedTop11RowsV3787(){
   });
 }
 
-function FL_defaultTop11PositionsV3787(){
+var FL_defaultTop11PositionsV3787 = function FL_defaultTop11PositionsV3787(){
   return [
     ["GOL",50,88],
     ["LD",78,70],["ZAG",60,72],["ZAG",40,72],["LE",22,70],
@@ -13211,12 +13211,12 @@ function FL_defaultTop11PositionsV3787(){
   ];
 }
 
-function FL_initialsV3787(name){
+var FL_initialsV3787 = function FL_initialsV3787(name){
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-async function FL_fetchPlayerPhotoV3787(name){
+var FL_fetchPlayerPhotoV3787 = async function FL_fetchPlayerPhotoV3787(name){
   if(typeof FL_fetchPlayerPhotoV3786 === "function"){
     try{ return await FL_fetchPlayerPhotoV3786(name); }catch(err){}
   }
@@ -13237,7 +13237,7 @@ async function FL_fetchPlayerPhotoV3787(name){
   }
 }
 
-function FL_top11CardHtmlV3787(row, idx){
+var FL_top11CardHtmlV3787 = function FL_top11CardHtmlV3787(row, idx){
   const d = FL_defaultTop11PositionsV3787()[idx] || ["POS",50,50];
 
   const x = row.x !== undefined && row.x !== "" ? Number(row.x) : d[1];
@@ -13265,7 +13265,7 @@ function FL_top11CardHtmlV3787(row, idx){
   `;
 }
 
-function FL_renderTop11V3787(){
+var FL_renderTop11V3787 = function FL_renderTop11V3787(){
   const page = $("top11");
   if(!page) return;
 
@@ -13315,12 +13315,12 @@ function FL_renderTop11V3787(){
   FL_enrichTop11PhotosV3787();
 }
 
-function FL_toggleTop11EditV3787(){
+var FL_toggleTop11EditV3787 = function FL_toggleTop11EditV3787(){
   FL_TOP11_EDITING_V3787 = !FL_TOP11_EDITING_V3787;
   FL_renderTop11V3787();
 }
 
-function FL_enableTop11DragV3787(){
+var FL_enableTop11DragV3787 = function FL_enableTop11DragV3787(){
   const pitch = document.querySelector(".top11-pitch-v3787");
   if(!pitch) return;
 
@@ -13372,7 +13372,7 @@ function FL_enableTop11DragV3787(){
   });
 }
 
-async function FL_enrichTop11PhotosV3787(){
+var FL_enrichTop11PhotosV3787 = async function FL_enrichTop11PhotosV3787(){
   const cards = [...document.querySelectorAll(".top11-player-v3787")];
 
   for(const card of cards){
@@ -13394,7 +13394,7 @@ async function FL_enrichTop11PhotosV3787(){
   }
 }
 
-function FL_openTop11ModalV3787(title, html, onSave){
+var FL_openTop11ModalV3787 = function FL_openTop11ModalV3787(title, html, onSave){
   document.getElementById("fl-top11-modal-v3787")?.remove();
 
   const modal = document.createElement("div");
@@ -13417,11 +13417,11 @@ function FL_openTop11ModalV3787(title, html, onSave){
   $("fl-top11-save-v3787").onclick = onSave;
 }
 
-function FL_closeTop11ModalV3787(){
+var FL_closeTop11ModalV3787 = function FL_closeTop11ModalV3787(){
   document.getElementById("fl-top11-modal-v3787")?.remove();
 }
 
-function FL_openCreateTop11V3787(){
+var FL_openCreateTop11V3787 = function FL_openCreateTop11V3787(){
   const defaults = FL_defaultTop11PositionsV3787();
   const seasons = FL_careerSeasonsV3787();
 
@@ -13464,7 +13464,7 @@ function FL_openCreateTop11V3787(){
   }
 }
 
-async function FL_saveNewTop11V3787(){
+var FL_saveNewTop11V3787 = async function FL_saveNewTop11V3787(){
   const f = $("top11-create-form-v3787");
   if(!f) return;
 
@@ -13532,7 +13532,7 @@ async function FL_saveNewTop11V3787(){
   }
 }
 
-async function FL_saveTop11PositionsV3787(){
+var FL_saveTop11PositionsV3787 = async function FL_saveTop11PositionsV3787(){
   const group = FL_selectedTop11GroupV3787();
   const rows = FL_selectedTop11RowsV3787();
   const cards = [...document.querySelectorAll(".top11-player-v3787")];
@@ -13615,21 +13615,21 @@ window.FL_saveTop11PositionsV3787 = FL_saveTop11PositionsV3787;
 
 let FL_TOP11_SAVING_V3788 = false;
 
-function FL_top11FixedBgV3788(){
+var FL_top11FixedBgV3788 = function FL_top11FixedBgV3788(){
   return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 }
 
-function FL_getTop11FormV3788(){
+var FL_getTop11FormV3788 = function FL_getTop11FormV3788(){
   return document.getElementById("top11-create-form-v3787") ||
          document.getElementById("top11-create-form-v3788");
 }
 
-function FL_closeTop11ModalV3788(){
+var FL_closeTop11ModalV3788 = function FL_closeTop11ModalV3788(){
   document.getElementById("fl-top11-modal-v3787")?.remove();
   document.getElementById("fl-top11-modal-v3788")?.remove();
 }
 
-function FL_setTop11ButtonSavingV3788(isSaving){
+var FL_setTop11ButtonSavingV3788 = function FL_setTop11ButtonSavingV3788(isSaving){
   const btn =
     document.getElementById("fl-top11-save-v3787") ||
     document.getElementById("fl-top11-save-v3788") ||
@@ -13641,7 +13641,7 @@ function FL_setTop11ButtonSavingV3788(isSaving){
   btn.textContent = isSaving ? "Salvando..." : "Salvar Top 11";
 }
 
-function FL_defaultTop11PositionsV3788(){
+var FL_defaultTop11PositionsV3788 = function FL_defaultTop11PositionsV3788(){
   if(typeof FL_defaultTop11PositionsV3787 === "function") return FL_defaultTop11PositionsV3787();
   return [
     ["GOL",50,88],
@@ -13652,11 +13652,11 @@ function FL_defaultTop11PositionsV3788(){
   ];
 }
 
-function FL_activeCareerIdV3788(){
+var FL_activeCareerIdV3788 = function FL_activeCareerIdV3788(){
   return active?.carreira_id || "";
 }
 
-function FL_collectNewTop11RowsV3788(){
+var FL_collectNewTop11RowsV3788 = function FL_collectNewTop11RowsV3788(){
   const f = FL_getTop11FormV3788();
   if(!f) throw new Error("Formulário do Top 11 não encontrado.");
 
@@ -13689,7 +13689,7 @@ function FL_collectNewTop11RowsV3788(){
   return {temporada, carreiraTemporadaId, rows};
 }
 
-async function FL_saveNewTop11V3788(){
+var FL_saveNewTop11V3788 = async function FL_saveNewTop11V3788(){
   if(FL_TOP11_SAVING_V3788) return;
 
   try{
@@ -13758,7 +13758,7 @@ async function FL_saveNewTop11V3788(){
   }
 }
 
-async function FL_saveTop11PositionsV3788(){
+var FL_saveTop11PositionsV3788 = async function FL_saveTop11PositionsV3788(){
   if(FL_TOP11_SAVING_V3788) return;
 
   const oldFn = typeof FL_saveTop11PositionsV3787 === "function" ? FL_saveTop11PositionsV3787 : null;
@@ -13812,7 +13812,7 @@ window.FL_saveTop11PositionsV3788 = FL_saveTop11PositionsV3788;
 let FL_TOP11_VIEW_MODE_V3789 = "carreira"; // carreira | base
 let FL_TOP11_BASE_YEAR_V3789 = "";
 
-function FL_normV3789(value){
+var FL_normV3789 = function FL_normV3789(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -13820,30 +13820,30 @@ function FL_normV3789(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3789(value){
+var FL_escapeV3789 = function FL_escapeV3789(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3789(value){
+var FL_escapeAttrV3789 = function FL_escapeAttrV3789(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_top11FixedBgV3789(){
+var FL_top11FixedBgV3789 = function FL_top11FixedBgV3789(){
   return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 }
 
-function FL_top11BaseRowsV3789(){
+var FL_top11BaseRowsV3789 = function FL_top11BaseRowsV3789(){
   return getTable("TOP11_BASE") || [];
 }
 
-function FL_top11BaseYearsV3789(){
+var FL_top11BaseYearsV3789 = function FL_top11BaseYearsV3789(){
   const years = [...new Set(FL_top11BaseRowsV3789().map(r => r.ano || r.temporada).filter(Boolean))];
   years.sort((a,b)=>String(b).localeCompare(String(a)));
   if(!FL_TOP11_BASE_YEAR_V3789 && years.length) FL_TOP11_BASE_YEAR_V3789 = years[0];
   return years;
 }
 
-function FL_selectedTop11BaseRowsV3789(){
+var FL_selectedTop11BaseRowsV3789 = function FL_selectedTop11BaseRowsV3789(){
   const years = FL_top11BaseYearsV3789();
   const year = FL_TOP11_BASE_YEAR_V3789 || years[0] || "";
 
@@ -13852,12 +13852,12 @@ function FL_selectedTop11BaseRowsV3789(){
     .sort((a,b)=>Number(a.id || 0)-Number(b.id || 0));
 }
 
-function FL_initialsV3789(name){
+var FL_initialsV3789 = function FL_initialsV3789(name){
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-function FL_top11BaseCardHtmlV3789(row, idx){
+var FL_top11BaseCardHtmlV3789 = function FL_top11BaseCardHtmlV3789(row, idx){
   const x = row.x !== undefined && row.x !== "" ? Number(row.x) : 50;
   const y = row.y !== undefined && row.y !== "" ? Number(row.y) : 50;
   const name = row.jogador || "Jogador";
@@ -13877,7 +13877,7 @@ function FL_top11BaseCardHtmlV3789(row, idx){
   `;
 }
 
-function FL_renderTop11BaseV3789(){
+var FL_renderTop11BaseV3789 = function FL_renderTop11BaseV3789(){
   const page = document.getElementById("top11");
   if(!page) return;
 
@@ -13930,7 +13930,7 @@ const FL_renderCareerTop11OriginalV3789 =
   typeof FL_renderTop11CleanV3786 === "function" ? FL_renderTop11CleanV3786 :
   typeof renderTop11 === "function" ? renderTop11 : null;
 
-function FL_renderTop11V3789(){
+var FL_renderTop11V3789 = function FL_renderTop11V3789(){
   if(FL_TOP11_VIEW_MODE_V3789 === "base"){
     FL_renderTop11BaseV3789();
     return;
@@ -13977,7 +13977,7 @@ let FL_TOP11_APPEARANCE_FILTER_V3790 = "TOTAL";
 
 const FL_TOP11_PHOTO_CACHE_V3790 = {};
 
-function FL_normV3790(value){
+var FL_normV3790 = function FL_normV3790(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -13985,34 +13985,34 @@ function FL_normV3790(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3790(value){
+var FL_escapeV3790 = function FL_escapeV3790(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3790(value){
+var FL_escapeAttrV3790 = function FL_escapeAttrV3790(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_top11FixedBgV3790(){
+var FL_top11FixedBgV3790 = function FL_top11FixedBgV3790(){
   return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 }
 
-function FL_activeCareerIdV3790(){
+var FL_activeCareerIdV3790 = function FL_activeCareerIdV3790(){
   return active?.carreira_id || "";
 }
 
-function FL_top11BaseRowsV3790(){
+var FL_top11BaseRowsV3790 = function FL_top11BaseRowsV3790(){
   return getTable("TOP11_BASE") || [];
 }
 
-function FL_top11CareerRowsV3790(){
+var FL_top11CareerRowsV3790 = function FL_top11CareerRowsV3790(){
   const carreiraId = FL_activeCareerIdV3790();
   return (getTable("TOP11_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
 }
 
-function FL_top11UnifiedGroupsV3790(){
+var FL_top11UnifiedGroupsV3790 = function FL_top11UnifiedGroupsV3790(){
   const groups = [];
 
   const baseMap = new Map();
@@ -14073,7 +14073,7 @@ function FL_top11UnifiedGroupsV3790(){
   return groups;
 }
 
-function FL_selectedTop11GroupV3790(){
+var FL_selectedTop11GroupV3790 = function FL_selectedTop11GroupV3790(){
   const groups = FL_top11UnifiedGroupsV3790();
   if(!groups.length) return null;
   return groups.find(g=>g.key === FL_TOP11_SELECTED_UNIFIED_KEY_V3790) || groups[0];
@@ -14084,7 +14084,7 @@ function FL_selectedTop11GroupV3790(){
 // O mapeamento antigo estava invertendo laterais/ataque.
 // Agora usamos posições fixas coerentes com visual vertical:
 // GOL embaixo; linha defensiva; meio; ataque.
-function FL_positionCoordsV3790(row, idx){
+var FL_positionCoordsV3790 = function FL_positionCoordsV3790(row, idx){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
 
@@ -14151,7 +14151,7 @@ function FL_positionCoordsV3790(row, idx){
   return {x:d[0], y:d[1], display:d[2]};
 }
 
-function FL_functionGroupV3790(row){
+var FL_functionGroupV3790 = function FL_functionGroupV3790(row){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
 
@@ -14162,12 +14162,12 @@ function FL_functionGroupV3790(row){
   return "TOTAL";
 }
 
-function FL_initialsV3790(name){
+var FL_initialsV3790 = function FL_initialsV3790(name){
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-async function FL_fetchPlayerPhotoV3790(name){
+var FL_fetchPlayerPhotoV3790 = async function FL_fetchPlayerPhotoV3790(name){
   const clean = String(name || "").trim();
   const key = FL_normV3790(clean);
   if(!key) return "";
@@ -14198,7 +14198,7 @@ async function FL_fetchPlayerPhotoV3790(name){
   }
 }
 
-function FL_sortTop11RowsForPitchV3790(rows){
+var FL_sortTop11RowsForPitchV3790 = function FL_sortTop11RowsForPitchV3790(rows){
   const order = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
   return [...rows].sort((a,b)=>{
     const ao = order.indexOf(String(a.posicao_origem || "").toUpperCase());
@@ -14208,7 +14208,7 @@ function FL_sortTop11RowsForPitchV3790(rows){
   });
 }
 
-function FL_top11UnifiedCardHtmlV3790(row, idx, group){
+var FL_top11UnifiedCardHtmlV3790 = function FL_top11UnifiedCardHtmlV3790(row, idx, group){
   const coords = FL_positionCoordsV3790(row, idx);
   const name = row.jogador || "Jogador";
   const pos = coords.display || row.posicao_tatica || row.posicao_origem || "";
@@ -14231,7 +14231,7 @@ function FL_top11UnifiedCardHtmlV3790(row, idx, group){
   `;
 }
 
-function FL_renderTop11UnifiedV3790(){
+var FL_renderTop11UnifiedV3790 = function FL_renderTop11UnifiedV3790(){
   const page = document.getElementById("top11");
   if(!page) return;
 
@@ -14295,7 +14295,7 @@ function FL_renderTop11UnifiedV3790(){
   FL_enrichTop11PhotosV3790();
 }
 
-function FL_enrichTop11PhotosV3790(){
+var FL_enrichTop11PhotosV3790 = function FL_enrichTop11PhotosV3790(){
   const nodes = [...document.querySelectorAll(".top11-player-v3790")];
 
   nodes.forEach(async node=>{
@@ -14310,7 +14310,7 @@ function FL_enrichTop11PhotosV3790(){
   });
 }
 
-function FL_top11AppearancesV3790(){
+var FL_top11AppearancesV3790 = function FL_top11AppearancesV3790(){
   const rows = [
     ...FL_top11BaseRowsV3790().map(r=>Object.assign({__source:"base"}, r)),
     ...FL_top11CareerRowsV3790().map(r=>Object.assign({__source:"career"}, r))
@@ -14353,7 +14353,7 @@ function FL_top11AppearancesV3790(){
     .sort((a,b)=>b.total-a.total || a.jogador.localeCompare(b.jogador));
 }
 
-function FL_renderTop11BestInnerV3790(){
+var FL_renderTop11BestInnerV3790 = function FL_renderTop11BestInnerV3790(){
   const rows = FL_top11AppearancesV3790().slice(0,30);
   const filters = [
     ["TOTAL","Total"],
@@ -14393,14 +14393,14 @@ function FL_renderTop11BestInnerV3790(){
   `;
 }
 
-function FL_updateTop11BestV3790(){
+var FL_updateTop11BestV3790 = function FL_updateTop11BestV3790(){
   const el = document.getElementById("top11-melhores-v3790");
   if(!el) return;
   el.innerHTML = FL_renderTop11BestInnerV3790();
   FL_enrichTop11BestPhotosV3790();
 }
 
-function FL_enrichTop11BestPhotosV3790(){
+var FL_enrichTop11BestPhotosV3790 = function FL_enrichTop11BestPhotosV3790(){
   const nodes = [...document.querySelectorAll("[data-top11-best-photo]")];
 
   nodes.forEach(async node=>{
@@ -14412,7 +14412,7 @@ function FL_enrichTop11BestPhotosV3790(){
   });
 }
 
-function FL_enrichTop11PhotosV3790(){
+var FL_enrichTop11PhotosV3790 = function FL_enrichTop11PhotosV3790(){
   const playerNodes = [...document.querySelectorAll(".top11-player-v3790")];
 
   playerNodes.forEach(async node=>{
@@ -14427,11 +14427,11 @@ function FL_enrichTop11PhotosV3790(){
   FL_enrichTop11BestPhotosV3790();
 }
 
-function FL_scrollTop11BestV3790(){
+var FL_scrollTop11BestV3790 = function FL_scrollTop11BestV3790(){
   document.getElementById("top11-melhores-v3790")?.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
-function FL_toggleTop11EditV3790(){
+var FL_toggleTop11EditV3790 = function FL_toggleTop11EditV3790(){
   if(typeof FL_toggleTop11EditV3787 === "function"){
     FL_toggleTop11EditV3787();
   }else{
@@ -14440,12 +14440,12 @@ function FL_toggleTop11EditV3790(){
   FL_renderTop11UnifiedV3790();
 }
 
-function FL_openCreateTop11V3790(){
+var FL_openCreateTop11V3790 = function FL_openCreateTop11V3790(){
   if(typeof FL_openCreateTop11V3788 === "function") return FL_openCreateTop11V3788();
   if(typeof FL_openCreateTop11V3787 === "function") return FL_openCreateTop11V3787();
 }
 
-function FL_saveTop11PositionsV3790(){
+var FL_saveTop11PositionsV3790 = function FL_saveTop11PositionsV3790(){
   if(typeof FL_saveTop11PositionsV3788 === "function") return FL_saveTop11PositionsV3788();
   if(typeof FL_saveTop11PositionsV3787 === "function") return FL_saveTop11PositionsV3787();
 }
@@ -14465,7 +14465,7 @@ window.FL_saveTop11PositionsV3790 = FL_saveTop11PositionsV3790;
 // Então o fluxo correto é:
 // GOL na esquerda -> DEF -> MEI -> ATA na direita.
 
-function FL_positionCoordsV3791(row, idx){
+var FL_positionCoordsV3791 = function FL_positionCoordsV3791(row, idx){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
 
@@ -14568,7 +14568,7 @@ setTimeout(()=>{
 // - Ordem correta por posição original.
 // - Melhores em layout limpo, sem texto vazando.
 
-function FL_normV3792(value){
+var FL_normV3792 = function FL_normV3792(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -14576,15 +14576,15 @@ function FL_normV3792(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3792(value){
+var FL_escapeV3792 = function FL_escapeV3792(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3792(value){
+var FL_escapeAttrV3792 = function FL_escapeAttrV3792(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_pickV3792(row, keys){
+var FL_pickV3792 = function FL_pickV3792(row, keys){
   for(const k of keys){
     if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
   }
@@ -14602,7 +14602,7 @@ function FL_pickV3792(row, keys){
   return "";
 }
 
-function FL_normalizeBaseRowV3792(row){
+var FL_normalizeBaseRowV3792 = function FL_normalizeBaseRowV3792(row){
   return {
     id: FL_pickV3792(row, ["id","ID"]),
     ano: FL_pickV3792(row, ["ano","ANO","temporada","TEMPORADA"]),
@@ -14615,7 +14615,7 @@ function FL_normalizeBaseRowV3792(row){
   };
 }
 
-function FL_top11BaseRowsV3792(){
+var FL_top11BaseRowsV3792 = function FL_top11BaseRowsV3792(){
   const raw = getTable("TOP11_BASE") || [];
   const rows = raw.map(FL_normalizeBaseRowV3792).filter(r=>r.ano && r.jogador);
 
@@ -14644,7 +14644,7 @@ function FL_top11BaseRowsV3792(){
   return rows;
 }
 
-function FL_positionOrderV3792(row){
+var FL_positionOrderV3792 = function FL_positionOrderV3792(row){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const order = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
   const idx = order.indexOf(origem);
@@ -14660,7 +14660,7 @@ function FL_positionOrderV3792(row){
   return groupOrder[pos] ?? 99;
 }
 
-function FL_top11UnifiedGroupsV3792(){
+var FL_top11UnifiedGroupsV3792 = function FL_top11UnifiedGroupsV3792(){
   const groups = [];
 
   const baseMap = new Map();
@@ -14723,13 +14723,13 @@ function FL_top11UnifiedGroupsV3792(){
   return groups;
 }
 
-function FL_selectedTop11GroupV3792(){
+var FL_selectedTop11GroupV3792 = function FL_selectedTop11GroupV3792(){
   const groups = FL_top11UnifiedGroupsV3792();
   if(!groups.length) return null;
   return groups.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3790) || groups[0];
 }
 
-function FL_positionCoordsV3792(row, idx){
+var FL_positionCoordsV3792 = function FL_positionCoordsV3792(row, idx){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
 
@@ -14787,11 +14787,11 @@ function FL_positionCoordsV3792(row, idx){
   return {x:d[0],y:d[1],display:d[2]};
 }
 
-function FL_sortTop11RowsForPitchV3792(rows){
+var FL_sortTop11RowsForPitchV3792 = function FL_sortTop11RowsForPitchV3792(rows){
   return [...rows].sort((a,b)=>FL_positionOrderV3792(a)-FL_positionOrderV3792(b) || Number(a.id||0)-Number(b.id||0));
 }
 
-function FL_functionGroupV3792(row){
+var FL_functionGroupV3792 = function FL_functionGroupV3792(row){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
 
@@ -14802,7 +14802,7 @@ function FL_functionGroupV3792(row){
   return "TOTAL";
 }
 
-function FL_top11AppearancesV3792(){
+var FL_top11AppearancesV3792 = function FL_top11AppearancesV3792(){
   const baseRows = FL_top11BaseRowsV3792().map(r=>Object.assign({__source:"base"}, r));
   const careerRows = (typeof FL_top11CareerRowsV3790 === "function" ? FL_top11CareerRowsV3790() : (getTable("TOP11_CARREIRA") || [])).map(r=>Object.assign({__source:"career"}, r));
   const rows = [...baseRows, ...careerRows];
@@ -14837,7 +14837,7 @@ function FL_top11AppearancesV3792(){
     .sort((a,b)=>b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
 }
 
-function FL_renderTop11BestInnerV3792(){
+var FL_renderTop11BestInnerV3792 = function FL_renderTop11BestInnerV3792(){
   const rows = FL_top11AppearancesV3792().slice(0,30);
   const filters = [
     ["TOTAL","Total"],
@@ -14879,14 +14879,14 @@ function FL_renderTop11BestInnerV3792(){
   `;
 }
 
-function FL_updateTop11BestV3792(){
+var FL_updateTop11BestV3792 = function FL_updateTop11BestV3792(){
   const el = document.getElementById("top11-melhores-v3790");
   if(!el) return;
   el.innerHTML = FL_renderTop11BestInnerV3792();
   if(typeof FL_enrichTop11BestPhotosV3790 === "function") FL_enrichTop11BestPhotosV3790();
 }
 
-function FL_renderTop11UnifiedV3792(){
+var FL_renderTop11UnifiedV3792 = function FL_renderTop11UnifiedV3792(){
   // Copia a render v3.7.90, mas usa grupos/rows/coords corrigidos.
   const page = document.getElementById("top11");
   if(!page) return;
@@ -14995,7 +14995,7 @@ window.FL_updateTop11BestV3792 = FL_updateTop11BestV3792;
 // - Top11 base: leitura robusta vertical/larga.
 // - Melhores: lista vertical 1,2,3... sem grid apertado.
 
-function FL_normV3793(value){
+var FL_normV3793 = function FL_normV3793(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -15003,15 +15003,15 @@ function FL_normV3793(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3793(value){
+var FL_escapeV3793 = function FL_escapeV3793(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3793(value){
+var FL_escapeAttrV3793 = function FL_escapeAttrV3793(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_pickV3793(row, keys){
+var FL_pickV3793 = function FL_pickV3793(row, keys){
   for(const k of keys){
     if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
   }
@@ -15024,11 +15024,11 @@ function FL_pickV3793(row, keys){
   return "";
 }
 
-function FL_top11FixedBgV3793(){
+var FL_top11FixedBgV3793 = function FL_top11FixedBgV3793(){
   return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 }
 
-function FL_originMappingV3793(){
+var FL_originMappingV3793 = function FL_originMappingV3793(){
   return [
     ["GL","GOL",8,50],
     ["DEF","LE",22,20],
@@ -15044,7 +15044,7 @@ function FL_originMappingV3793(){
   ];
 }
 
-function FL_normalizeBaseRowsV3793(){
+var FL_normalizeBaseRowsV3793 = function FL_normalizeBaseRowsV3793(){
   const raw = getTable("TOP11_BASE") || [];
   if(!raw.length) return [];
 
@@ -15102,11 +15102,11 @@ function FL_normalizeBaseRowsV3793(){
   }).filter(r=>r.ano && r.jogador);
 }
 
-function FL_top11BaseRowsV3793(){
+var FL_top11BaseRowsV3793 = function FL_top11BaseRowsV3793(){
   return FL_normalizeBaseRowsV3793();
 }
 
-function FL_positionOrderV3793(row){
+var FL_positionOrderV3793 = function FL_positionOrderV3793(row){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const order = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
   const idx = order.indexOf(origem);
@@ -15114,7 +15114,7 @@ function FL_positionOrderV3793(row){
   return Number(row.id || 9999);
 }
 
-function FL_positionCoordsV3793(row, idx){
+var FL_positionCoordsV3793 = function FL_positionCoordsV3793(row, idx){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const map = FL_originMappingV3793().find(([o])=>o===origem);
   if(map) return {x:map[2], y:map[3], display:map[1]};
@@ -15128,12 +15128,12 @@ function FL_positionCoordsV3793(row, idx){
   return {x:d[2], y:d[3], display:row.posicao_tatica || d[1]};
 }
 
-function FL_top11CareerRowsV3793(){
+var FL_top11CareerRowsV3793 = function FL_top11CareerRowsV3793(){
   const carreiraId = active?.carreira_id || "";
   return (getTable("TOP11_CARREIRA") || []).filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId));
 }
 
-function FL_top11UnifiedGroupsV3793(){
+var FL_top11UnifiedGroupsV3793 = function FL_top11UnifiedGroupsV3793(){
   const groups = [];
 
   const baseMap = new Map();
@@ -15174,19 +15174,19 @@ function FL_top11UnifiedGroupsV3793(){
   return groups;
 }
 
-function FL_selectedTop11GroupV3793(){
+var FL_selectedTop11GroupV3793 = function FL_selectedTop11GroupV3793(){
   const groups = FL_top11UnifiedGroupsV3793();
   if(!groups.length) return null;
   return groups.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3790) || groups[0];
 }
 
-function FL_initialsV3793(name){
+var FL_initialsV3793 = function FL_initialsV3793(name){
   if(typeof FL_initialsV3790 === "function") return FL_initialsV3790(name);
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-function FL_functionGroupV3793(row){
+var FL_functionGroupV3793 = function FL_functionGroupV3793(row){
   const origem = String(row.posicao_origem || "").toUpperCase();
   const pos = String(row.posicao_tatica || "").toUpperCase();
   if(["GL","GOL","GK"].includes(origem) || ["GOL","GK"].includes(pos)) return "GOL";
@@ -15196,7 +15196,7 @@ function FL_functionGroupV3793(row){
   return "TOTAL";
 }
 
-function FL_renderTop11UnifiedV3793(){
+var FL_renderTop11UnifiedV3793 = function FL_renderTop11UnifiedV3793(){
   const page = document.getElementById("top11");
   if(!page) return;
 
@@ -15286,7 +15286,7 @@ function FL_renderTop11UnifiedV3793(){
   if(typeof FL_enrichTop11BestPhotosV3790 === "function") FL_enrichTop11BestPhotosV3790();
 }
 
-function FL_top11AppearancesV3793(){
+var FL_top11AppearancesV3793 = function FL_top11AppearancesV3793(){
   const rows = [
     ...FL_top11BaseRowsV3793().map(r=>Object.assign({__source:"base"}, r)),
     ...FL_top11CareerRowsV3793().map(r=>Object.assign({__source:"career"}, r))
@@ -15320,7 +15320,7 @@ function FL_top11AppearancesV3793(){
     .sort((a,b)=>b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
 }
 
-function FL_renderTop11BestInnerV3793(){
+var FL_renderTop11BestInnerV3793 = function FL_renderTop11BestInnerV3793(){
   const rows = FL_top11AppearancesV3793().slice(0,50);
   const filters = [
     ["TOTAL","Total"],
@@ -15362,7 +15362,7 @@ function FL_renderTop11BestInnerV3793(){
   `;
 }
 
-function FL_updateTop11BestV3793(){
+var FL_updateTop11BestV3793 = function FL_updateTop11BestV3793(){
   const el = document.getElementById("top11-melhores-v3790");
   if(!el) return;
   el.innerHTML = FL_renderTop11BestInnerV3793();
@@ -15370,7 +15370,7 @@ function FL_updateTop11BestV3793(){
 }
 
 // Remove X solto perdido, mas não apaga botões de fechar modais reais.
-function FL_removeLostFloatingXV3793(){
+var FL_removeLostFloatingXV3793 = function FL_removeLostFloatingXV3793(){
   document.querySelectorAll("button, .delete-career-item-x-v3769, .remove-season-x-v3793").forEach(el=>{
     const txt = (el.textContent || "").trim();
     const rect = el.getBoundingClientRect();
@@ -15385,7 +15385,7 @@ function FL_removeLostFloatingXV3793(){
 }
 
 // Restaura X nas temporadas jogadas, só dentro de cards que têm "Editar temporada".
-function FL_restoreSeasonDeleteXV3793(){
+var FL_restoreSeasonDeleteXV3793 = function FL_restoreSeasonDeleteXV3793(){
   const currentPage = document.body.dataset.currentPage || "";
   if(currentPage && currentPage !== "dashboard" && currentPage !== "resumo") return;
 
@@ -15479,7 +15479,7 @@ setTimeout(()=>{FL_removeLostFloatingXV3793(); FL_restoreSeasonDeleteXV3793();},
 // Em vez de DEF2/DEF3/ATA7/ATA8.
 // Agora o dashboard usa a ordem da linha dentro do ano para posicionar os 11.
 
-function FL_normV3794(value){
+var FL_normV3794 = function FL_normV3794(value){
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -15487,19 +15487,19 @@ function FL_normV3794(value){
     .replace(/[^a-z0-9]+/g,"");
 }
 
-function FL_escapeV3794(value){
+var FL_escapeV3794 = function FL_escapeV3794(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3794(value){
+var FL_escapeAttrV3794 = function FL_escapeAttrV3794(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
-function FL_top11FixedBgV3794(){
+var FL_top11FixedBgV3794 = function FL_top11FixedBgV3794(){
   return "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 }
 
-function FL_pickV3794(row, keys){
+var FL_pickV3794 = function FL_pickV3794(row, keys){
   for(const k of keys){
     if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
   }
@@ -15513,7 +15513,7 @@ function FL_pickV3794(row, keys){
 }
 
 // Slots corretos no campo deitado, por ordem dentro de cada temporada.
-function FL_top11SlotsV3794(){
+var FL_top11SlotsV3794 = function FL_top11SlotsV3794(){
   return [
     {orig:"GOL", pos:"GOL", x:8,  y:50},
 
@@ -15533,7 +15533,7 @@ function FL_top11SlotsV3794(){
 }
 
 // Lê TOP11_BASE de forma robusta e redistribui pelos 11 slots por ordem de cada ano.
-function FL_top11BaseRowsV3794(){
+var FL_top11BaseRowsV3794 = function FL_top11BaseRowsV3794(){
   const raw = getTable("TOP11_BASE") || [];
   if(!raw.length) return [];
 
@@ -15633,7 +15633,7 @@ function FL_top11BaseRowsV3794(){
   return out;
 }
 
-function FL_positionOrderV3794(row){
+var FL_positionOrderV3794 = function FL_positionOrderV3794(row){
   if(row.__slotIndex !== undefined) return Number(row.__slotIndex);
   const order = ["GL","GOL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
   const origem = String(row.posicao_origem || "").toUpperCase();
@@ -15641,7 +15641,7 @@ function FL_positionOrderV3794(row){
   return idx >= 0 ? idx : Number(row.id || 9999);
 }
 
-function FL_positionCoordsV3794(row, idx){
+var FL_positionCoordsV3794 = function FL_positionCoordsV3794(row, idx){
   if(row.__top11Source === "base"){
     const s = FL_top11SlotsV3794()[row.__slotIndex ?? idx] || FL_top11SlotsV3794()[idx] || {x:50,y:50,pos:row.posicao_tatica || "POS"};
     return {x:s.x, y:s.y, display:row.posicao_tatica || s.pos};
@@ -15655,12 +15655,12 @@ function FL_positionCoordsV3794(row, idx){
   return {x:s.x, y:s.y, display:row.posicao_tatica || s.pos};
 }
 
-function FL_top11CareerRowsV3794(){
+var FL_top11CareerRowsV3794 = function FL_top11CareerRowsV3794(){
   const carreiraId = active?.carreira_id || "";
   return (getTable("TOP11_CARREIRA") || []).filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId));
 }
 
-function FL_top11UnifiedGroupsV3794(){
+var FL_top11UnifiedGroupsV3794 = function FL_top11UnifiedGroupsV3794(){
   const groups = [];
   const baseMap = new Map();
 
@@ -15706,19 +15706,19 @@ function FL_top11UnifiedGroupsV3794(){
   return groups;
 }
 
-function FL_selectedTop11GroupV3794(){
+var FL_selectedTop11GroupV3794 = function FL_selectedTop11GroupV3794(){
   const groups = FL_top11UnifiedGroupsV3794();
   if(!groups.length) return null;
   return groups.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3790) || groups[0];
 }
 
-function FL_initialsV3794(name){
+var FL_initialsV3794 = function FL_initialsV3794(name){
   if(typeof FL_initialsV3790 === "function") return FL_initialsV3790(name);
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-function FL_functionGroupV3794(row){
+var FL_functionGroupV3794 = function FL_functionGroupV3794(row){
   const pos = String(row.posicao_tatica || "").toUpperCase();
   if(["GOL","GK"].includes(pos)) return "GOL";
   if(["LE","LD","ZAG","CB","LB","RB"].includes(pos)) return "DEF";
@@ -15727,7 +15727,7 @@ function FL_functionGroupV3794(row){
   return "TOTAL";
 }
 
-function FL_top11AppearancesV3794(){
+var FL_top11AppearancesV3794 = function FL_top11AppearancesV3794(){
   const rows = [
     ...FL_top11BaseRowsV3794().map(r=>Object.assign({__source:"base"}, r)),
     ...FL_top11CareerRowsV3794().map(r=>Object.assign({__source:"career"}, r))
@@ -15761,7 +15761,7 @@ function FL_top11AppearancesV3794(){
     .sort((a,b)=>b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
 }
 
-function FL_renderTop11BestInnerV3794(){
+var FL_renderTop11BestInnerV3794 = function FL_renderTop11BestInnerV3794(){
   const rows = FL_top11AppearancesV3794().slice(0,50);
   const filters = [["TOTAL","Total"],["GOL","Goleiros"],["DEF","Defesa"],["MEI","Meio"],["ATA","Ataque"]];
 
@@ -15797,14 +15797,14 @@ function FL_renderTop11BestInnerV3794(){
   `;
 }
 
-function FL_updateTop11BestV3794(){
+var FL_updateTop11BestV3794 = function FL_updateTop11BestV3794(){
   const el = document.getElementById("top11-melhores-v3790");
   if(!el) return;
   el.innerHTML = FL_renderTop11BestInnerV3794();
   if(typeof FL_enrichTop11BestPhotosV3790 === "function") FL_enrichTop11BestPhotosV3790();
 }
 
-function FL_renderTop11UnifiedV3794(){
+var FL_renderTop11UnifiedV3794 = function FL_renderTop11UnifiedV3794(){
   const page = document.getElementById("top11");
   if(!page) return;
 
@@ -15895,7 +15895,7 @@ function FL_renderTop11UnifiedV3794(){
 }
 
 // Remove o X vermelho perdido no topo do resumo sem depender da classe.
-function FL_removeLostTopRightXV3794(){
+var FL_removeLostTopRightXV3794 = function FL_removeLostTopRightXV3794(){
   const all = [...document.querySelectorAll("button,div,span,a")];
 
   all.forEach(el=>{
@@ -15989,7 +15989,7 @@ setTimeout(FL_removeLostTopRightXV3794, 2500);
 // criado vazio ou NÃO
 // - Pode buscar foto por API.
 
-function FL_isCreatedPlayerV3795(row){
+var FL_isCreatedPlayerV3795 = function FL_isCreatedPlayerV3795(row){
   const v = String(
     row?.criado ??
     row?.CRIADO ??
@@ -16002,7 +16002,7 @@ function FL_isCreatedPlayerV3795(row){
   return ["sim","s","yes","y","true","1","criado","created"].includes(v);
 }
 
-function FL_pickV3795(row, keys){
+var FL_pickV3795 = function FL_pickV3795(row, keys){
   for(const k of keys){
     if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
   }
@@ -16021,7 +16021,7 @@ function FL_pickV3795(row, keys){
   return "";
 }
 
-function FL_initialsV3795(name){
+var FL_initialsV3795 = function FL_initialsV3795(name){
   if(typeof FL_initialsV3794 === "function") return FL_initialsV3794(name);
   if(typeof FL_initialsV3790 === "function") return FL_initialsV3790(name);
 
@@ -16029,22 +16029,22 @@ function FL_initialsV3795(name){
   return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
 }
 
-function FL_escapeV3795(value){
+var FL_escapeV3795 = function FL_escapeV3795(value){
   return typeof escapeHtml === "function" ? escapeHtml(String(value ?? "")) : String(value ?? "");
 }
 
-function FL_escapeAttrV3795(value){
+var FL_escapeAttrV3795 = function FL_escapeAttrV3795(value){
   return typeof escapeAttr === "function" ? escapeAttr(String(value ?? "")) : String(value ?? "").replace(/"/g,"&quot;");
 }
 
 // Puxa carreira preservando criado/foto_url.
-function FL_top11CareerRowsV3795(){
+var FL_top11CareerRowsV3795 = function FL_top11CareerRowsV3795(){
   const carreiraId = active?.carreira_id || "";
   return (getTable("TOP11_CARREIRA") || []).filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId));
 }
 
 // Se a função de grupo já existe, só reusa; se não, cria fallback.
-function FL_top11UnifiedGroupsV3795(){
+var FL_top11UnifiedGroupsV3795 = function FL_top11UnifiedGroupsV3795(){
   if(typeof FL_top11UnifiedGroupsV3794 === "function"){
     const groups = FL_top11UnifiedGroupsV3794();
 
@@ -16065,14 +16065,14 @@ function FL_top11UnifiedGroupsV3795(){
   return [];
 }
 
-function FL_shouldFetchPhotoV3795(row){
+var FL_shouldFetchPhotoV3795 = function FL_shouldFetchPhotoV3795(row){
   if(FL_isCreatedPlayerV3795(row)) return false;
   const foto = FL_pickV3795(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
   if(foto) return false;
   return true;
 }
 
-function FL_photoHtmlV3795(row, name){
+var FL_photoHtmlV3795 = function FL_photoHtmlV3795(row, name){
   const foto = FL_pickV3795(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
   if(foto){
     return `<img src="${FL_escapeAttrV3795(foto)}" onerror="this.parentElement.innerHTML='${FL_escapeV3795(FL_initialsV3795(name))}'">`;
@@ -16081,7 +16081,7 @@ function FL_photoHtmlV3795(row, name){
 }
 
 // Sobrescreve enriquecimento de fotos para respeitar jogador criado.
-function FL_enrichTop11PhotosV3795(){
+var FL_enrichTop11PhotosV3795 = function FL_enrichTop11PhotosV3795(){
   const nodes = [...document.querySelectorAll(".top11-player-v3790,.top11-player-v3787")];
   const allRows = [
     ...(typeof FL_top11BaseRowsV3794 === "function" ? FL_top11BaseRowsV3794() : (getTable("TOP11_BASE") || [])),
@@ -16115,7 +16115,7 @@ function FL_enrichTop11PhotosV3795(){
 }
 
 // Melhorar ranking melhores: criado não busca API se tiver foto manual ou sem foto.
-function FL_enrichTop11BestPhotosV3795(){
+var FL_enrichTop11BestPhotosV3795 = function FL_enrichTop11BestPhotosV3795(){
   const nodes = [...document.querySelectorAll("[data-top11-best-photo]")];
   const allCareer = FL_top11CareerRowsV3795();
 
@@ -16152,7 +16152,7 @@ const FL_renderTop11UnifiedOriginalV3795 =
   typeof FL_renderTop11UnifiedV3793 === "function" ? FL_renderTop11UnifiedV3793 :
   typeof renderTop11 === "function" ? renderTop11 : null;
 
-function FL_renderTop11UnifiedV3795(){
+var FL_renderTop11UnifiedV3795 = function FL_renderTop11UnifiedV3795(){
   if(FL_renderTop11UnifiedOriginalV3795){
     FL_renderTop11UnifiedOriginalV3795();
   }
@@ -16169,7 +16169,7 @@ const FL_openCreateTop11OriginalV3795 =
   typeof FL_openCreateTop11V3787 === "function" ? FL_openCreateTop11V3787 :
   null;
 
-function FL_openCreateTop11V3795(){
+var FL_openCreateTop11V3795 = function FL_openCreateTop11V3795(){
   if(FL_openCreateTop11OriginalV3795){
     FL_openCreateTop11OriginalV3795();
 
@@ -16200,7 +16200,7 @@ function FL_openCreateTop11V3795(){
 }
 
 // Salvamento novo do Top11 com criado/foto_url.
-async function FL_saveNewTop11V3795(){
+var FL_saveNewTop11V3795 = async function FL_saveNewTop11V3795(){
   const form = document.getElementById("top11-create-form-v3788") || document.getElementById("top11-create-form-v3787");
 
   if(!form){
@@ -16346,17 +16346,17 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 (function(){
   const TOP11_BG_V3796 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 
-  function esc(v){
+  var esc = function esc(v){
     if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
     return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
   }
 
-  function attr(v){
+  var attr = function attr(v){
     if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
     return String(v ?? "").replace(/"/g,"&quot;");
   }
 
-  function norm(v){
+  var norm = function norm(v){
     return String(v || "")
       .toLowerCase()
       .normalize("NFD")
@@ -16364,7 +16364,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       .replace(/[^a-z0-9]+/g,"");
   }
 
-  function pick(row, keys){
+  var pick = function pick(row, keys){
     for(const k of keys){
       if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
     }
@@ -16377,12 +16377,12 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return "";
   }
 
-  function initials(name){
+  var initials = function initials(name){
     const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
     return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
   }
 
-  function slots(){
+  var slots = function slots(){
     return [
       {orig:"GL",   pos:"GOL", x:8,  y:50},
       {orig:"DEF",  pos:"LE",  x:22, y:20},
@@ -16398,12 +16398,12 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     ];
   }
 
-  function isCreated(row){
+  var isCreated = function isCreated(row){
     const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
     return ["sim","s","yes","y","true","1","criado","created"].includes(v);
   }
 
-  function baseRows(){
+  var baseRows = function baseRows(){
     const raw = (typeof getTable === "function" ? getTable("TOP11_BASE") : (window.db?.TOP11_BASE || [])) || [];
     if(!raw.length) return [];
 
@@ -16479,14 +16479,14 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return out;
   }
 
-  function careerRows(){
+  var careerRows = function careerRows(){
     const all = (typeof getTable === "function" ? getTable("TOP11_CARREIRA") : (window.db?.TOP11_CARREIRA || [])) || [];
     const carreiraId = window.active?.carreira_id || "";
     return all.filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId))
       .map((r,i)=>Object.assign({__source:"career", __top11Source:"career", __slotIndex:i}, r));
   }
 
-  function groups(){
+  var groups = function groups(){
     const map = new Map();
 
     baseRows().forEach(r=>{
@@ -16519,13 +16519,13 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return arr;
   }
 
-  function selectedGroup(){
+  var selectedGroup = function selectedGroup(){
     const gs = groups();
     if(!gs.length) return null;
     return gs.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796) || gs[0];
   }
 
-  function coord(row, idx){
+  var coord = function coord(row, idx){
     if(row.__source === "career" && row.x !== undefined && row.x !== "" && row.y !== undefined && row.y !== ""){
       return {x:Number(row.x), y:Number(row.y), pos:row.posicao_tatica || ""};
     }
@@ -16533,7 +16533,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return {x:s.x, y:s.y, pos:row.posicao_tatica || s.pos};
   }
 
-  function groupPos(row){
+  var groupPos = function groupPos(row){
     const p = String(row.posicao_tatica || "").toUpperCase();
     if(["GOL","GK"].includes(p)) return "GOL";
     if(["LE","LD","ZAG","CB","LB","RB"].includes(p)) return "DEF";
@@ -16542,7 +16542,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return "TOTAL";
   }
 
-  function appearances(filter="TOTAL"){
+  var appearances = function appearances(filter="TOTAL"){
     const map = new Map();
     [...baseRows(), ...careerRows()].forEach(r=>{
       const gp = groupPos(r);
@@ -16563,7 +16563,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       .sort((a,b)=>b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
   }
 
-  function bestHtml(){
+  var bestHtml = function bestHtml(){
     const filter = window.FL_TOP11_BEST_FILTER_V3796 || "TOTAL";
     const filters = [["TOTAL","Total"],["GOL","Goleiros"],["DEF","Defesa"],["MEI","Meio"],["ATA","Ataque"]];
     const rows = appearances(filter).slice(0,50);
@@ -16596,7 +16596,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     `;
   }
 
-  async function fetchPhoto(name){
+  var fetchPhoto = async function fetchPhoto(name){
     if(!name) return "";
     if(window.FL_TOP11_PHOTO_CACHE_V3796?.[norm(name)] !== undefined) return window.FL_TOP11_PHOTO_CACHE_V3796[norm(name)];
     window.FL_TOP11_PHOTO_CACHE_V3796 = window.FL_TOP11_PHOTO_CACHE_V3796 || {};
@@ -16620,7 +16620,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     }
   }
 
-  function enrichPhotos(){
+  var enrichPhotos = function enrichPhotos(){
     const allRows = [...baseRows(), ...careerRows()];
     document.querySelectorAll("[data-top11-player-photo]").forEach(async el=>{
       const name = el.dataset.top11PlayerPhoto || "";
@@ -16650,7 +16650,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     });
   }
 
-  function renderTop11New(){
+  var renderTop11New = function renderTop11New(){
     const page = document.getElementById("top11") || document.querySelector('[data-page="top11"]');
     if(!page) return;
 
@@ -16721,7 +16721,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     removeLostX();
   }
 
-  function enableDrag(){
+  var enableDrag = function enableDrag(){
     const pitch = document.querySelector(".top11-pitch-v3796");
     if(!pitch) return;
     pitch.querySelectorAll(".top11-player-v3796").forEach(card=>{
@@ -16753,7 +16753,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     });
   }
 
-  function removeLostX(){
+  var removeLostX = function removeLostX(){
     document.querySelectorAll("button,div,span,a").forEach(el=>{
       const txt = (el.textContent||"").trim();
       if(!["×","x","X"].includes(txt)) return;
@@ -16810,17 +16810,17 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 (function(){
   const TOP11_BG_V3797 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 
-  function esc(v){
+  var esc = function esc(v){
     if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
     return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
   }
 
-  function attr(v){
+  var attr = function attr(v){
     if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
     return String(v ?? "").replace(/"/g,"&quot;");
   }
 
-  function norm(v){
+  var norm = function norm(v){
     return String(v || "")
       .toLowerCase()
       .normalize("NFD")
@@ -16828,7 +16828,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       .replace(/[^a-z0-9]+/g,"");
   }
 
-  function pick(row, keys){
+  var pick = function pick(row, keys){
     for(const k of keys){
       if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
     }
@@ -16841,12 +16841,12 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return "";
   }
 
-  function initials(name){
+  var initials = function initials(name){
     const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
     return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
   }
 
-  function slots(){
+  var slots = function slots(){
     return [
       {orig:"GL",   pos:"GOL", x:8,  y:50},
       {orig:"DEF",  pos:"LE",  x:22, y:20},
@@ -16862,7 +16862,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     ];
   }
 
-  function validPct(v){
+  var validPct = function validPct(v){
     const s = String(v ?? "").trim().replace(",", ".");
     if(!s || /#/.test(s)) return null;
     const n = Number(s);
@@ -16871,7 +16871,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return n;
   }
 
-  function positionOrder(row){
+  var positionOrder = function positionOrder(row){
     const origem = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
     const pos = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
 
@@ -16896,12 +16896,12 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return Number(row.id || 9999);
   }
 
-  function isCreated(row){
+  var isCreated = function isCreated(row){
     const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
     return ["sim","s","yes","y","true","1","criado","created"].includes(v);
   }
 
-  function baseRows(){
+  var baseRows = function baseRows(){
     const raw = (typeof getTable === "function" ? getTable("TOP11_BASE") : (window.db?.TOP11_BASE || [])) || [];
     if(!raw.length) return [];
 
@@ -16977,7 +16977,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return out;
   }
 
-  function careerRows(){
+  var careerRows = function careerRows(){
     const all = (typeof getTable === "function" ? getTable("TOP11_CARREIRA") : (window.db?.TOP11_CARREIRA || [])) || [];
     const carreiraId = window.active?.carreira_id || "";
 
@@ -17020,7 +17020,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return out;
   }
 
-  function groups(){
+  var groups = function groups(){
     const map = new Map();
 
     baseRows().forEach(r=>{
@@ -17054,13 +17054,13 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return arr;
   }
 
-  function selectedGroup(){
+  var selectedGroup = function selectedGroup(){
     const gs = groups();
     if(!gs.length) return null;
     return gs.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3797) || gs.find(g=>g.key === window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796) || gs[0];
   }
 
-  function coord(row, idx){
+  var coord = function coord(row, idx){
     const x = validPct(row.x);
     const y = validPct(row.y);
     const s = slots()[row.__slotIndex ?? idx] || slots()[idx] || {x:50,y:50,pos:row.posicao_tatica||"POS"};
@@ -17072,7 +17072,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     };
   }
 
-  function groupPos(row){
+  var groupPos = function groupPos(row){
     const p = String(row.posicao_tatica || "").toUpperCase();
     if(["GOL","GK"].includes(p)) return "GOL";
     if(["LE","LD","ZAG","CB","LB","RB"].includes(p)) return "DEF";
@@ -17081,7 +17081,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     return "TOTAL";
   }
 
-  function appearances(filter="TOTAL"){
+  var appearances = function appearances(filter="TOTAL"){
     const map = new Map();
 
     [...baseRows(), ...careerRows()].forEach(r=>{
@@ -17108,7 +17108,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       .sort((a,b)=>b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
   }
 
-  function bestHtml(){
+  var bestHtml = function bestHtml(){
     const filter = window.FL_TOP11_BEST_FILTER_V3797 || window.FL_TOP11_BEST_FILTER_V3796 || "TOTAL";
     const filters = [["TOTAL","Total"],["GOL","Goleiros"],["DEF","Defesa"],["MEI","Meio"],["ATA","Ataque"]];
     const rows = appearances(filter).slice(0,50);
@@ -17141,7 +17141,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     `;
   }
 
-  async function fetchPhoto(name){
+  var fetchPhoto = async function fetchPhoto(name){
     if(!name) return "";
     window.FL_TOP11_PHOTO_CACHE_V3797 = window.FL_TOP11_PHOTO_CACHE_V3797 || {};
     if(window.FL_TOP11_PHOTO_CACHE_V3797[norm(name)] !== undefined) return window.FL_TOP11_PHOTO_CACHE_V3797[norm(name)];
@@ -17167,7 +17167,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     }
   }
 
-  function enrichPhotos(){
+  var enrichPhotos = function enrichPhotos(){
     const allRows = [...baseRows(), ...careerRows()];
 
     document.querySelectorAll("[data-top11-player-photo]").forEach(async el=>{
@@ -17205,7 +17205,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     });
   }
 
-  function renderTop11New(){
+  var renderTop11New = function renderTop11New(){
     const page = document.getElementById("top11") || document.querySelector('[data-page="top11"]');
     if(!page) return;
 
@@ -17277,7 +17277,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     removeLostX();
   }
 
-  function enableDrag(){
+  var enableDrag = function enableDrag(){
     const pitch = document.querySelector(".top11-pitch-v3796");
     if(!pitch) return;
 
@@ -17313,7 +17313,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     });
   }
 
-  async function savePositions(){
+  var savePositions = async function savePositions(){
     const group = selectedGroup();
     if(!group || !group.editable){
       setStatus("Este Top 11 é base histórica e não pode ser editado.", "error");
@@ -17360,7 +17360,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     }
   }
 
-  function removeLostX(){
+  var removeLostX = function removeLostX(){
     document.querySelectorAll("button,div,span,a").forEach(el=>{
       const txt = (el.textContent||"").trim();
       if(!["×","x","X"].includes(txt)) return;
@@ -17408,52 +17408,27 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 })();
 
 
-// ===== V3.8.06 — TOP 11 CLEAN REBUILD =====
-// Recriação limpa da aba Top 11.
-// Não usa os renders antigos contaminados.
-// Regras:
-// - TOP11_BASE = base histórica fixa.
-// - TOP11_CARREIRA = carreira editável.
-// - foto_url sempre vence API.
-// - criado = SIM nunca busca API.
-// - Importar imagem afeta somente o jogador/linha atual.
+// ===== V3.7.98 — EDITAR JOGADOR DO TOP 11 + CRIADO/FOTO URL =====
+// Funcionalidades:
+// - Clicar em jogador da carreira abre modal de edição.
+// - Edita nome, posição, criado e foto_url.
+// - Se criado = SIM, não busca imagem pela API.
+// - + Top 11 tem campos Criado/API e Foto URL manual.
 
 (function(){
-  "use strict";
+  const TOP11_BG_V3798 = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
 
-  const BG = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
-
-  let selectedKey = "";
-  let bestFilter = "TOTAL";
-  let editing = false;
-  let rendering = false;
-  const photoCache = {};
-
-  const SLOT = [
-    {orig:"GL",   pos:"GOL", x:8,  y:50},
-    {orig:"DEF",  pos:"LE",  x:22, y:20},
-    {orig:"DEF2", pos:"ZAG", x:27, y:38},
-    {orig:"DEF3", pos:"ZAG", x:27, y:62},
-    {orig:"DEF4", pos:"LD",  x:22, y:80},
-    {orig:"MEI",  pos:"MEI", x:52, y:28},
-    {orig:"MEI5", pos:"MEI", x:52, y:50},
-    {orig:"MEI6", pos:"MEI", x:52, y:72},
-    {orig:"ATA",  pos:"PE",  x:78, y:28},
-    {orig:"ATA7", pos:"CA",  x:84, y:50},
-    {orig:"ATA8", pos:"PD",  x:78, y:72}
-  ];
-
-  function esc(v){
+  var esc = function esc(v){
     if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
-    return String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    return String(v ?? "").replace(/[&<>"']/g, m=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
   }
 
-  function attr(v){
+  var attr = function attr(v){
     if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
-    return String(v ?? "").replace(/"/g, "&quot;");
+    return String(v ?? "").replace(/"/g,"&quot;");
   }
 
-  function norm(v){
+  var norm = function norm(v){
     return String(v || "")
       .toLowerCase()
       .normalize("NFD")
@@ -17461,1361 +17436,595 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       .replace(/[^a-z0-9]+/g,"");
   }
 
-  function pick(row, keys){
-    if(!row) return "";
+  var pick = function pick(row, keys){
     for(const k of keys){
-      if(row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+      if(row && row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
     }
-    const map = {};
-    Object.keys(row).forEach(k => map[norm(k)] = row[k]);
+    const n = {};
+    Object.keys(row || {}).forEach(k=>n[norm(k)] = row[k]);
     for(const k of keys){
       const nk = norm(k);
-      if(map[nk] !== undefined && map[nk] !== null && map[nk] !== "") return map[nk];
+      if(n[nk] !== undefined && n[nk] !== null && n[nk] !== "") return n[nk];
     }
     return "";
   }
 
-  function asPct(v){
-    const s = String(v ?? "").trim().replace(",", ".");
-    if(!s || /#/.test(s)) return null;
-    const n = Number(s);
-    if(!Number.isFinite(n) || n < 0 || n > 100) return null;
-    return n;
-  }
-
-  function initials(name){
+  var initials = function initials(name){
     const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+    return ((parts[0]?.[0] || "?") + (parts.length > 1 ? parts[parts.length-1][0] : "")).toUpperCase();
   }
 
-  function isCreated(row){
-    const v = String(pick(row, ["criado","CRIADO","created","jogador_criado"]) || "").trim().toLowerCase();
+  var isCreated = function isCreated(row){
+    const v = String(pick(row, ["criado","CRIADO","jogador_criado","created"]) || "").trim().toLowerCase();
     return ["sim","s","yes","y","true","1","criado","created"].includes(v);
   }
 
-  function table(name){
-    if(typeof getTable === "function"){
-      try { return getTable(name) || []; } catch(e){}
-    }
-    return (window.db && Array.isArray(window.db[name])) ? window.db[name] : [];
-  }
+  var currentTop11Group = function currentTop11Group(){
+    if(typeof FL_top11CareerRowsV3797 === "function" && typeof FL_top11BaseRowsV3797 === "function"){
+      const allCareer = FL_top11CareerRowsV3797();
+      const allBase = FL_top11BaseRowsV3797();
 
-  function careerId(){
-    return String(window.active?.carreira_id || window.active?.career_id || "1");
-  }
+      const selected =
+        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3797 ||
+        window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796 ||
+        "";
 
-  function posGroup(row){
-    const p = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
-    const o = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
-
-    if(["GOL","GK","GL"].includes(p) || ["GL","GOL"].includes(o)) return "GOL";
-    if(["LE","LD","ZAG","CB","LB","RB"].includes(p) || ["DEF","DEF2","DEF3","DEF4"].includes(o)) return "DEF";
-    if(["VOL","MC","MEI","CAM","CM","CDM"].includes(p) || ["MEI","MEI5","MEI6"].includes(o)) return "MEI";
-    if(["PE","PD","CA","LW","RW","ST"].includes(p) || ["ATA","ATA7","ATA8"].includes(o)) return "ATA";
-    return "TOTAL";
-  }
-
-  function slotOrder(row){
-    const origem = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
-    const exact = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
-    const ei = exact.indexOf(origem);
-    if(ei >= 0) return ei;
-
-    const pos = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
-    const order = {GOL:0,GK:0,LE:1,LB:1,ZAG:2,CB:2,LD:4,RB:4,VOL:5,MC:6,CM:6,MEI:7,CAM:7,PE:8,LW:8,CA:9,ST:9,PD:10,RW:10};
-    return order[pos] ?? 999;
-  }
-
-  function normalizeRowsBySeason(rows, source){
-    const by = new Map();
-
-    rows.forEach((r, idx) => {
-      const season = String(pick(r, source === "base" ? ["ano","ANO","temporada","TEMPORADA"] : ["temporada","TEMPORADA"]) || "");
-      if(!season) return;
-      const sid = source === "career" ? String(pick(r, ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) || "") : "";
-      const key = source === "career" && sid ? `career:${sid}` : `${source}:${season}`;
-      if(!by.has(key)) by.set(key, []);
-      by.get(key).push(Object.assign({__rawIndex:idx,__source:source}, r));
-    });
-
-    const outGroups = [];
-
-    by.forEach((arr, key) => {
-      arr.sort((a,b) => slotOrder(a) - slotOrder(b) || Number(pick(a,["id","ID"]) || 0) - Number(pick(b,["id","ID"]) || 0) || a.__rawIndex - b.__rawIndex);
-
-      arr = arr.slice(0, 11).map((r, idx) => {
-        const s = SLOT[idx] || SLOT[SLOT.length - 1];
-
-        const xRaw = asPct(pick(r, ["x","X"]));
-        const yRaw = asPct(pick(r, ["y","Y"]));
-        const useSaved = source === "career" && xRaw !== null && yRaw !== null;
-
-        return Object.assign({}, r, {
-          id: pick(r, ["id","ID"]) || `${key}-${idx+1}`,
-          temporada: pick(r, ["temporada","TEMPORADA"]) || pick(r, ["ano","ANO"]) || "",
-          ano: pick(r, ["ano","ANO"]) || pick(r, ["temporada","TEMPORADA"]) || "",
-          jogador: pick(r, ["jogador","JOGADOR","player","PLAYER"]) || "",
-          posicao_origem: pick(r, ["posicao_origem","POSICAO_ORIGEM"]) || s.orig,
-          posicao_tatica: pick(r, ["posicao_tatica","POSICAO_TATICA"]) || s.pos,
-          foto_url: pick(r, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]) || "",
-          criado: pick(r, ["criado","CRIADO","created"]) || "",
-          x: useSaved ? xRaw : s.x,
-          y: useSaved ? yRaw : s.y,
-          mapa_url: pick(r, ["mapa_url","MAPA_URL"]) || BG,
-          __slotIndex: idx,
-          __source: source
-        });
+      const careerGroups = new Map();
+      allCareer.forEach(r=>{
+        const sid = pick(r, ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) || "";
+        const temp = pick(r, ["temporada","TEMPORADA"]) || "";
+        const key = sid ? `career:${sid}` : `career:${temp}`;
+        if(!careerGroups.has(key)) careerGroups.set(key, {key, source:"career", editable:true, rows:[]});
+        careerGroups.get(key).rows.push(r);
       });
 
-      const label = arr[0]?.temporada || arr[0]?.ano || key.replace(/^(base|career):/,"");
-      outGroups.push({
-        key,
-        label,
-        season: label,
-        source,
-        sourceLabel: source === "base" ? "Base histórica" : "Carreira",
-        editable: source === "career",
-        carreira_temporada_id: source === "career" ? pick(arr[0], ["carreira_temporada_id","CARREIRA_TEMPORADA_ID"]) : "",
-        rows: arr
+      const baseGroups = new Map();
+      allBase.forEach(r=>{
+        const ano = r.ano || r.temporada || "";
+        const key = `base:${ano}`;
+        if(!baseGroups.has(key)) baseGroups.set(key, {key, source:"base", editable:false, rows:[]});
+        baseGroups.get(key).rows.push(r);
       });
-    });
 
-    return outGroups;
-  }
-
-  function baseRows(){
-    const raw = table("TOP11_BASE");
-
-    const wide = raw.filter(r => pick(r, ["ANO","ano","temporada","TEMPORADA"]) && (pick(r, ["GL"]) || pick(r, ["DEF"]) || pick(r, ["ATA8"])));
-    if(wide.length){
-      const cols = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
-      const rows = [];
-      let id = 1;
-      wide.forEach(w => {
-        const season = pick(w, ["ANO","ano","temporada","TEMPORADA"]);
-        SLOT.forEach((s, idx) => {
-          const name = pick(w, [cols[idx]]);
-          if(!name) return;
-          rows.push({id:id++, ano:season, temporada:season, posicao_origem:s.orig, posicao_tatica:s.pos, jogador:name, x:s.x, y:s.y, mapa_url:BG});
-        });
-      });
-      return rows;
+      return careerGroups.get(selected) || baseGroups.get(selected) || null;
     }
 
-    return raw.filter(r => pick(r, ["jogador","JOGADOR"]) && (pick(r, ["ano","ANO"]) || pick(r, ["temporada","TEMPORADA"])));
+    return null;
   }
 
-  function careerRows(){
-    const cid = careerId();
-    return table("TOP11_CARREIRA").filter(r => {
-      const rcid = String(pick(r, ["carreira_id","CARREIRA_ID"]) || "");
-      return !rcid || !cid || rcid === cid;
-    }).filter(r => pick(r, ["jogador","JOGADOR"]));
+  var findCareerRowById = function findCareerRowById(id){
+    const rows =
+      typeof FL_top11CareerRowsV3797 === "function" ? FL_top11CareerRowsV3797() :
+      typeof FL_top11CareerRowsV3795 === "function" ? FL_top11CareerRowsV3795() :
+      (getTable("TOP11_CARREIRA") || []);
+
+    return rows.find(r=>String(r.id || "") === String(id));
   }
 
-  function groups(){
-    const g = [
-      ...normalizeRowsBySeason(baseRows(), "base"),
-      ...normalizeRowsBySeason(careerRows(), "career")
-    ];
+  var openEditTop11PlayerModal = function openEditTop11PlayerModal(id){
+    const row = findCareerRowById(id);
 
-    g.sort((a,b) => {
-      const s = String(b.season).localeCompare(String(a.season));
-      if(s) return s;
-      if(a.source !== b.source) return a.source === "career" ? -1 : 1;
-      return 0;
-    });
-
-    if(!selectedKey && g.length) selectedKey = g[0].key;
-    if(selectedKey && !g.find(x => x.key === selectedKey) && g.length) selectedKey = g[0].key;
-    return g;
-  }
-
-  function selectedGroup(){
-    const gs = groups();
-    return gs.find(g => g.key === selectedKey) || gs[0] || null;
-  }
-
-  async function uploadCloudinary(file){
-    if(!file) return "";
-    if(typeof CLOUD_NAME === "undefined" || typeof CLOUDINARY_UPLOAD_PRESET === "undefined"){
-      throw new Error("Cloudinary não configurado.");
+    if(!row){
+      setStatus("Só dá para editar jogadores do Top 11 da carreira. Base histórica é fixa.", "error");
+      return;
     }
 
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const nome = pick(row, ["jogador","JOGADOR"]);
+    const pos = pick(row, ["posicao_tatica","POSICAO_TATICA"]);
+    const origem = pick(row, ["posicao_origem","POSICAO_ORIGEM"]);
+    const criado = isCreated(row) ? "SIM" : "";
+    const foto = pick(row, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
+    const clube = pick(row, ["clube","CLUBE"]);
+    const pais = pick(row, ["pais","PAIS"]);
+    const overall = pick(row, ["overall","OVERALL"]);
 
-    setStatus("Importando imagem...", "loading");
+    document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {method:"POST", body:fd});
-    const json = await res.json();
-    if(!json.secure_url) throw new Error(json.error?.message || "Falha no upload.");
-
-    setStatus("Imagem importada.", "ok");
-    return json.secure_url;
-  }
-
-  async function fetchPhoto(name){
-    const key = norm(name);
-    if(!key) return "";
-    if(photoCache[key] !== undefined) return photoCache[key];
-
-    if(typeof FL_fetchPlayerPhotoV3790 === "function"){
-      try{
-        const img = await FL_fetchPlayerPhotoV3790(name);
-        photoCache[key] = img || "";
-        return photoCache[key];
-      }catch(e){}
-    }
-
-    try{
-      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
-      const data = await res.json();
-      const p = (data?.player || [])[0];
-      const img = p?.strCutout || p?.strRender || p?.strThumb || "";
-      photoCache[key] = img || "";
-      return img || "";
-    }catch(e){
-      photoCache[key] = "";
-      return "";
-    }
-  }
-
-  function photoInitial(row){
-    const name = row.jogador || "";
-    const manual = row.foto_url || "";
-    if(manual) return `<img src="${attr(manual)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-    return esc(initials(name));
-  }
-
-  async function enrichPhotos(){
-    const g = selectedGroup();
-    if(!g) return;
-
-    const cards = [...document.querySelectorAll(".top11-clean-player-v3806")];
-    for(const card of cards){
-      const idx = Number(card.dataset.idx);
-      const row = g.rows[idx];
-      if(!row) continue;
-
-      const photo = card.querySelector(".top11-clean-photo-v3806");
-      if(!photo) continue;
-
-      if(row.foto_url){
-        photo.dataset.locked = "1";
-        photo.innerHTML = `<img src="${attr(row.foto_url)}" onerror="this.parentElement.innerHTML='${esc(initials(row.jogador))}'">`;
-        continue;
-      }
-
-      if(isCreated(row)){
-        photo.dataset.locked = "1";
-        photo.innerHTML = esc(initials(row.jogador));
-        continue;
-      }
-
-      if(photo.querySelector("img")) continue;
-      const img = await fetchPhoto(row.jogador);
-      if(img && photo.isConnected && !photo.dataset.locked){
-        photo.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(row.jogador))}'">`;
-      }
-    }
-
-    const best = [...document.querySelectorAll("[data-top11-best-name-v3806]")];
-    for(const node of best){
-      const name = node.dataset.top11BestNameV3806 || "";
-      const row = careerRows().find(r => String(pick(r,["jogador","JOGADOR"])).trim().toLowerCase() === name.trim().toLowerCase());
-
-      if(row && pick(row,["foto_url","FOTO_URL"])){
-        node.innerHTML = `<img src="${attr(pick(row,["foto_url","FOTO_URL"]))}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-        continue;
-      }
-      if(row && isCreated(row)){
-        node.innerHTML = esc(initials(name));
-        continue;
-      }
-      if(node.querySelector("img")) continue;
-      const img = await fetchPhoto(name);
-      if(img && node.isConnected){
-        node.innerHTML = `<img src="${attr(img)}" onerror="this.parentElement.innerHTML='${esc(initials(name))}'">`;
-      }
-    }
-  }
-
-  function appearances(){
-    const rows = [
-      ...baseRows().map(r => Object.assign({__source:"base"}, r)),
-      ...careerRows().map(r => Object.assign({__source:"career"}, r))
-    ];
-
-    const map = new Map();
-
-    rows.forEach(r => {
-      const name = String(pick(r, ["jogador","JOGADOR"]) || "").trim();
-      if(!name) return;
-
-      const fn = posGroup(r);
-      if(bestFilter !== "TOTAL" && fn !== bestFilter) return;
-
-      const key = norm(name);
-      if(!map.has(key)) map.set(key, {jogador:name,total:0,base:0,carreira:0,funcoes:new Set(),anos:[]});
-      const item = map.get(key);
-      item.total++;
-      if(r.__source === "career") item.carreira++; else item.base++;
-      item.funcoes.add(fn);
-      const ano = pick(r, ["ano","ANO","temporada","TEMPORADA"]);
-      if(ano && !item.anos.includes(ano)) item.anos.push(ano);
-    });
-
-    return [...map.values()].sort((a,b) => b.total-a.total || b.carreira-a.carreira || a.jogador.localeCompare(b.jogador));
-  }
-
-  function bestHtml(){
-    const filters = [["TOTAL","Total"],["GOL","Goleiros"],["DEF","Defesa"],["MEI","Meio"],["ATA","Ataque"]];
-    const rows = appearances().slice(0,50);
-
-    return `
-      <section class="top11-clean-best-v3806" id="top11-clean-best-v3806">
-        <div class="top11-clean-best-head-v3806">
-          <div>
-            <h2>Melhores</h2>
-            <p>Mais aparições em Top 11.</p>
-          </div>
-          <div class="top11-clean-tabs-v3806">
-            ${filters.map(([id,label]) => `<button type="button" class="${bestFilter===id?'active':''}" data-top11-filter-v3806="${id}">${esc(label)}</button>`).join("")}
-          </div>
-        </div>
-        <div class="top11-clean-best-list-v3806">
-          ${rows.map((r,i) => `
-            <article class="top11-clean-best-card-v3806">
-              <span>${i+1}</span>
-              <div class="avatar" data-top11-best-name-v3806="${attr(r.jogador)}">${esc(initials(r.jogador))}</div>
-              <div class="info">
-                <strong>${esc(r.jogador)}</strong>
-                <small>${esc([...r.funcoes].join(" / "))} • ${r.base} base • ${r.carreira} carreira</small>
-                <em>${esc(r.anos.slice(0,8).join(" • "))}${r.anos.length>8?'...':''}</em>
-              </div>
-              <b>${r.total}x</b>
-            </article>
-          `).join("") || `<div class="top11-clean-empty-v3806">Sem dados.</div>`}
-        </div>
-      </section>
-    `;
-  }
-
-  function pageEl(){
-    return document.getElementById("top11") || document.querySelector('[data-page="top11"]');
-  }
-
-  function render(){
-    if(rendering) return;
-    rendering = true;
-
-    try{
-      const page = pageEl();
-      if(!page) return;
-
-      const gs = groups();
-      const g = selectedGroup();
-
-      if(!g){
-        page.innerHTML = `
-          <section class="top11-clean-page-v3806">
-            <div class="top11-clean-head-v3806">
-              <div><h2>Top 11</h2><p>Nenhum dado encontrado em TOP11_BASE ou TOP11_CARREIRA.</p></div>
-              <button type="button" class="gold" id="top11-clean-add-v3806">+ Top 11</button>
-            </div>
-          </section>
-        `;
-        return;
-      }
-
-      const rows = g.rows || [];
-      const isEditing = editing && g.editable;
-
-      page.innerHTML = `
-        <section class="top11-clean-page-v3806">
-          <div class="top11-clean-head-v3806">
-            <div>
-              <h2>Top 11</h2>
-              <p>Histórico e carreira em um único seletor.</p>
-              <small>${rows.length}/11 jogadores neste Top 11.</small>
-            </div>
-            <div class="top11-clean-actions-v3806">
-              <select id="top11-clean-selector-v3806">
-                ${gs.map(x => `<option value="${attr(x.key)}" ${x.key===g.key?'selected':''}>${esc(x.label)} · ${esc(x.sourceLabel)}</option>`).join("")}
-              </select>
-              <button type="button" class="ghost" id="top11-clean-best-btn-v3806">Melhores</button>
-              ${g.editable ? `<button type="button" class="ghost" id="top11-clean-edit-v3806">${isEditing?'Cancelar edição':'Editar posições'}</button>` : ""}
-              <button type="button" class="gold" id="top11-clean-add-v3806">+ Top 11</button>
-            </div>
-          </div>
-
-          <div class="top11-clean-map-card-v3806">
-            <div class="top11-clean-toolbar-v3806">
-              <strong>Top 11 ${esc(g.label)}</strong>
-              <span>${esc(g.sourceLabel)}</span>
-              ${isEditing ? `<button type="button" class="gold" id="top11-clean-savepos-v3806">Salvar posições</button>` : ""}
-            </div>
-            <div class="top11-clean-pitch-v3806" id="top11-clean-pitch-v3806" style="background-image:linear-gradient(rgba(2,6,23,.08),rgba(2,6,23,.18)),url('${attr(BG)}')">
-              ${rows.map((r,idx) => `
-                <div class="top11-clean-player-v3806 ${isEditing?'editing':''}" data-idx="${idx}" data-id="${attr(r.id)}" style="left:${asPct(r.x) ?? SLOT[idx]?.x ?? 50}%; top:${asPct(r.y) ?? SLOT[idx]?.y ?? 50}%;">
-                  <div class="top11-clean-photo-v3806">${photoInitial(r)}</div>
-                  <div class="top11-clean-info-v3806">
-                    <b>${esc(r.jogador)}</b>
-                    <span>${esc(r.posicao_tatica || SLOT[idx]?.pos || "")}</span>
-                  </div>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-
-          ${bestHtml()}
-        </section>
-      `;
-
-      bind();
-      if(isEditing) enableDrag();
-      setTimeout(enrichPhotos, 60);
-      setTimeout(enrichPhotos, 500);
-    }finally{
-      rendering = false;
-    }
-  }
-
-  function bind(){
-    const page = pageEl();
-    if(!page) return;
-
-    page.querySelector("#top11-clean-selector-v3806")?.addEventListener("change", e => {
-      selectedKey = e.target.value;
-      editing = false;
-      render();
-    });
-
-    page.querySelector("#top11-clean-best-btn-v3806")?.addEventListener("click", () => {
-      page.querySelector("#top11-clean-best-v3806")?.scrollIntoView({behavior:"smooth", block:"start"});
-    });
-
-    page.querySelector("#top11-clean-edit-v3806")?.addEventListener("click", () => {
-      editing = !editing;
-      render();
-    });
-
-    page.querySelector("#top11-clean-savepos-v3806")?.addEventListener("click", savePositions);
-
-    page.querySelector("#top11-clean-add-v3806")?.addEventListener("click", openCreateModal);
-
-    page.querySelectorAll("[data-top11-filter-v3806]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        bestFilter = btn.dataset.top11FilterV3806 || "TOTAL";
-        render();
-        setTimeout(() => page.querySelector("#top11-clean-best-v3806")?.scrollIntoView({behavior:"smooth", block:"start"}), 40);
-      });
-    });
-
-    page.querySelectorAll(".top11-clean-player-v3806").forEach(card => {
-      card.addEventListener("click", e => {
-        if(editing) return;
-        const g = selectedGroup();
-        if(!g || !g.editable) return;
-        const row = g.rows[Number(card.dataset.idx)];
-        if(row) openEditModal(row);
-      });
-    });
-  }
-
-  function enableDrag(){
-    const pitch = document.getElementById("top11-clean-pitch-v3806");
-    if(!pitch) return;
-
-    pitch.querySelectorAll(".top11-clean-player-v3806").forEach(card => {
-      let drag = false;
-
-      const move = e => {
-        if(!drag) return;
-        const p = e.touches ? e.touches[0] : e;
-        const rect = pitch.getBoundingClientRect();
-        let x = ((p.clientX - rect.left)/rect.width)*100;
-        let y = ((p.clientY - rect.top)/rect.height)*100;
-        x = Math.max(4, Math.min(96, x));
-        y = Math.max(6, Math.min(94, y));
-        card.style.left = x + "%";
-        card.style.top = y + "%";
-        card.dataset.x = x.toFixed(2);
-        card.dataset.y = y.toFixed(2);
-      };
-
-      const stop = () => {
-        drag = false;
-        document.removeEventListener("mousemove", move);
-        document.removeEventListener("mouseup", stop);
-      };
-
-      card.addEventListener("mousedown", e => {
-        e.preventDefault();
-        drag = true;
-        document.addEventListener("mousemove", move);
-        document.addEventListener("mouseup", stop);
-      });
-    });
-  }
-
-  async function savePositions(){
-    const g = selectedGroup();
-    if(!g || !g.editable) return;
-
-    const rows = [...document.querySelectorAll(".top11-clean-player-v3806")].map(card => {
-      const idx = Number(card.dataset.idx);
-      const row = Object.assign({}, g.rows[idx]);
-      const x = asPct(card.dataset.x) ?? asPct(card.style.left) ?? row.x;
-      const y = asPct(card.dataset.y) ?? asPct(card.style.top) ?? row.y;
-      row.x = x;
-      row.y = y;
-      return row;
-    });
-
-    await saveRows(g, rows, false);
-    editing = false;
-    render();
-  }
-
-  async function saveRows(group, rows, replace){
-    setStatus("Salvando Top 11...", "loading");
-
-    const result = await apiPost({
-      action:"saveTop11CareerV2",
-      carreira_id: careerId(),
-      carreira_temporada_id: group?.carreira_temporada_id || "",
-      temporada: group?.label || rows[0]?.temporada || "",
-      mapa_url: BG,
-      replace_existing: !!replace,
-      rows
-    });
-
-    if(!result || !result.ok) throw new Error(result?.error || "Falha ao salvar Top 11.");
-
-    if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
-
-    if(replace){
-      const season = group?.label || rows[0]?.temporada || "";
-      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r => String(pick(r,["temporada","TEMPORADA"])) !== String(season));
-    }
-
-    (result.data?.rows || rows).forEach(saved => {
-      const idx = window.db.TOP11_CARREIRA.findIndex(r => String(pick(r,["id","ID"])) === String(saved.id));
-      if(idx >= 0) window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], saved);
-      else window.db.TOP11_CARREIRA.push(saved);
-    });
-
-    setStatus("Top 11 salvo.", "ok");
-  }
-
-  function modalShell(title, body){
-    document.getElementById("top11-clean-modal-v3806")?.remove();
     const modal = document.createElement("div");
-    modal.id = "top11-clean-modal-v3806";
-    modal.className = "top11-clean-modal-v3806";
+    modal.id = "fl-top11-player-edit-modal-v3798";
+    modal.className = "fl-modal-backdrop-v3798";
     modal.innerHTML = `
-      <div class="top11-clean-backdrop-v3806"></div>
-      <div class="top11-clean-panel-v3806">
-        <button type="button" class="top11-clean-close-v3806">×</button>
-        <h2>${esc(title)}</h2>
-        ${body}
+      <div class="fl-modal-card-v3798">
+        <button type="button" class="fl-modal-close-v3798" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">×</button>
+
+        <h2>Editar jogador do Top 11</h2>
+        <p>Altere nome, posição e imagem manual quando o jogador for criado.</p>
+
+        <form id="fl-top11-player-edit-form-v3798">
+          <input type="hidden" name="id" value="${attr(id)}">
+
+          <label>
+            Nome do jogador
+            <input name="jogador" value="${attr(nome)}" required>
+          </label>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Posição
+              <select name="posicao_tatica">
+                ${["GOL","LE","ZAG","LD","VOL","MC","MEI","PE","CA","PD"].map(p=>`
+                  <option value="${p}" ${String(pos).toUpperCase()===p ? "selected" : ""}>${p}</option>
+                `).join("")}
+              </select>
+            </label>
+
+            <label>
+              Posição origem
+              <select name="posicao_origem">
+                ${["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"].map(p=>`
+                  <option value="${p}" ${String(origem).toUpperCase()===p ? "selected" : ""}>${p}</option>
+                `).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Tipo de imagem
+              <select name="criado">
+                <option value="" ${!criado ? "selected" : ""}>Buscar por API</option>
+                <option value="SIM" ${criado ? "selected" : ""}>Criado / usar URL manual</option>
+              </select>
+            </label>
+
+            <label>
+              Overall
+              <input name="overall" value="${attr(overall)}" placeholder="Opcional">
+            </label>
+          </div>
+
+          <label>
+            Foto URL manual
+            <div class="fl-url-row-v3798">
+              <input name="foto_url" value="${attr(foto)}" placeholder="https://res.cloudinary.com/.../jogador.png">
+              <button type="button" onclick="FL_previewTop11PlayerPhotoV3798()">Prévia</button>
+            </div>
+          </label>
+
+          <div id="fl-top11-player-preview-v3798" class="fl-preview-v3798">
+            ${foto ? `<img src="${attr(foto)}" onerror="this.parentElement.innerHTML='URL inválida'">` : `<span>${esc(initials(nome))}</span>`}
+          </div>
+
+          <div class="fl-grid-2-v3798">
+            <label>
+              Clube
+              <input name="clube" value="${attr(clube)}" placeholder="Opcional">
+            </label>
+
+            <label>
+              País
+              <input name="pais" value="${attr(pais)}" placeholder="Opcional">
+            </label>
+          </div>
+
+          <div class="fl-modal-actions-v3798">
+            <button type="button" class="ghost" onclick="document.getElementById('fl-top11-player-edit-modal-v3798')?.remove()">Cancelar</button>
+            <button type="submit" class="gold">Salvar jogador</button>
+          </div>
+        </form>
       </div>
     `;
+
     document.body.appendChild(modal);
-    modal.querySelector(".top11-clean-close-v3806").onclick = () => modal.remove();
-    modal.querySelector(".top11-clean-backdrop-v3806").onclick = () => modal.remove();
-    return modal;
+
+    document.getElementById("fl-top11-player-edit-form-v3798").onsubmit = saveTop11PlayerEdit;
   }
 
-  function openEditModal(row){
-    const body = `
-      <form id="top11-clean-edit-form-v3806">
-        <label>Nome<input name="jogador" value="${attr(row.jogador)}" required></label>
-        <div class="top11-clean-form-grid-v3806">
-          <label>Posição
-            <select name="posicao_tatica">
-              ${["GOL","LE","ZAG","LD","VOL","MC","MEI","PE","CA","PD"].map(p => `<option value="${p}" ${String(row.posicao_tatica).toUpperCase()===p?'selected':''}>${p}</option>`).join("")}
-            </select>
-          </label>
-          <label>Origem
-            <select name="posicao_origem">
-              ${["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"].map(p => `<option value="${p}" ${String(row.posicao_origem).toUpperCase()===p?'selected':''}>${p}</option>`).join("")}
-            </select>
-          </label>
-        </div>
-        <div class="top11-clean-form-grid-v3806">
-          <label>Imagem
-            <select name="criado">
-              <option value="" ${!isCreated(row)?'selected':''}>API</option>
-              <option value="SIM" ${isCreated(row)?'selected':''}>Criado</option>
-            </select>
-          </label>
-          <label>Overall<input name="overall" value="${attr(pick(row,["overall","OVERALL"]))}"></label>
-        </div>
-        <label>Foto
-          <div class="top11-clean-import-row-v3806">
-            <input name="foto_url" value="${attr(row.foto_url || "")}" readonly placeholder="Importe a imagem">
-            <button type="button" id="top11-clean-import-edit-v3806">Importar</button>
-          </div>
-        </label>
-        <div class="top11-clean-preview-v3806" id="top11-clean-preview-v3806">${photoInitial(row)}</div>
-        <div class="top11-clean-form-grid-v3806">
-          <label>Clube<input name="clube" value="${attr(pick(row,["clube","CLUBE"]))}"></label>
-          <label>País<input name="pais" value="${attr(pick(row,["pais","PAIS"]))}"></label>
-        </div>
-        <div class="top11-clean-modal-actions-v3806">
-          <button type="button" class="ghost" id="top11-clean-cancel-v3806">Cancelar</button>
-          <button type="submit" class="gold">Salvar jogador</button>
-        </div>
-        <input type="file" id="top11-clean-file-edit-v3806" accept="image/png,image/jpeg,image/webp" hidden>
-      </form>
-    `;
-    const modal = modalShell("Editar jogador do Top 11", body);
-    const form = modal.querySelector("#top11-clean-edit-form-v3806");
-    const file = modal.querySelector("#top11-clean-file-edit-v3806");
+  var previewTop11PlayerPhoto = function previewTop11PlayerPhoto(){
+    const form = document.getElementById("fl-top11-player-edit-form-v3798");
+    const preview = document.getElementById("fl-top11-player-preview-v3798");
+    if(!form || !preview) return;
 
-    modal.querySelector("#top11-clean-cancel-v3806").onclick = () => modal.remove();
-    modal.querySelector("#top11-clean-import-edit-v3806").onclick = () => file.click();
+    const url = String(form.foto_url.value || "").trim();
+    const nome = String(form.jogador.value || "").trim();
 
-    file.onchange = async () => {
-      const f = file.files?.[0];
-      if(!f) return;
-      const url = await uploadCloudinary(f);
-      form.foto_url.value = url;
-      form.criado.value = "SIM";
-      modal.querySelector("#top11-clean-preview-v3806").innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='${esc(initials(form.jogador.value))}'">`;
-      file.value = "";
-    };
-
-    form.onsubmit = async e => {
-      e.preventDefault();
-
-      const submitBtn = form.querySelector('button[type="submit"]');
-      const oldText = submitBtn ? submitBtn.textContent : "";
-      if(submitBtn){
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Salvando...";
-        submitBtn.classList.add("saving");
-      }
-
-      const updated = Object.assign({}, row, {
-        jogador: form.jogador.value.trim(),
-        posicao_tatica: form.posicao_tatica.value,
-        posicao_origem: form.posicao_origem.value,
-        criado: form.criado.value,
-        foto_url: form.foto_url.value.trim(),
-        overall: form.overall.value.trim(),
-        clube: form.clube.value.trim(),
-        pais: form.pais.value.trim()
-      });
-
-      try{
-        await saveRows(selectedGroup(), [updated], false);
-        setStatus("Jogador do Top 11 salvo.", "ok");
-      }catch(err){
-        console.warn("Top 11 salvo/pendente, fechando modal para não travar:", err);
-        // O Apps Script/proxy às vezes retorna erro/504 mesmo com a linha salva na planilha.
-        // Fecha o modal e atualiza a tela para dar feedback visual.
-        setStatus("Comando enviado. Atualize se a planilha demorar a refletir.", "ok");
-      }finally{
-        if(Array.isArray(window.db?.TOP11_CARREIRA)){
-          const idx = window.db.TOP11_CARREIRA.findIndex(r => String((r.id ?? r.ID ?? "")) === String(updated.id ?? updated.ID ?? ""));
-          if(idx >= 0) window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], updated);
-        }
-        modal.remove();
-        render();
-        setTimeout(render, 400);
-        if(submitBtn){
-          submitBtn.disabled = false;
-          submitBtn.textContent = oldText || "Salvar jogador";
-          submitBtn.classList.remove("saving");
-        }
-      }
-    };
+    if(url){
+      preview.innerHTML = `<img src="${attr(url)}" onerror="this.parentElement.innerHTML='URL inválida'">`;
+    }else{
+      preview.innerHTML = `<span>${esc(initials(nome))}</span>`;
+    }
   }
 
-  function openCreateModal(){
-    const gs = groups().filter(g => g.source === "career");
-    const seasonOptions = (typeof getCareerSeasonRecords === "function" ? getCareerSeasonRecords() : table("CARREIRA_TEMPORADAS"))
-      .filter(s => !careerId() || String(pick(s,["carreira_id","CARREIRA_ID"]) || careerId()) === careerId());
+  var saveTop11PlayerEdit = async function saveTop11PlayerEdit(e){
+    e.preventDefault();
 
-    const body = `
-      <form id="top11-clean-create-form-v3806">
-        <label>Temporada
-          ${seasonOptions.length ? `
-            <select name="temporada_select">
-              ${seasonOptions.map(s => `<option value="${attr(pick(s,["id","ID"]) || "")}" data-temp="${attr(pick(s,["temporada","TEMPORADA"]) || "")}">${esc(pick(s,["temporada","TEMPORADA"]) || pick(s,["clube","CLUBE"]) || "Temporada")}</option>`).join("")}
-            </select>
-          ` : ""}
-          <input name="temporada" value="${attr(seasonOptions[0] ? pick(seasonOptions[0],["temporada","TEMPORADA"]) : "")}" placeholder="Ex: 2034/2035" required>
-        </label>
-        <div class="top11-clean-create-grid-v3806">
-          ${SLOT.map((s,idx) => `
-            <div class="top11-clean-create-row-v3806" data-idx="${idx}">
-              <b>${idx+1}</b>
-              <input name="posicao_${idx}" value="${attr(s.pos)}">
-              <input name="jogador_${idx}" placeholder="Jogador">
-              <select name="criado_${idx}">
-                <option value="">API</option>
-                <option value="SIM">Criado</option>
-              </select>
-              <input name="foto_url_${idx}" readonly placeholder="Imagem importada">
-              <button type="button" data-import-idx="${idx}">Importar</button>
-              <input type="hidden" name="overall_${idx}">
-              <input type="hidden" name="clube_${idx}">
-              <input type="hidden" name="pais_${idx}">
-              <input type="file" id="top11-clean-file-${idx}-v3806" accept="image/png,image/jpeg,image/webp" hidden>
-            </div>
-          `).join("")}
-        </div>
-        <div class="top11-clean-modal-actions-v3806">
-          <button type="button" class="ghost" id="top11-clean-create-cancel-v3806">Cancelar</button>
-          <button type="submit" class="gold">Salvar Top 11</button>
-        </div>
-      </form>
-    `;
+    const form = e.currentTarget;
+    const id = String(form.id.value || "").trim();
+    const original = findCareerRowById(id);
 
-    const modal = modalShell("+ Top 11", body);
-    const form = modal.querySelector("#top11-clean-create-form-v3806");
-
-    modal.querySelector("#top11-clean-create-cancel-v3806").onclick = () => modal.remove();
-
-    const sel = form.temporada_select;
-    if(sel){
-      sel.onchange = () => {
-        const opt = sel.options[sel.selectedIndex];
-        form.temporada.value = opt?.dataset?.temp || "";
-      };
+    if(!original){
+      setStatus("Jogador não encontrado na TOP11_CARREIRA.", "error");
+      return;
     }
 
-    form.querySelectorAll("[data-import-idx]").forEach(btn => {
-      btn.onclick = () => {
-        const idx = btn.dataset.importIdx;
-        form.querySelector(`#top11-clean-file-${idx}-v3806`).click();
-      };
+    const updated = Object.assign({}, original, {
+      id,
+      jogador: String(form.jogador.value || "").trim(),
+      posicao_tatica: String(form.posicao_tatica.value || "").trim(),
+      posicao_origem: String(form.posicao_origem.value || "").trim(),
+      criado: String(form.criado.value || "").trim(),
+      foto_url: String(form.foto_url.value || "").trim(),
+      clube: String(form.clube.value || "").trim(),
+      pais: String(form.pais.value || "").trim(),
+      overall: String(form.overall.value || "").trim()
     });
 
-    SLOT.forEach((s,idx) => {
-      const file = form.querySelector(`#top11-clean-file-${idx}-v3806`);
-      file.onchange = async () => {
-        const f = file.files?.[0];
-        if(!f) return;
-        const url = await uploadCloudinary(f);
-        form[`foto_url_${idx}`].value = url;
-        form[`criado_${idx}`].value = "SIM";
-        const btn = form.querySelector(`[data-import-idx="${idx}"]`);
-        if(btn) {
-          btn.textContent = "Importado";
-          btn.classList.add("imported");
-        }
-        file.value = "";
-      };
-    });
+    try{
+      setStatus("Salvando jogador do Top 11...", "loading");
 
-    form.onsubmit = async e => {
-      e.preventDefault();
-
-      const seasonId = form.temporada_select?.value || "";
-      const season = form.temporada.value.trim();
-      const rows = [];
-
-      SLOT.forEach((s,idx) => {
-        const name = form[`jogador_${idx}`].value.trim();
-        if(!name) return;
-        rows.push({
-          carreira_id: careerId(),
-          carreira_temporada_id: seasonId,
-          temporada: season,
-          posicao_origem: s.orig,
-          posicao_tatica: form[`posicao_${idx}`].value.trim() || s.pos,
-          jogador: name,
-          overall: "",
-          clube: "",
-          pais: "",
-          criado: form[`criado_${idx}`].value,
-          foto_url: form[`foto_url_${idx}`].value.trim(),
-          x: s.x,
-          y: s.y,
-          mapa_url: BG
-        });
+      const result = await apiPost({
+        action:"saveTop11CareerV2",
+        carreira_id: active?.carreira_id || updated.carreira_id || "",
+        carreira_temporada_id: updated.carreira_temporada_id || "",
+        temporada: updated.temporada || "",
+        mapa_url: updated.mapa_url || TOP11_BG_V3798,
+        replace_existing:false,
+        rows:[updated]
       });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
+      }
+
+      if(Array.isArray(window.db?.TOP11_CARREIRA)){
+        const idx = window.db.TOP11_CARREIRA.findIndex(r=>String(r.id || "") === String(id));
+        if(idx >= 0){
+          window.db.TOP11_CARREIRA[idx] = Object.assign({}, window.db.TOP11_CARREIRA[idx], updated);
+        }
+      }
+
+      document.getElementById("fl-top11-player-edit-modal-v3798")?.remove();
+
+      setStatus("Jogador atualizado.", "ok");
+
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof FL_renderTop11NewV3796 === "function") FL_renderTop11NewV3796();
+      else if(typeof renderTop11 === "function") renderTop11();
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao salvar jogador: " + err.message, "error");
+    }
+  }
+
+  var enhanceCreateTop11Modal = function enhanceCreateTop11Modal(){
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form || form.dataset.criadoV3798 === "1") return;
+    form.dataset.criadoV3798 = "1";
+
+    const rows = [...form.querySelectorAll(".top11-create-row-v3787,.top11-create-row-v3788")];
+
+    rows.forEach((row, idx)=>{
+      if(row.querySelector(`[name="criado_${idx}"]`)) return;
+
+      const criado = document.createElement("select");
+      criado.name = `criado_${idx}`;
+      criado.className = "top11-created-select-v3798";
+      criado.innerHTML = `
+        <option value="">API</option>
+        <option value="SIM">Criado</option>
+      `;
+      criado.title = "Se for criado, usa só a foto_url manual e não busca na API.";
+
+      const foto = document.createElement("input");
+      foto.name = `foto_url_${idx}`;
+      foto.className = "top11-photo-url-v3798";
+      foto.placeholder = "Foto URL manual";
+
+      row.appendChild(criado);
+      row.appendChild(foto);
+    });
+  }
+
+  const originalOpenCreate =
+    window.FL_openCreateTop11V3795 ||
+    window.FL_openCreateTop11V3790 ||
+    window.FL_openCreateTop11V3788 ||
+    window.FL_openCreateTop11V3787 ||
+    null;
+
+  var openCreateTop11WithCreated = function openCreateTop11WithCreated(){
+    if(originalOpenCreate) originalOpenCreate();
+    setTimeout(enhanceCreateTop11Modal, 120);
+    setTimeout(enhanceCreateTop11Modal, 350);
+  }
+
+  var saveTop11WithCreatedFromModal = async function saveTop11WithCreatedFromModal(e){
+    const btn = e.target.closest("#fl-top11-save-v3787,#fl-top11-save-v3788,button");
+    if(!btn) return;
+
+    const modal = btn.closest("#fl-top11-modal-v3787,#fl-top11-modal-v3788");
+    if(!modal) return;
+
+    if(!/salvar top 11/i.test(btn.textContent || "") && btn.id !== "fl-top11-save-v3787" && btn.id !== "fl-top11-save-v3788") return;
+
+    const form =
+      document.getElementById("top11-create-form-v3788") ||
+      document.getElementById("top11-create-form-v3787");
+
+    if(!form) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    if(window.FL_TOP11_SAVING_V3798) return;
+    window.FL_TOP11_SAVING_V3798 = true;
+
+    try{
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+
+      const origins = ["GL","DEF","DEF2","DEF3","DEF4","MEI","MEI5","MEI6","ATA","ATA7","ATA8"];
+      const defaults = [
+        ["GOL",8,50],["LE",22,20],["ZAG",27,38],["ZAG",27,62],["LD",22,80],
+        ["MEI",52,28],["MEI",52,50],["MEI",52,72],
+        ["PE",78,28],["CA",84,50],["PD",78,72]
+      ];
+
+      const temporada = String(form.temporada?.value || "").trim();
+      const carreiraTemporadaId = String(form.carreira_temporada_id?.value || "").trim();
+
+      const rows = [];
+      for(let i=0;i<11;i++){
+        const jogador = String(form[`jogador_${i}`]?.value || "").trim();
+        if(!jogador) continue;
+
+        rows.push({
+          carreira_id: active?.carreira_id || "",
+          carreira_temporada_id: carreiraTemporadaId,
+          temporada,
+          posicao_origem: origins[i],
+          posicao_tatica: String(form[`posicao_${i}`]?.value || defaults[i][0]).trim(),
+          jogador,
+          overall: String(form[`overall_${i}`]?.value || "").trim(),
+          clube: String(form[`clube_${i}`]?.value || "").trim(),
+          pais: String(form[`pais_${i}`]?.value || "").trim(),
+          criado: String(form[`criado_${i}`]?.value || "").trim(),
+          foto_url: String(form[`foto_url_${i}`]?.value || "").trim(),
+          x: defaults[i][1],
+          y: defaults[i][2],
+          mapa_url: TOP11_BG_V3798
+        });
+      }
 
       if(!rows.length){
         setStatus("Preencha pelo menos um jogador.", "error");
         return;
       }
 
-      const submitBtn = form.querySelector('button[type="submit"]');
-      const oldText = submitBtn ? submitBtn.textContent : "";
-      if(submitBtn){
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Salvando...";
-        submitBtn.classList.add("saving");
+      setStatus("Salvando Top 11...", "loading");
+
+      const result = await apiPost({
+        action:"saveTop11CareerV2",
+        carreira_id: active?.carreira_id || "",
+        carreira_temporada_id: carreiraTemporadaId,
+        temporada,
+        mapa_url: TOP11_BG_V3798,
+        replace_existing:true,
+        rows
+      });
+
+      if(!result || !result.ok){
+        throw new Error(result?.error || "Apps Script não confirmou o salvamento.");
       }
 
-      try{
-        await saveRows({label:season, carreira_temporada_id:seasonId}, rows, true);
-        setStatus("Top 11 salvo.", "ok");
-      }catch(err){
-        console.warn("Top 11 enviado/pendente, fechando modal para não travar:", err);
-        setStatus("Comando enviado. Atualize se a planilha demorar a refletir.", "ok");
-      }finally{
-        modal.remove();
-        selectedKey = seasonId ? `career:${seasonId}` : `career:${season}`;
-        render();
-        setTimeout(render, 400);
-        if(submitBtn){
-          submitBtn.disabled = false;
-          submitBtn.textContent = oldText || "Salvar Top 11";
-          submitBtn.classList.remove("saving");
-        }
-      }
-    };
-  }
+      if(!Array.isArray(window.db.TOP11_CARREIRA)) window.db.TOP11_CARREIRA = [];
 
-  // Overrides finais e seguros.
-  window.FL_RENDER_TOP11_CLEAN_V3806 = render;
-  window.renderTop11 = render;
-  window.FL_renderTop11NewV3796 = render;
-  window.FL_renderTop11NewV3797 = render;
-  window.FL_renderTop11UnifiedV3790 = render;
-  window.FL_renderTop11UnifiedV3792 = render;
-  window.FL_renderTop11UnifiedV3793 = render;
-  window.FL_renderTop11UnifiedV3794 = render;
-  window.FL_renderTop11UnifiedV3795 = render;
+      window.db.TOP11_CARREIRA = window.db.TOP11_CARREIRA.filter(r=>{
+        const sameCareer = String(r.carreira_id || "") === String(active?.carreira_id || "");
+        const sameSeasonId = carreiraTemporadaId && String(r.carreira_temporada_id || "") === String(carreiraTemporadaId);
+        const sameSeason = !carreiraTemporadaId && String(r.temporada || "") === String(temporada);
+        return !(sameCareer && (sameSeasonId || sameSeason));
+      });
 
-  try { renderTop11 = render; } catch(e){}
+      (result.data?.rows || rows).forEach(r=>window.db.TOP11_CARREIRA.push(r));
 
-  const oldRenderPage = window.renderPageById || (typeof renderPageById === "function" ? renderPageById : null);
-  if(oldRenderPage && !window.__top11CleanRenderPageV3806){
-    window.__top11CleanRenderPageV3806 = true;
-    window.renderPageById = function(pageId){
-      const id = String(pageId || "").toLowerCase().replace(/\s+/g,"");
-      if(id === "top11" || id.includes("top11")) {
-        setTimeout(render, 0);
-        return render();
-      }
-      return oldRenderPage.apply(this, arguments);
-    };
-    try { renderPageById = window.renderPageById; } catch(e){}
-  }
+      modal.remove();
+      setStatus("Top 11 salvo.", "ok");
 
-  document.addEventListener("click", e => {
-    const target = e.target.closest("[data-page],button,a,.nav-item,.sidebar-item,.menu-item");
-    if(!target) return;
-    const data = String(target.dataset?.page || "").toLowerCase().replace(/\s+/g,"");
-    const text = String(target.textContent || "");
-    if(data === "top11" || data.includes("top11") || /top\s*11/i.test(text)){
-      setTimeout(render, 50);
-      setTimeout(render, 250);
+      if(typeof FL_renderTop11NewV3797 === "function") FL_renderTop11NewV3797();
+      else if(typeof renderTop11 === "function") renderTop11();
+    }catch(err){
+      console.error(err);
+      setStatus("Erro ao salvar Top 11: " + err.message, "error");
+    }finally{
+      window.FL_TOP11_SAVING_V3798 = false;
+      btn.disabled = false;
+      btn.textContent = "Salvar Top 11";
     }
-  }, true);
-})();
-
-
-// ===== V3.8.07 — FEEDBACK E FECHAMENTO ROBUSTO DOS MODAIS TOP11 =====
-(function(){
-  function closeTop11ModalSoon(){
-    setTimeout(function(){
-      const modal = document.getElementById("top11-clean-modal-v3806");
-      if(modal && /salvando/i.test(modal.textContent || "")){
-        modal.remove();
-        if(typeof FL_RENDER_TOP11_CLEAN_V3806 === "function") FL_RENDER_TOP11_CLEAN_V3806();
-        else if(typeof renderTop11 === "function") renderTop11();
-      }
-    }, 2500);
   }
 
+  // Clique no jogador do Top 11 da carreira para editar.
   document.addEventListener("click", function(e){
-    const btn = e.target.closest("#top11-clean-modal-v3806 button[type='submit'], #top11-clean-modal-v3806 .gold");
+    const card = e.target.closest(".top11-player-v3796");
+    if(!card) return;
+
+    const source = card.dataset.source || "";
+    const id = card.dataset.id || "";
+
+    if(source !== "career") return;
+
+    // Em modo de arraste, não abrir edição.
+    if(window.FL_TOP11_EDITING_V3787) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    openEditTop11PlayerModal(id);
+  }, true);
+
+  // Intercepta abertura de + Top11 para adicionar campos Criado/FOTO.
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest("button");
     if(!btn) return;
 
-    if(/salvar/i.test(btn.textContent || "")){
-      btn.classList.add("saving");
-      const original = btn.textContent;
-      setTimeout(function(){
-        if(btn.isConnected && btn.classList.contains("saving")){
-          btn.textContent = "Salvando...";
-        }
-      }, 40);
-      closeTop11ModalSoon();
+    if(/\+\s*top\s*11/i.test(btn.textContent || "")){
+      setTimeout(enhanceCreateTop11Modal, 250);
+      setTimeout(enhanceCreateTop11Modal, 700);
     }
   }, true);
 
-  window.FL_CLOSE_TOP11_MODAL_V3807 = function(){
-    document.getElementById("top11-clean-modal-v3806")?.remove();
-    if(typeof FL_RENDER_TOP11_CLEAN_V3806 === "function") FL_RENDER_TOP11_CLEAN_V3806();
-    else if(typeof renderTop11 === "function") renderTop11();
-  };
+  // Intercepta salvamento do modal +Top11 para enviar criado/foto_url.
+  document.addEventListener("click", saveTop11WithCreatedFromModal, true);
+
+  window.FL_openEditTop11PlayerModalV3798 = openEditTop11PlayerModal;
+  window.FL_previewTop11PlayerPhotoV3798 = previewTop11PlayerPhoto;
+  window.FL_openCreateTop11V3798 = openCreateTop11WithCreated;
+  window.FL_openCreateTop11V3795 = openCreateTop11WithCreated;
+  window.FL_openCreateTop11V3790 = openCreateTop11WithCreated;
 })();
 
 
-// ===== V3.8.09 — ALL TIME SQUAD COM DEF GERAL =====
-// Botão ALL TIME SQUAD no Top 11.
-// Montagem por aparições:
-// 1 GOL, 4 DEF, 3 MEI, 3 ATA.
-// Não separa LE/ZAG/LD, porque muitas bases antigas usam DEF genérico.
-
+// ===== V3.8.02 EMERGENCY ROLLBACK =====
+// Pacote de segurança: volta à base estável e evita travamento por funções ausentes.
 (function(){
-  "use strict";
-
-  const BG = "https://res.cloudinary.com/duq0dyp6b/image/upload/v1780867999/kxt7strjhnbprbl6h3oy.jpg";
-
-  const SLOT = [
-    {want:"GOL", label:"GOL", x:8,  y:50},
-    {want:"DEF", label:"DEF", x:22, y:20},
-    {want:"DEF", label:"DEF", x:27, y:38},
-    {want:"DEF", label:"DEF", x:27, y:62},
-    {want:"DEF", label:"DEF", x:22, y:80},
-    {want:"MEI", label:"MEI", x:52, y:28},
-    {want:"MEI", label:"MEI", x:52, y:50},
-    {want:"MEI", label:"MEI", x:52, y:72},
-    {want:"ATA", label:"ATA", x:78, y:28},
-    {want:"ATA", label:"ATA", x:84, y:50},
-    {want:"ATA", label:"ATA", x:78, y:72}
-  ];
-
-  const photoCache = {};
-
-  function esc(v){
-    if(typeof escapeHtml === "function") return escapeHtml(String(v ?? ""));
-    return String(v ?? "").replace(/[&<>"']/g, function(m){
-      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m];
-    });
-  }
-
-  function attr(v){
-    if(typeof escapeAttr === "function") return escapeAttr(String(v ?? ""));
-    return String(v ?? "").replace(/"/g, "&quot;");
-  }
-
-  function norm(v){
-    return String(v || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/[^a-z0-9]+/g,"");
-  }
-
-  function pick(row, keys){
-    if(!row) return "";
-    for(const k of keys){
-      if(row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
-    }
-
-    const map = {};
-    Object.keys(row).forEach(function(k){
-      map[norm(k)] = row[k];
-    });
-
-    for(const k of keys){
-      const nk = norm(k);
-      if(map[nk] !== undefined && map[nk] !== null && map[nk] !== "") return map[nk];
-    }
-
-    return "";
-  }
-
-  function initials(name){
-    const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
-    return ((parts[0] && parts[0][0] ? parts[0][0] : "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
-  }
-
-  function table(name){
-    if(typeof getTable === "function"){
-      try { return getTable(name) || []; } catch(e){}
-    }
-    return window.db && Array.isArray(window.db[name]) ? window.db[name] : [];
-  }
-
-  function careerId(){
-    return String((window.active && (window.active.carreira_id || window.active.career_id)) || "1");
-  }
-
-  function isCreated(row){
-    const v = String(pick(row, ["criado","CRIADO","created","jogador_criado"]) || "").trim().toLowerCase();
-    return ["sim","s","yes","y","true","1","criado","created"].includes(v);
-  }
-
-  function wideBaseToRows(){
-    const raw = table("TOP11_BASE");
-
-    const wide = raw.filter(function(r){
-      return pick(r, ["ANO","ano","temporada","TEMPORADA"]) && (pick(r, ["GL"]) || pick(r, ["DEF"]) || pick(r, ["ATA8"]));
-    });
-
-    if(!wide.length){
-      return raw.map(function(r){
-        return Object.assign({__source:"base"}, r);
-      });
-    }
-
-    const cols = [
-      ["GL", "GOL"],
-      ["DEF", "DEF"],
-      ["DEF2", "DEF"],
-      ["DEF3", "DEF"],
-      ["DEF4", "DEF"],
-      ["MEI", "MEI"],
-      ["MEI5", "MEI"],
-      ["MEI6", "MEI"],
-      ["ATA", "ATA"],
-      ["ATA7", "ATA"],
-      ["ATA8", "ATA"]
-    ];
-
-    const out = [];
-
-    wide.forEach(function(w){
-      const season = pick(w, ["ANO","ano","temporada","TEMPORADA"]);
-
-      cols.forEach(function(pair){
-        const col = pair[0];
-        const group = pair[1];
-        const jogador = pick(w, [col]);
-
-        if(!jogador) return;
-
-        out.push({
-          __source:"base",
-          temporada: season,
-          ano: season,
-          jogador: jogador,
-          posicao_origem: col,
-          posicao_tatica: group,
-          __allTimeGroup: group
-        });
-      });
-    });
-
-    return out;
-  }
-
-  function careerRows(){
-    const cid = careerId();
-
-    return table("TOP11_CARREIRA")
-      .filter(function(r){
-        const rcid = String(pick(r, ["carreira_id","CARREIRA_ID"]) || "");
-        return !rcid || !cid || rcid === cid;
-      })
-      .filter(function(r){
-        return pick(r, ["jogador","JOGADOR"]);
-      })
-      .map(function(r){
-        return Object.assign({__source:"career"}, r);
-      });
-  }
-
-  function posGroup(row){
-    if(row.__allTimeGroup) return row.__allTimeGroup;
-
-    const p = String(pick(row, ["posicao_tatica","POSICAO_TATICA"]) || "").toUpperCase();
-    const o = String(pick(row, ["posicao_origem","POSICAO_ORIGEM"]) || "").toUpperCase();
-
-    if(["GOL","GK","GL"].includes(p) || ["GL","GOL"].includes(o)) return "GOL";
-
-    // Agora tudo que for defesa cai em DEF.
-    if(["LE","LD","ZAG","CB","LB","RB","DEF"].includes(p) || ["DEF","DEF2","DEF3","DEF4"].includes(o)) return "DEF";
-
-    // Meio agrupado.
-    if(["VOL","MC","MEI","CAM","CM","CDM"].includes(p) || ["MEI","MEI5","MEI6"].includes(o)) return "MEI";
-
-    // Ataque agrupado.
-    if(["PE","PD","CA","LW","RW","ST","ATA"].includes(p) || ["ATA","ATA7","ATA8"].includes(o)) return "ATA";
-
-    return "MEI";
-  }
-
-  function allRows(){
-    return wideBaseToRows().concat(careerRows()).filter(function(r){
-      return pick(r, ["jogador","JOGADOR"]);
-    });
-  }
-
-  function buildStats(){
-    const map = new Map();
-
-    allRows().forEach(function(r){
-      const jogador = String(pick(r, ["jogador","JOGADOR"]) || "").trim();
-      if(!jogador) return;
-
-      const group = posGroup(r);
-      const key = norm(jogador);
-
-      if(!map.has(key)){
-        map.set(key, {
-          key: key,
-          jogador: jogador,
-          total: 0,
-          base: 0,
-          carreira: 0,
-          groups: {GOL:0, DEF:0, MEI:0, ATA:0},
-          seasons: [],
-          foto_url: "",
-          criado: "",
-          lastRow: r
-        });
-      }
-
-      const item = map.get(key);
-      item.total += 1;
-
-      if(r.__source === "career") item.carreira += 1;
-      else item.base += 1;
-
-      item.groups[group] = (item.groups[group] || 0) + 1;
-
-      const season = pick(r, ["ano","ANO","temporada","TEMPORADA"]);
-      if(season && !item.seasons.includes(season)) item.seasons.push(season);
-
-      const foto = pick(r, ["foto_url","FOTO_URL","imagem_url","IMAGEM_URL"]);
-      if(foto) item.foto_url = foto;
-
-      if(isCreated(r)) item.criado = "SIM";
-
-      item.lastRow = r;
-    });
-
-    return Array.from(map.values());
-  }
-
-  function pickBestFor(group, used){
-    const candidates = buildStats()
-      .filter(function(p){ return !used.has(p.key); })
-      .filter(function(p){ return (p.groups[group] || 0) > 0; })
-      .sort(function(a,b){
-        const dg = (b.groups[group] || 0) - (a.groups[group] || 0);
-        if(dg) return dg;
-
-        const dt = b.total - a.total;
-        if(dt) return dt;
-
-        const dc = b.carreira - a.carreira;
-        if(dc) return dc;
-
-        return a.jogador.localeCompare(b.jogador);
-      });
-
-    const best = candidates[0] || null;
-    if(best) used.add(best.key);
-    return best;
-  }
-
-  function allTimeSquad(){
-    const used = new Set();
-
-    return SLOT.map(function(slot){
-      const player = pickBestFor(slot.want, used);
-      return Object.assign({}, slot, {player: player});
-    });
-  }
-
-  async function fetchPhoto(name){
-    const key = norm(name);
-    if(!key) return "";
-    if(photoCache[key] !== undefined) return photoCache[key];
-
-    if(typeof FL_fetchPlayerPhotoV3790 === "function"){
-      try{
-        const img = await FL_fetchPlayerPhotoV3790(name);
-        photoCache[key] = img || "";
-        return photoCache[key];
-      }catch(e){}
-    }
-
-    try{
-      const res = await fetch("https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=" + encodeURIComponent(name), {cache:"force-cache"});
-      const data = await res.json();
-      const p = (data && data.player ? data.player : [])[0];
-      const img = (p && (p.strCutout || p.strRender || p.strThumb)) || "";
-      photoCache[key] = img || "";
-      return img || "";
-    }catch(e){
-      photoCache[key] = "";
-      return "";
-    }
-  }
-
-  function photoHtml(player){
-    if(!player) return "?";
-    if(player.foto_url) return '<img src="' + attr(player.foto_url) + '" onerror="this.parentElement.innerHTML=\'' + esc(initials(player.jogador)) + '\'">';
-    return esc(initials(player.jogador));
-  }
-
-  async function enrichAllTimePhotos(){
-    const nodes = Array.from(document.querySelectorAll("[data-alltime-photo-v3809]"));
-
-    for(const node of nodes){
-      const key = node.dataset.alltimeKeyV3809 || "";
-      const name = node.dataset.alltimePhotoV3809 || "";
-      const player = buildStats().find(function(x){
-        return x.key === key || x.jogador === name;
-      });
-
-      if(!player) continue;
-
-      if(player.foto_url){
-        node.innerHTML = '<img src="' + attr(player.foto_url) + '" onerror="this.parentElement.innerHTML=\'' + esc(initials(player.jogador)) + '\'">';
-        continue;
-      }
-
-      if(player.criado === "SIM"){
-        node.innerHTML = esc(initials(player.jogador));
-        continue;
-      }
-
-      if(node.querySelector("img")) continue;
-
-      const img = await fetchPhoto(player.jogador);
-      if(img && node.isConnected){
-        node.innerHTML = '<img src="' + attr(img) + '" onerror="this.parentElement.innerHTML=\'' + esc(initials(player.jogador)) + '\'">';
-      }
-    }
-  }
-
-  function openAllTimeModal(){
-    const old = document.getElementById("top11-alltime-modal-v3809");
-    if(old) old.remove();
-
-    const squad = allTimeSquad();
-
-    const modal = document.createElement("div");
-    modal.id = "top11-alltime-modal-v3809";
-    modal.className = "top11-alltime-modal-v3809";
-
-    modal.innerHTML = `
-      <div class="top11-alltime-backdrop-v3809"></div>
-      <div class="top11-alltime-panel-v3809">
-        <button type="button" class="top11-alltime-close-v3809">×</button>
-
-        <div class="top11-alltime-head-v3809">
-          <div>
-            <h2>ALL TIME SQUAD</h2>
-            <p>Melhor onze por aparições: 1 GOL, 4 DEF, 3 MEI e 3 ATA.</p>
-          </div>
-          <span>${esc(String(allRows().length))} aparições analisadas</span>
-        </div>
-
-        <div class="top11-alltime-map-v3809" style="background-image:linear-gradient(rgba(2,6,23,.08),rgba(2,6,23,.18)),url('${attr(BG)}')">
-          ${squad.map(function(slot){
-            const p = slot.player;
-            return `
-              <div class="top11-alltime-player-v3809" style="left:${slot.x}%; top:${slot.y}%;">
-                <div class="top11-alltime-photo-v3809" data-alltime-photo-v3809="${attr(p ? p.jogador : "")}" data-alltime-key-v3809="${attr(p ? p.key : "")}">
-                  ${photoHtml(p)}
-                </div>
-                <div class="top11-alltime-info-v3809">
-                  <b>${esc(p ? p.jogador : "Sem dados")}</b>
-                  <span>${esc(slot.label)} • ${p ? (p.groups[slot.want] || 0) : 0}x</span>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-
-        <div class="top11-alltime-list-v3809">
-          ${squad.map(function(slot, idx){
-            const p = slot.player;
-            return `
-              <article>
-                <strong>${idx + 1}. ${esc(slot.label)}</strong>
-                <b>${esc(p ? p.jogador : "Sem dados")}</b>
-                <span>${p ? ((p.groups[slot.want] || 0) + "x na função • " + p.total + "x total") : "0x"}</span>
-              </article>
-            `;
-          }).join("")}
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    modal.querySelector(".top11-alltime-close-v3809").onclick = function(){ modal.remove(); };
-    modal.querySelector(".top11-alltime-backdrop-v3809").onclick = function(){ modal.remove(); };
-
-    setTimeout(enrichAllTimePhotos, 50);
-    setTimeout(enrichAllTimePhotos, 500);
-  }
-
-  function ensureButton(){
-    const page = document.getElementById("top11") || document.querySelector('[data-page="top11"]');
-    if(!page) return;
-
-    const actions = page.querySelector(".top11-clean-actions-v3806");
-    if(!actions) return;
-
-    if(actions.querySelector("#top11-alltime-btn-v3809")) return;
-
-    // Remove botão antigo v3808 se existir.
-    const old = actions.querySelector("#top11-alltime-btn-v3808");
-    if(old) old.remove();
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "top11-alltime-btn-v3809";
-    btn.className = "ghost top11-alltime-btn-v3809";
-    btn.textContent = "ALL TIME SQUAD";
-    btn.onclick = openAllTimeModal;
-
-    actions.insertBefore(btn, actions.firstChild);
-  }
-
-  const oldRender = window.FL_RENDER_TOP11_CLEAN_V3806 || window.renderTop11 || null;
-
-  function renderWithAllTime(){
-    if(oldRender) oldRender();
-    setTimeout(ensureButton, 60);
-    setTimeout(ensureButton, 250);
-  }
-
-  window.FL_openAllTimeSquadV3809 = openAllTimeModal;
-  window.FL_RENDER_TOP11_CLEAN_V3809 = renderWithAllTime;
-  window.renderTop11 = renderWithAllTime;
-
-  try{ renderTop11 = renderWithAllTime; }catch(e){}
-
-  const oldRenderPage = window.renderPageById || (typeof renderPageById === "function" ? renderPageById : null);
-
-  if(oldRenderPage && !window.__top11AllTimeRenderPageV3809){
-    window.__top11AllTimeRenderPageV3809 = true;
-
-    window.renderPageById = function(pageId){
-      const id = String(pageId || "").toLowerCase().replace(/\s+/g,"");
-      const result = oldRenderPage.apply(this, arguments);
-
-      if(id === "top11" || id.includes("top11")){
-        setTimeout(ensureButton, 120);
-        setTimeout(ensureButton, 400);
-      }
-
-      return result;
-    };
-
-    try{ renderPageById = window.renderPageById; }catch(e){}
-  }
-
-  document.addEventListener("click", function(e){
-    const target = e.target.closest("[data-page],button,a,.nav-item,.sidebar-item,.menu-item");
-    if(!target) return;
-
-    const data = String((target.dataset && target.dataset.page) || "").toLowerCase().replace(/\s+/g,"");
-    const text = String(target.textContent || "");
-
-    if(data === "top11" || data.includes("top11") || /top\s*11/i.test(text)){
-      setTimeout(ensureButton, 100);
-      setTimeout(ensureButton, 500);
-    }
-  }, true);
-
-  const observer = new MutationObserver(function(){
-    ensureButton();
+  window.addEventListener("error", function(e){
+    console.warn("Football Legacy erro capturado sem travar:", e.message);
   });
 
-  observer.observe(document.body, {childList:true, subtree:true});
+  window.addEventListener("unhandledrejection", function(e){
+    console.warn("Football Legacy promise rejeitada sem travar:", e.reason);
+  });
 
-  setTimeout(ensureButton, 700);
+  if(typeof window.FL_SAFE_TOP11_ROLLBACK_V3802 === "undefined"){
+    window.FL_SAFE_TOP11_ROLLBACK_V3802 = true;
+  }
+
+  // Não altera render, não altera importação, não força API.
+  // Este pacote é somente para voltar a carregar estável.
+})();
+
+// ===== V3.8.10 — BOLA DE OURO: BOTÕES SUBIR/DESCER TEMPORADA =====
+(function(){
+  function getSelect(){ return document.getElementById('ballonSeasonSelect'); }
+
+  function getSeasonsSafe(){
+    try{
+      if(typeof getBallonSeasons === 'function'){
+        return (getBallonSeasons() || []).map(String).filter(Boolean);
+      }
+    }catch(err){ console.warn('Falha getBallonSeasons v3.8.10:', err); }
+
+    const select = getSelect();
+    return select ? Array.from(select.options).map(o => String(o.value || '')).filter(Boolean) : [];
+  }
+
+  function setSeason(value){
+    const select = getSelect();
+    if(!select || !value) return;
+
+    try{ activeBallonSeason = value; }catch(err){ window.activeBallonSeason = value; }
+    try{ localStorage.setItem('fl_active_ballon_season', value); }catch(err){}
+
+    select.value = value;
+
+    try{ select.dispatchEvent(new Event('change', {bubbles:true})); }catch(err){}
+
+    setTimeout(function(){
+      try{ if(typeof renderBolaOuro === 'function') renderBolaOuro(); }catch(e){}
+      bindButtons();
+    }, 0);
+  }
+
+  function move(direction){
+    const select = getSelect();
+    const seasons = getSeasonsSafe();
+    if(!select || !seasons.length) return;
+
+    const current = String(select.value || (typeof getActiveBallonSeason === 'function' ? getActiveBallonSeason() : '') || '');
+    let idx = seasons.findIndex(s => String(s) === current);
+    if(idx < 0) idx = Math.max(0, select.selectedIndex || 0);
+
+    const nextIdx = Math.min(Math.max(idx + direction, 0), seasons.length - 1);
+    if(nextIdx === idx) return;
+
+    setSeason(seasons[nextIdx]);
+  }
+
+  function updateState(){
+    const select = getSelect();
+    const up = document.getElementById('ballonSeasonUpBtn');
+    const down = document.getElementById('ballonSeasonDownBtn');
+    const seasons = getSeasonsSafe();
+
+    if(!select || !up || !down || !seasons.length){
+      if(up) up.disabled = true;
+      if(down) down.disabled = true;
+      return;
+    }
+
+    const current = String(select.value || '');
+    let idx = seasons.findIndex(s => String(s) === current);
+    if(idx < 0) idx = Math.max(0, select.selectedIndex || 0);
+
+    up.disabled = idx <= 0;
+    down.disabled = idx >= seasons.length - 1;
+    up.title = up.disabled ? 'Já está na temporada mais alta/recente' : 'Subir uma temporada';
+    down.title = down.disabled ? 'Já está na temporada mais baixa/antiga' : 'Descer uma temporada';
+  }
+
+  function bindButtons(){
+    const select = getSelect();
+    if(!select) return;
+
+    const label = select.closest('label') || select.parentElement;
+    if(!label) return;
+
+    let box = document.getElementById('ballonSeasonStepControls');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'ballonSeasonStepControls';
+      box.className = 'ballon-season-step-controls-v3810';
+      box.innerHTML = '<button type="button" id="ballonSeasonUpBtn" class="ballon-season-step-btn-v3810" aria-label="Subir uma temporada">▲</button><button type="button" id="ballonSeasonDownBtn" class="ballon-season-step-btn-v3810" aria-label="Descer uma temporada">▼</button>';
+      label.insertAdjacentElement('afterend', box);
+    }
+
+    const up = document.getElementById('ballonSeasonUpBtn');
+    const down = document.getElementById('ballonSeasonDownBtn');
+
+    if(up && !up.dataset.boundV3810){
+      up.dataset.boundV3810 = '1';
+      up.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); move(-1); });
+    }
+    if(down && !down.dataset.boundV3810){
+      down.dataset.boundV3810 = '1';
+      down.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); move(1); });
+    }
+    if(!select.dataset.boundStepV3810){
+      select.dataset.boundStepV3810 = '1';
+      select.addEventListener('change', function(){ setTimeout(updateState, 0); });
+    }
+
+    updateState();
+  }
+
+  window.FL_bindBallonSeasonStepButtonsV3810 = bindButtons;
+  window.FL_moveBallonSeasonV3810 = move;
+
+  const oldRender = window.renderBolaOuro || (typeof renderBolaOuro === 'function' ? renderBolaOuro : null);
+  if(oldRender && !window.__ballonSeasonStepWrappedV3810){
+    window.__ballonSeasonStepWrappedV3810 = true;
+    window.renderBolaOuro = function(){
+      const result = oldRender.apply(this, arguments);
+      setTimeout(bindButtons, 0);
+      setTimeout(updateState, 20);
+      return result;
+    };
+    try{ renderBolaOuro = window.renderBolaOuro; }catch(err){}
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(bindButtons, 100); });
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('[data-page], .menu-item, .nav-item, button, a');
+    if(!t) return;
+    const page = String(t.dataset?.page || '').toLowerCase();
+    const txt = String(t.textContent || '').toLowerCase();
+    if(page.includes('bola') || txt.includes('bola de ouro')){
+      setTimeout(bindButtons, 150);
+      setTimeout(bindButtons, 500);
+    }
+  }, true);
+  setTimeout(bindButtons, 300);
 })();
