@@ -12113,7 +12113,8 @@ var FL_pageIdsV3784 = function FL_pageIdsV3784(){
     "bolaouro",
     "records",
     "clubes",
-    "museu"
+    "museu",
+    "selecaobrasileira"
   ];
 }
 
