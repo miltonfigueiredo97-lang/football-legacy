@@ -26,7 +26,7 @@ const schemas = {
   midia:[["carreira_id","ID da carreira","number"],["temporada","Temporada","text"],["tipo","Tipo","select",["imagem","video"]],["titulo","Título","text"],["descricao","Descrição","textarea"],["url","URL","fileurl"]]
 };
 
-const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu"};
+const pageTitles = {dashboard:"Resumo",personagens:"Personagens",estatisticas:"Estatísticas",trofeus:"Troféus",top11:"Top 11",bolaouro:"Bola de Ouro",clubes:"Clubes",museu:"Museu",selecaobrasileira:"Seleção Brasileira"};
 
 var $ = function $(id){return document.getElementById(id)}
 
@@ -961,9 +961,41 @@ var openForm = function openForm(kind,id=null){
 var openQuickCareerForm = function openQuickCareerForm(){
   modalTitle.textContent="Criar carreira";form.className="form-grid";
   form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar</button></div>`;
-  form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());let u=getUserUniverses(active.usuario_id)[0];if(!u){const r=await apiPost({action:"create",table:"UNIVERSOS",record:{usuario_id:active.usuario_id,nome:data.jogo,jogo:data.jogo}});u=r.data}const r=await apiPost({action:"create",table:"CARREIRAS",record:{universo_id:u.id,nome:data.nome,descricao:data.descricao,status:"ativa"}});active.carreira_id=String(r.data.id);active.protagonista_id="";saveActive();closeModal();await loadData()};
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    const btn=$("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+    try{
+      const data=Object.fromEntries(new FormData(form).entries());
+      if(!data.nome || !data.nome.trim()) throw new Error("Informe o nome da carreira.");
+
+      let u=getUserUniverses(active.usuario_id)[0];
+      if(!u){
+        const ru=await apiPost({action:"create",table:"UNIVERSOS",record:{usuario_id:active.usuario_id,nome:data.jogo,jogo:data.jogo}});
+        if(!ru || !ru.ok) throw new Error((ru && ru.error) || "Erro ao criar universo.");
+        u=ru.data;
+      }
+
+      const r=await apiPost({action:"create",table:"CARREIRAS",record:{universo_id:u.id,nome:data.nome,descricao:data.descricao,status:"ativa"}});
+      if(!r || !r.ok) throw new Error((r && r.error) || "Erro ao criar carreira.");
+
+      active.carreira_id=String(r.data.id);
+      active.protagonista_id="";
+      saveActive();
+      clearButtonSaving(btn);
+      closeModal();
+      await loadData();
+      setStatus("Carreira criada com sucesso.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao criar carreira: "+err.message,"error");
+      console.error(err);
+    }
+  };
   modal.classList.add("active");
 }
+
 
 var openTop11BatchForm = function openTop11BatchForm(){
   modalTitle.textContent="Novo Top 11";modalBox.classList.add("wide");form.className="form-grid top11-batch";
@@ -2380,6 +2412,8 @@ var renderPageById = function renderPageById(pageId, force=false){
     try{ renderClubes(); }catch(err){ console.error("Erro em renderClubes", err); }
   }else if(page === "museu"){
     try{ renderMuseu(); }catch(err){ console.error("Erro em renderMuseu", err); }
+  }else if(page === "selecaobrasileira"){
+    try{ renderSelecaoBrasileira(); }catch(err){ console.error("Erro em renderSelecaoBrasileira", err); }
   }
 
   renderedPages[page] = true;
@@ -8061,6 +8095,45 @@ var calcAgeAtSeasonV3760 = function calcAgeAtSeasonV3760(season){
   return age;
 }
 
+// FIX V3.8.12: idade também no fim da temporada, para exibir em faixa
+// (ex: "25 a 26 anos") quando o aniversário do jogador cai durante a temporada.
+var getSeasonEndV3760 = function getSeasonEndV3760(season){
+  const raw = String(season?.data_fim || "").trim();
+  let m = raw.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+  if(m) return {year:Number(m[1]), month:Number(m[2]), day:Number(m[3] || 1)};
+
+  const temp = String(season?.temporada || "");
+  m = temp.match(/(\d{4})\s*\/\s*(\d{4})/);
+  if(m) return {year:Number(m[2]), month:6, day:30};
+
+  m = temp.match(/(\d{4})/);
+  if(m) return {year:Number(m[1]), month:12, day:31};
+
+  return null;
+}
+
+var calcAgeAtDateV3760 = function calcAgeAtDateV3760(birth, dateObj){
+  if(!birth) return "";
+  if(birth.ageFixed !== undefined) return birth.ageFixed;
+  if(!dateObj) return "";
+
+  let age = dateObj.year - birth.year;
+  if(dateObj.month < birth.month || (dateObj.month === birth.month && dateObj.day < birth.day)) age--;
+  if(!Number.isFinite(age) || age < 0 || age > 80) return "";
+  return age;
+}
+
+var calcAgeRangeAtSeasonV3760 = function calcAgeRangeAtSeasonV3760(season){
+  const birth = parseBirthV3760(getBirthValueV3760());
+  const start = getSeasonStartV3760(season);
+  const end = getSeasonEndV3760(season);
+
+  return {
+    start: calcAgeAtDateV3760(birth, start),
+    end: calcAgeAtDateV3760(birth, end)
+  };
+}
+
 var getSeasonAggregatesV3760 = function getSeasonAggregatesV3760(){
   const rows = getCareerSeasonRecords();
   return rows.map(season=>{
@@ -8269,7 +8342,10 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
     const assistencias = stats.reduce((acc,s)=>acc+num(s.assistencias),0);
     const avgGoals = jogos ? (gols/jogos).toFixed(2) : "0.00";
     const avgAssists = jogos ? (assistencias/jogos).toFixed(2) : "0.00";
-    const age = calcAgeAtSeasonV3760(r);
+    const ageRange = calcAgeRangeAtSeasonV3760(r);
+    const ageLabel = ageRange.start !== "" && ageRange.end !== "" && ageRange.end !== ageRange.start
+      ? `${ageRange.start} a ${ageRange.end} anos`
+      : (ageRange.start !== "" ? `${ageRange.start} anos` : "");
     const periodo = (r.data_inicio || r.data_fim) ? `${r.data_inicio || "?"} até ${r.data_fim || "?"}` : "";
 
     return `
@@ -8278,7 +8354,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
           <div class="season-club-crest season-club-crest-v3760">
             ${r.escudo ? `<img src="${escapeAttr(r.escudo)}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
           </div>
-          ${age !== "" ? `<span class="season-age-v3760">${age} anos</span>` : ""}
+          ${ageLabel ? `<span class="season-age-v3760">${ageLabel}</span>` : ""}
           <div class="season-club-info-v3760">
             <strong>${escapeHtml(r.temporada || "-")}</strong>
             <h4>${escapeHtml(r.clube_nome || r.time || "-")}</h4>
@@ -18037,3 +18113,558 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
   }, true);
   setTimeout(bindButtons, 300);
 })();
+
+
+// ===== V3.9.0 SELEÇÃO BRASILEIRA (base de jogadores + convocações) =====
+let selecaoSeasonId = "";
+let selecaoSelectedTeam = null;
+
+var getSelecaoSeasonRecords = function getSelecaoSeasonRecords(){
+  return getCareerSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
+}
+
+var getSelecaoBaseForSeason = function getSelecaoBaseForSeason(seasonId=selecaoSeasonId){
+  return getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_temporada_id)===String(seasonId));
+}
+
+var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
+  const select = $("selecaoSeasonSelect");
+  if(!select) return;
+
+  const seasons = getSelecaoSeasonRecords();
+
+  if(!seasons.length){
+    select.innerHTML = `<option value="">Nenhuma temporada</option>`;
+    if($("selecaoBaseList")) $("selecaoBaseList").innerHTML = emptyCard("Crie uma temporada primeiro.");
+    if($("selecaoConvocacoesList")) $("selecaoConvocacoesList").innerHTML = "";
+    return;
+  }
+
+  if(!selecaoSeasonId || !seasons.find(s=>String(s.id)===String(selecaoSeasonId))){
+    selecaoSeasonId = String(seasons[0].id);
+  }
+
+  select.innerHTML = seasons.map(s=>`<option value="${s.id}" ${String(s.id)===String(selecaoSeasonId)?"selected":""}>${escapeHtml(s.temporada||"-")}</option>`).join("");
+
+  select.onchange = ()=>{
+    selecaoSeasonId = select.value;
+    renderSelecaoBaseList();
+    renderSelecaoConvocacoesList();
+  };
+
+  const addBtn = $("selecaoAddJogadorBtn");
+  if(addBtn) addBtn.onclick = ()=>openSelecaoJogadorForm();
+
+  const copyBtn = $("selecaoCopyPrevBtn");
+  if(copyBtn) copyBtn.onclick = selecaoCopyPrevSeason;
+
+  const novaConvBtn = $("selecaoNovaConvocacaoBtn");
+  if(novaConvBtn) novaConvBtn.onclick = ()=>openSelecaoConvocacaoForm();
+
+  renderSelecaoBaseList();
+  renderSelecaoConvocacoesList();
+}
+
+var renderSelecaoBaseList = function renderSelecaoBaseList(){
+  const el = $("selecaoBaseList");
+  if(!el) return;
+
+  const rows = getSelecaoBaseForSeason();
+
+  el.innerHTML = rows.map(r=>`
+    <article class="entity-card">
+      <div class="entity-top">
+        <div class="entity-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+        <div>
+          <h3>${escapeHtml(r.nome||"-")}</h3>
+          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
+        </div>
+      </div>
+      <small>Convocações: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
+      <div class="entity-actions">
+        <button onclick="openSelecaoJogadorForm('${r.id}')">Editar</button>
+        <button class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
+      </div>
+    </article>
+  `).join("") || emptyCard("Nenhum jogador na base desta temporada ainda.");
+}
+
+var searchTeamsForSelecao = async function searchTeamsForSelecao(){
+  const query = $("selecaoTeamSearch")?.value?.trim();
+  const results = $("selecaoTeamResults");
+  if(!query || !results) return;
+
+  results.innerHTML = `<div class="entity-card"><small>Buscando time...</small></div>`;
+
+  try{
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const teams = (json.teams||[]).filter(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
+
+    if(!teams.length){
+      results.innerHTML = `<div class="entity-card"><small>Nenhum time encontrado. Pode digitar manualmente no campo acima.</small></div>`;
+      return;
+    }
+
+    results.innerHTML = teams.slice(0,8).map(t=>{
+      const team = {name:t.strTeam||"", badge:t.strBadge||""};
+      return `<div class="team-result">
+        <img src="${team.badge}" onerror="this.style.display='none'">
+        <div><strong>${escapeHtml(team.name)}</strong></div>
+        <button type="button" onclick='selectSelecaoTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
+      </div>`;
+    }).join("");
+  }catch(err){
+    results.innerHTML = `<div class="entity-card"><small>Erro ao buscar time na API. Pode digitar manualmente.</small></div>`;
+  }
+}
+
+var selectSelecaoTeam = function selectSelecaoTeam(team){
+  selecaoSelectedTeam = team;
+  const box = $("selecaoSelectedTeamBox");
+  if(box){
+    box.classList.add("active");
+    box.innerHTML = `<img src="${team.badge||""}" onerror="this.style.display='none'"><strong>${escapeHtml(team.name||"-")}</strong>`;
+  }
+}
+
+var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
+  if(!selecaoSeasonId){ alert("Selecione uma temporada primeiro."); return; }
+
+  const existing = existingId ? getSelecaoBaseForSeason().find(r=>String(r.id)===String(existingId)) : null;
+  selecaoSelectedTeam = existing ? {name:existing.time||"", badge:existing.escudo_time_url||""} : null;
+
+  modalTitle.textContent = existing ? "Editar jogador" : "Adicionar jogador à base";
+  modalBox.classList.remove("wide");
+  form.className = "form-grid";
+
+  form.innerHTML = `
+    <div class="form-field"><label>Nome</label><input name="nome" value="${escapeAttr(existing?.nome||"")}" placeholder="Nome do jogador"></div>
+    <div class="form-field">
+      <label>Time</label>
+      <div class="file-row"><input id="selecaoTeamSearch" value="${escapeAttr(existing?.time||"")}" placeholder="Buscar time pela API ou digitar manualmente"><button type="button" class="upload-btn" onclick="searchTeamsForSelecao()">Buscar</button></div>
+    </div>
+    <div class="selected-team ${selecaoSelectedTeam?"active":""}" id="selecaoSelectedTeamBox">
+      ${selecaoSelectedTeam ? `<img src="${escapeAttr(selecaoSelectedTeam.badge||"")}" onerror="this.style.display='none'"><strong>${escapeHtml(selecaoSelectedTeam.name||"-")}</strong>` : ""}
+    </div>
+    <div class="team-results" id="selecaoTeamResults"></div>
+    <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
+    <div class="form-field"><label>Overall</label><input name="overall" type="number" value="${escapeAttr(existing?.overall||"")}"></div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">${existing?"Salvar edição":"Adicionar"}</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      if(!data.nome || !data.nome.trim()) throw new Error("Informe o nome do jogador.");
+
+      const typedTeam = ($("selecaoTeamSearch")?.value||"").trim();
+      const time = selecaoSelectedTeam?.name || typedTeam || "";
+      const escudo = selecaoSelectedTeam?.badge || existing?.escudo_time_url || "";
+
+      let foto = existing?.foto_url || "";
+      if(!foto){
+        try{ foto = await FL_fetchPlayerPhotoV3790(data.nome); }catch(errFoto){}
+      }
+
+      const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId)) || {};
+
+      const record = {
+        carreira_id: active.carreira_id,
+        carreira_temporada_id: selecaoSeasonId,
+        temporada: seasonRecord.temporada || "",
+        nome: data.nome.trim(),
+        time,
+        idade: data.idade || "",
+        overall: data.overall || "",
+        foto_url: foto || "",
+        escudo_time_url: escudo || "",
+        convocacoes_qtd: existing?.convocacoes_qtd || 0,
+        nota_media: existing?.nota_media || "",
+        bom_qtd: existing?.bom_qtd || 0,
+        ruim_qtd: existing?.ruim_qtd || 0,
+        status: existing?.status || ""
+      };
+
+      const payload = existing
+        ? {action:"update", table:"SELECAO_BASE_TEMPORADA", id:existing.id, record}
+        : {action:"create", table:"SELECAO_BASE_TEMPORADA", record};
+
+      const res = await apiPost(payload);
+      if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar jogador.");
+
+      clearButtonSaving(btn);
+      closeModal();
+      await loadData();
+      renderSelecaoBrasileira();
+      setStatus("Jogador salvo na base.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao salvar jogador: "+err.message,"error");
+      console.error(err);
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+var deleteSelecaoJogador = async function deleteSelecaoJogador(id){
+  if(!confirm("Excluir este jogador da base?")) return;
+  try{
+    const res = await apiPost({action:"delete", table:"SELECAO_BASE_TEMPORADA", id});
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao excluir.");
+    await loadData();
+    renderSelecaoBrasileira();
+    setStatus("Jogador removido da base.","ok");
+  }catch(err){
+    setStatus("Erro ao excluir jogador: "+err.message,"error");
+  }
+}
+
+var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
+  const seasons = getSelecaoSeasonRecords();
+  const idx = seasons.findIndex(s=>String(s.id)===String(selecaoSeasonId));
+  const prev = seasons[idx+1];
+
+  if(!prev){ setStatus("Não há temporada anterior para copiar.","error"); return; }
+  if(!confirm(`Copiar base de jogadores de ${prev.temporada} para a temporada atual?`)) return;
+
+  try{
+    const current = seasons[idx] || {};
+    const res = await apiPost({
+      action:"copySelecaoBaseAnterior",
+      carreira_id: active.carreira_id,
+      from_carreira_temporada_id: prev.id,
+      to_carreira_temporada_id: selecaoSeasonId,
+      to_temporada: current.temporada || ""
+    });
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao copiar base.");
+    await loadData();
+    renderSelecaoBrasileira();
+    setStatus(`Base copiada de ${prev.temporada} (${res.data?.copiados||0} jogadores).`,"ok");
+  }catch(err){
+    setStatus("Erro ao copiar base: "+err.message,"error");
+  }
+}
+
+var gerarConvocacaoAutomatica = function gerarConvocacaoAutomatica(qtd){
+  const base = getSelecaoBaseForSeason().map(r=>({
+    id: r.id,
+    nome: r.nome,
+    time: r.time,
+    idade: r.idade,
+    overall: r.overall,
+    peso: Math.max(0.1, num(r.overall) + (num(r.nota_media)*3) - (num(r.convocacoes_qtd)*0.5))
+  }));
+
+  const pool = base.slice();
+  const escolhidos = [];
+  const n = Math.min(qtd, pool.length);
+
+  for(let i=0;i<n;i++){
+    const total = pool.reduce((a,p)=>a+p.peso,0);
+    let r = Math.random()*total;
+    let idx = 0;
+    for(;idx<pool.length;idx++){
+      r -= pool[idx].peso;
+      if(r<=0) break;
+    }
+    idx = Math.min(idx, pool.length-1);
+    escolhidos.push(pool[idx]);
+    pool.splice(idx,1);
+  }
+
+  return escolhidos;
+}
+
+var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
+  if(!selecaoSeasonId){ alert("Selecione uma temporada primeiro."); return; }
+
+  modalTitle.textContent = "Nova convocação";
+  modalBox.classList.remove("wide");
+  form.className = "form-grid";
+
+  form.innerHTML = `
+    <div class="form-field"><label>Nome da convocação</label><input name="nome_convocacao" placeholder="Ex: Eliminatórias Junho"></div>
+    <div class="form-field"><label>Tipo</label><input name="tipo" placeholder="Ex: Amistoso, Eliminatórias, Copa América, Copa do Mundo"></div>
+    <div class="form-field"><label>Competição/Contexto</label><input name="competicao_ou_contexto" placeholder="Opcional"></div>
+    <div class="form-field"><label>Data</label><input name="data" type="date"></div>
+    <div class="form-field"><label>Modo</label>
+      <select name="modo">
+        <option value="manual">Manual — eu escolho os jogadores</option>
+        <option value="automatica">Automática — gerar aleatoriamente</option>
+      </select>
+    </div>
+    <div class="form-field" id="selecaoQtdAutoField" style="display:none">
+      <label>Quantidade de jogadores</label>
+      <input name="quantidade" type="number" value="23">
+    </div>
+    <div class="form-field full"><label>Observações</label><textarea name="observacoes"></textarea></div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button class="gold-btn" id="saveBtn">Criar convocação</button>
+    </div>
+  `;
+
+  const modoSelect = form.querySelector("[name='modo']");
+  const qtdField = $("selecaoQtdAutoField");
+  if(modoSelect && qtdField){
+    modoSelect.addEventListener("change", ()=>{
+      qtdField.style.display = modoSelect.value === "automatica" ? "" : "none";
+    });
+  }
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      if(!data.nome_convocacao || !data.nome_convocacao.trim()) throw new Error("Informe o nome da convocação.");
+
+      const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId)) || {};
+
+      const record = {
+        carreira_id: active.carreira_id,
+        carreira_temporada_id: selecaoSeasonId,
+        temporada: seasonRecord.temporada || "",
+        nome_convocacao: data.nome_convocacao.trim(),
+        tipo: data.tipo || "",
+        modo: data.modo || "manual",
+        competicao_ou_contexto: data.competicao_ou_contexto || "",
+        data: data.data || "",
+        observacoes: data.observacoes || ""
+      };
+
+      const res = await apiPost({action:"create", table:"SELECAO_CONVOCACOES", record});
+      if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar convocação.");
+
+      const convocacaoId = res.data.id;
+
+      if(data.modo === "automatica"){
+        const qtd = Number(data.quantidade) || 23;
+        const escolhidos = gerarConvocacaoAutomatica(qtd);
+
+        if(!escolhidos.length){
+          throw new Error("Base de jogadores vazia — adicione jogadores antes de gerar automaticamente.");
+        }
+
+        const r2 = await apiPost({
+          action:"saveSelecaoConvocados",
+          convocacao_id: convocacaoId,
+          jogadores: escolhidos.map(j=>({
+            jogador_base_id: j.id,
+            nome: j.nome,
+            time: j.time,
+            idade_na_convocacao: j.idade,
+            overall_na_convocacao: j.overall
+          }))
+        });
+        if(!r2 || !r2.ok) throw new Error((r2&&r2.error)||"Erro ao salvar convocados.");
+
+        clearButtonSaving(btn);
+        closeModal();
+        await loadData();
+        renderSelecaoBrasileira();
+        setStatus(`Convocação criada com ${escolhidos.length} jogadores.`,"ok");
+      }else{
+        clearButtonSaving(btn);
+        closeModal();
+        await loadData();
+        renderSelecaoBrasileira();
+        openSelecaoConvocadosPickerForm(convocacaoId);
+      }
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao criar convocação: "+err.message,"error");
+      console.error(err);
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(convocacaoId){
+  const base = getSelecaoBaseForSeason();
+  const existingConvocados = getTable("SELECAO_CONVOCADOS").filter(c=>String(c.convocacao_id)===String(convocacaoId));
+  const existingIds = new Set(existingConvocados.map(c=>String(c.jogador_base_id)));
+
+  modalTitle.textContent = "Escolher jogadores convocados";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+
+  form.innerHTML = `
+    <div class="competition-checks" style="max-height:400px;overflow:auto">
+      ${base.map(r=>`
+        <label class="comp-check">
+          <input type="checkbox" name="jogador_${r.id}" ${existingIds.has(String(r.id))?"checked":""}>
+          ${escapeHtml(r.nome||"-")} — ${escapeHtml(r.time||"-")} (OVR ${escapeHtml(String(r.overall||"-"))})
+        </label>
+      `).join("") || "<small>Nenhum jogador na base desta temporada. Adicione jogadores primeiro.</small>"}
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
+      <button class="gold-btn" id="saveBtn">Salvar convocados</button>
+    </div>
+  `;
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const btn = $("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+
+    try{
+      const data = Object.fromEntries(new FormData(form).entries());
+      const selecionados = base.filter(r=>data[`jogador_${r.id}`]);
+
+      const res = await apiPost({
+        action:"saveSelecaoConvocados",
+        convocacao_id: convocacaoId,
+        jogadores: selecionados.map(j=>({
+          jogador_base_id: j.id,
+          nome: j.nome,
+          time: j.time,
+          idade_na_convocacao: j.idade,
+          overall_na_convocacao: j.overall
+        }))
+      });
+      if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar convocados.");
+
+      clearButtonSaving(btn);
+      closeModal();
+      await loadData();
+      renderSelecaoBrasileira();
+      setStatus(`${selecionados.length} jogadores convocados salvos.`,"ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao salvar convocados: "+err.message,"error");
+      console.error(err);
+    }
+  };
+
+  modal.classList.add("active");
+}
+
+var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
+  const el = $("selecaoConvocacoesList");
+  if(!el) return;
+
+  const convocacoes = getTable("SELECAO_CONVOCACOES").filter(c=>String(c.carreira_temporada_id)===String(selecaoSeasonId));
+
+  el.innerHTML = convocacoes.map(c=>{
+    const convocados = getTable("SELECAO_CONVOCADOS").filter(j=>String(j.convocacao_id)===String(c.id));
+
+    return `
+      <article class="entity-card">
+        <div class="entity-top">
+          <div>
+            <h3>${escapeHtml(c.nome_convocacao||"-")}</h3>
+            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(c.modo||"-")}${c.data?(" • "+escapeHtml(c.data)):""}</small>
+          </div>
+        </div>
+        ${c.competicao_ou_contexto ? `<small>${escapeHtml(c.competicao_ou_contexto)}</small>` : ""}
+
+        <div class="season-stats-grid" id="convocadosGrid_${c.id}">
+          ${convocados.map(j=>`
+            <div class="season-stats-row">
+              <strong>${escapeHtml(j.nome||"-")}</strong>
+              <input name="nota_${j.id}" type="number" step="0.1" placeholder="Nota">
+              <label><input type="checkbox" name="bem_${j.id}"> Bom</label>
+              <label><input type="checkbox" name="mal_${j.id}"> Ruim</label>
+              <input name="obs_${j.id}" placeholder="Observação">
+            </div>
+          `).join("") || "<small>Nenhum jogador convocado ainda.</small>"}
+        </div>
+
+        <div class="entity-actions">
+          <button onclick="openSelecaoConvocadosPickerForm('${c.id}')">Editar convocados</button>
+          <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
+          <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
+        </div>
+      </article>
+    `;
+  }).join("") || emptyCard("Nenhuma convocação nesta temporada ainda.");
+
+  // Preenche os valores atuais depois de montar o HTML (evita problema de aspas em atributos).
+  convocacoes.forEach(c=>{
+    const grid = document.getElementById("convocadosGrid_"+c.id);
+    if(!grid) return;
+    getTable("SELECAO_CONVOCADOS").filter(j=>String(j.convocacao_id)===String(c.id)).forEach(j=>{
+      const notaInput = grid.querySelector(`[name="nota_${j.id}"]`);
+      const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
+      const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
+      const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
+      if(notaInput) notaInput.value = j.nota || "";
+      if(bemInput) bemInput.checked = (j.foi_bem===true||j.foi_bem==="true"||j.foi_bem==="SIM"||j.foi_bem==="sim");
+      if(malInput) malInput.checked = (j.foi_mal===true||j.foi_mal==="true"||j.foi_mal==="SIM"||j.foi_mal==="sim");
+      if(obsInput) obsInput.value = j.observacao || "";
+    });
+  });
+}
+
+var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
+  const grid = document.getElementById("convocadosGrid_"+convocacaoId);
+  if(!grid) return;
+
+  const convocados = getTable("SELECAO_CONVOCADOS").filter(j=>String(j.convocacao_id)===String(convocacaoId));
+
+  const notas = convocados.map(j=>{
+    const notaInput = grid.querySelector(`[name="nota_${j.id}"]`);
+    const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
+    const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
+    const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
+
+    return {
+      id: j.id,
+      nota: notaInput ? notaInput.value : "",
+      foi_bem: bemInput ? bemInput.checked : false,
+      foi_mal: malInput ? malInput.checked : false,
+      observacao: obsInput ? obsInput.value : ""
+    };
+  });
+
+  try{
+    const res = await apiPost({action:"updateNotasConvocacao", notas});
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar notas.");
+    await loadData();
+    renderSelecaoBrasileira();
+    setStatus("Notas da convocação salvas. Base atualizada.","ok");
+  }catch(err){
+    setStatus("Erro ao salvar notas: "+err.message,"error");
+  }
+}
+
+var deleteSelecaoConvocacao = async function deleteSelecaoConvocacao(id){
+  if(!confirm("Excluir esta convocação?")) return;
+  try{
+    const res = await apiPost({action:"delete", table:"SELECAO_CONVOCACOES", id});
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao excluir.");
+    await loadData();
+    renderSelecaoBrasileira();
+    setStatus("Convocação excluída.","ok");
+  }catch(err){
+    setStatus("Erro ao excluir convocação: "+err.message,"error");
+  }
+}
+
+window.openSelecaoJogadorForm = openSelecaoJogadorForm;
+window.deleteSelecaoJogador = deleteSelecaoJogador;
+window.searchTeamsForSelecao = searchTeamsForSelecao;
+window.selectSelecaoTeam = selectSelecaoTeam;
+window.openSelecaoConvocacaoForm = openSelecaoConvocacaoForm;
+window.openSelecaoConvocadosPickerForm = openSelecaoConvocadosPickerForm;
+window.saveConvocacaoNotas = saveConvocacaoNotas;
+window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;
+window.renderSelecaoBrasileira = renderSelecaoBrasileira;

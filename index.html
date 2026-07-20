@@ -12,7 +12,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">FL</div><div><h1>Football Legacy</h1><p>Career Universe</p></div></div>
+      <div class="brand"><div class="brand-mark">FL</div><div><h1>Football Legacy</h1><p>Career Universe <span id="appVersionTag" style="opacity:0.6;font-size:0.75em;border:1px solid currentColor;border-radius:4px;padding:1px 5px;margin-left:4px">v1.0</span></p></div></div>
       <div class="career-switch"><span>Carreira ativa</span><strong id="careerNameSide">Football Legacy</strong><small id="careerMetaSide">Google Sheets</small></div>
       <nav class="menu">
         <button class="menu-item active" data-page="dashboard">🏠 <span>Resumo</span></button>
@@ -27,6 +27,7 @@
         </button>
         <button class="menu-item" data-page="clubes">🏟 <span>Clubes</span></button>
         <button class="menu-item" data-page="museu">🖼 <span>Museu</span></button>
+        <button class="menu-item" data-page="selecaobrasileira">🇧🇷 <span>Seleção Brasileira</span></button>
       </nav>
     </aside>
 
@@ -168,6 +169,28 @@
       <section class="page" id="museu">
         <div class="section-header"><div><h3>Museu</h3><p>Imagens e vídeos da carreira.</p></div><button class="gold-btn" data-form="midia">+ Nova Mídia</button></div>
         <div class="media-grid" id="media-grid"></div>
+      </section>
+
+      <section class="page" id="selecaobrasileira">
+        <div class="section-header">
+          <div><h3>Seleção Brasileira</h3><p>Base de jogadores e convocações por temporada.</p></div>
+          <label style="min-width:220px"><small>Temporada</small><select id="selecaoSeasonSelect"></select></label>
+        </div>
+
+        <div class="section-header">
+          <div><h4>Base de jogadores da temporada</h4></div>
+          <div style="display:flex;gap:8px">
+            <button class="ghost-btn" id="selecaoCopyPrevBtn">Copiar base da temporada anterior</button>
+            <button class="gold-btn" id="selecaoAddJogadorBtn">+ Jogador</button>
+          </div>
+        </div>
+        <div class="cards-list" id="selecaoBaseList"></div>
+
+        <div class="section-header">
+          <div><h4>Convocações</h4></div>
+          <button class="gold-btn" id="selecaoNovaConvocacaoBtn">+ Nova Convocação</button>
+        </div>
+        <div class="cards-list" id="selecaoConvocacoesList"></div>
       </section>
     </main>
   </div>
