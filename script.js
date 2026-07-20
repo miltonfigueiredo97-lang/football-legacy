@@ -620,9 +620,13 @@ var renderTrofeus = function renderTrofeus(){
 }
 
 var renderTop11 = function renderTop11(){
+  // FIX V3.8.13: esta função lia da aba legada "TOP11", que nunca teve
+  // coluna carreira_id — comparava só pelo nome da temporada, então
+  // carreiras diferentes com a mesma temporada (ex: "2034/2035") vazavam
+  // dados uma na outra. O Top 11 de verdade agora é só o mapa novo
+  // (FL_renderTop11MapV3781 / TOP11_CARREIRA), que já filtra por carreira_id.
   const el=$("top11Pitch"); if(!el)return;
-  const season=getCurrentSeason(); const rows=getTable("TOP11").filter(r=>!season||String(r.temporada)===String(season));
-  el.innerHTML=rows.map(p=>`<div class="field-player">${p.overall||"-"}<br><span>${p.posicao||""}</span><span>${p.jogador||"-"}</span></div>`).join("")||`<div class="field-player">+<br><span>Cadastre o Top 11</span></div>`;
+  el.innerHTML="";
 }
 
 
@@ -1011,7 +1015,57 @@ var openTop11BatchForm = function openTop11BatchForm(){
   const season=getCurrentSeason();
   const rows=Array.from({length:11},(_,i)=>i+1).map(i=>`<div class="batch-row"><strong>${i}</strong><input name="posicao_${i}" placeholder="POS"><input name="jogador_${i}" placeholder="Jogador"><input name="overall_${i}" type="number" placeholder="OVR"></div>`).join("");
   form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar Top 11</button></div>`;
-  form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());const season=data.temporada;for(const old of getTable("TOP11").filter(r=>String(r.temporada)===String(season)))await apiPost({action:"delete",table:"TOP11",id:old.id});for(let i=1;i<=11;i++){if(!data[`jogador_${i}`])continue;await apiPost({action:"create",table:"TOP11",record:{temporada:season,posicao:data[`posicao_${i}`]||i,jogador:data[`jogador_${i}`],overall:data[`overall_${i}`]||""}})}closeModal();await loadData()};
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    const btn=$("saveBtn");
+    if(btn && btn.disabled) return;
+    setButtonSaving(btn);
+
+    try{
+      const data=Object.fromEntries(new FormData(form).entries());
+      const season=data.temporada;
+      const seasonRecord = getCareerSeasonRecords().find(s=>String(s.temporada)===String(season));
+
+      // FIX V3.8.13: gravar em TOP11_CARREIRA (com carreira_id/carreira_temporada_id),
+      // não mais na aba antiga "TOP11" que não separava por carreira e vazava
+      // jogadores entre carreiras diferentes com a mesma temporada.
+      const existentes = getTable("TOP11_CARREIRA").filter(r=>
+        String(r.carreira_id)===String(active.carreira_id) &&
+        (seasonRecord ? String(r.carreira_temporada_id)===String(seasonRecord.id) : String(r.temporada)===String(season))
+      );
+
+      for(const old of existentes){
+        await apiPost({action:"delete",table:"TOP11_CARREIRA",id:old.id});
+      }
+
+      for(let i=1;i<=11;i++){
+        if(!data[`jogador_${i}`]) continue;
+        await apiPost({
+          action:"create",
+          table:"TOP11_CARREIRA",
+          record:{
+            carreira_id: active.carreira_id,
+            carreira_temporada_id: seasonRecord ? seasonRecord.id : "",
+            temporada: season,
+            posicao_tatica: data[`posicao_${i}`] || i,
+            jogador: data[`jogador_${i}`],
+            overall: data[`overall_${i}`] || "",
+            x: "",
+            y: ""
+          }
+        });
+      }
+
+      clearButtonSaving(btn);
+      closeModal();
+      await loadData();
+      setStatus("Top 11 salvo.","ok");
+    }catch(err){
+      clearButtonSaving(btn);
+      setStatus("Erro ao salvar Top 11: "+err.message,"error");
+      console.error(err);
+    }
+  };
   modal.classList.add("active");
 }
 
