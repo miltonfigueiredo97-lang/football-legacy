@@ -308,6 +308,15 @@ var renderGlobalSelectorsOnly = function renderGlobalSelectorsOnly(){
   }catch(err){
     console.error("Erro em renderSidebar", err);
   }
+
+  // FIX V3.8.13: renderPrimaryButton existia mas nunca era chamada em lugar
+  // nenhum, então o botão "+ Criar Carreira" nunca recebia onclick nem
+  // atualizava seu texto para "+ Criar Personagem" quando já havia carreira ativa.
+  try{
+    renderPrimaryButton();
+  }catch(err){
+    console.error("Erro em renderPrimaryButton", err);
+  }
 }
 
 var renderResumoFast = function renderResumoFast(){
