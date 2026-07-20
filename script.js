@@ -15,7 +15,7 @@ let active = {
 const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO_CARREIRA",bolaourobase:"BOLA_DE_OURO_BASE",top11:"TOP11",midia:"MIDIAS"};
 
 const schemas = {
-  personagem:[["carreira_id","ID da carreira","number"],["tipo","Tipo","select",["protagonista","coadjuvante","real"]],["nome","Nome","text"],["foto","Foto URL","fileurl"],["posicao","Posição","text"],["nacionalidade","Nacionalidade","text"]],
+  personagem:[["carreira_id","ID da carreira","number"],["tipo","Tipo","select",["protagonista","coadjuvante","real"]],["nome","Nome","text"],["foto","Foto URL","fileurl"],["posicao","Posição","text"],["nacionalidade","Nacionalidade","text"],["data_nascimento","Data de nascimento","date"]],
   clube:[["nome","Nome","text"],["pais","País","text"],["escudo","Escudo URL","fileurl"],["estadio","Estádio","text"]],
   competicao:[["nome","Nome","text"]],
   campeao:[["competicao_id","ID da competição","number"],["temporada","Temporada","text"],["clube","Clube campeão","text"],["artilheiro","Artilheiro","text"],["lider_assistencias","Líder assistências","text"],["melhor_jogador","Melhor jogador","text"]],
@@ -1058,19 +1058,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
       localStorage.setItem("fl_active_ballon_season", activeBallonSeason);
 
       closeModal();
-      await 
-window.addEventListener('error', function(event){
-  console.error("Football Legacy error:", event.error || event.message);
-  setStatus("Erro no dashboard: " + (event.message || "erro desconhecido"), "error");
-});
-
-window.addEventListener('unhandledrejection', function(event){
-  console.error("Football Legacy promise error:", event.reason);
-  const msg = event.reason && event.reason.message ? event.reason.message : String(event.reason || "erro desconhecido");
-  setStatus("Erro no dashboard: " + msg, "error");
-});
-
-loadData();
+      await loadData();
     }catch(err){
       btn.disabled=false;
       btn.textContent="Salvar Ranking";
@@ -4249,6 +4237,7 @@ var startFootballLegacy = function startFootballLegacy(){
 
     if($("syncBtn")) $("syncBtn").onclick = loadData;
     if($("seasonCreateBtn")) $("seasonCreateBtn").onclick = openSeasonFlow;
+    if($("newCareerBtn")) $("newCareerBtn").onclick = openQuickCareerForm;
     if($("openSeasonBtn")) $("openSeasonBtn").onclick = openSeasonFlow;
     if($("top11BatchBtn")) $("top11BatchBtn").onclick = openTop11BatchForm;
     if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = openBallonBatchForm;
@@ -7127,18 +7116,38 @@ var readSeasonTitlesRowsFromDomV3738 = function readSeasonTitlesRowsFromDomV3738
 var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, existing=null){
   if(!active.carreira_id) throw new Error("Selecione ou crie uma carreira antes.");
   if(!active.protagonista_id) throw new Error("Selecione ou crie um protagonista antes.");
-  if(!selectedSeasonTeam) throw new Error("Selecione um time pela busca da API.");
+
+  // FIX V3.8.11: não bloquear o salvamento caso a busca de time pela API
+  // externa (TheSportsDB) falhe, esteja fora do ar ou não retorne resultado.
+  // Se o usuário digitou um nome de time no campo de busca mas não selecionou
+  // um resultado da API, usamos o texto digitado como time manual.
+  if(!selectedSeasonTeam){
+    const typedTeamName = ($("seasonTeamSearch")?.value || "").trim();
+    if(typedTeamName){
+      selectedSeasonTeam = {
+        name: typedTeamName,
+        league: "",
+        country: "",
+        badge: "",
+        api_id: ""
+      };
+    }
+  }
+  if(!selectedSeasonTeam) throw new Error("Informe o nome do time (busque pela API ou digite manualmente).");
 
   const temporada = data.temporada || monthYearToSeason(data.data_inicio);
   if(!temporada) throw new Error("Informe o início no time ou a temporada.");
 
   const stats = readSeasonStatsRowsFromDomV3738();
-  const comps = [...new Set([
+  let comps = [...new Set([
     ...getSelectedSeasonCompetitionsV3736(),
     ...stats.map(s=>s.competicao)
   ].map(normalizeCompetitionLabelV3738).filter(Boolean))];
 
-  if(!comps.length) throw new Error("Selecione pelo menos uma competição.");
+  // FIX V3.8.11: se nenhuma competição foi marcada (ex: sugestões não carregaram
+  // porque a API de times falhou), não travar o salvamento — usar "Geral" como
+  // competição padrão, que pode ser editada depois.
+  if(!comps.length) comps = ["Geral"];
 
   const statMap = new Map();
   stats.forEach(s=>statMap.set(compKeyV3738(s.competicao), s));
