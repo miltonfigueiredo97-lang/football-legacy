@@ -18241,7 +18241,7 @@ var renderSelecaoBaseList = function renderSelecaoBaseList(){
         <div class="entity-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
         <div>
           <h3>${escapeHtml(r.nome||"-")}</h3>
-          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
+          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • <strong>${escapeHtml(r.posicao||"-")}</strong> • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
         </div>
       </div>
       <small>Convocações: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
@@ -18313,6 +18313,15 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
       ${selecaoSelectedTeam ? `<img src="${escapeAttr(selecaoSelectedTeam.badge||"")}" onerror="this.style.display='none'"><strong>${escapeHtml(selecaoSelectedTeam.name||"-")}</strong>` : ""}
     </div>
     <div class="team-results" id="selecaoTeamResults"></div>
+    <div class="form-field">
+      <label>Posição</label>
+      <input name="posicao" list="selecaoPosicoesList" value="${escapeAttr(existing?.posicao||"")}" placeholder="Ex: GOL, ZAG, LD, LE, VOL, MEI, PD, PE, CA">
+      <datalist id="selecaoPosicoesList">
+        <option value="GOL"><option value="ZAG"><option value="LD"><option value="LE">
+        <option value="VOL"><option value="MC"><option value="MEI"><option value="PD">
+        <option value="PE"><option value="CA">
+      </datalist>
+    </div>
     <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
     <div class="form-field"><label>Overall</label><input name="overall" type="number" value="${escapeAttr(existing?.overall||"")}"></div>
     <div class="form-actions">
@@ -18348,6 +18357,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
         temporada: seasonRecord.temporada || "",
         nome: data.nome.trim(),
         time,
+        posicao: (data.posicao||"").trim().toUpperCase(),
         idade: data.idade || "",
         overall: data.overall || "",
         foto_url: foto || "",
@@ -18420,32 +18430,41 @@ var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
   }
 }
 
-var gerarConvocacaoAutomatica = function gerarConvocacaoAutomatica(qtd){
-  const base = getSelecaoBaseForSeason().map(r=>({
-    id: r.id,
-    nome: r.nome,
-    time: r.time,
-    idade: r.idade,
-    overall: r.overall,
-    peso: Math.max(0.1, num(r.overall) + (num(r.nota_media)*3) - (num(r.convocacoes_qtd)*0.5))
-  }));
-
-  const pool = base.slice();
+var gerarConvocacaoAutomaticaPorPosicao = function gerarConvocacaoAutomaticaPorPosicao(qtdPorPosicao){
+  const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
-  const n = Math.min(qtd, pool.length);
 
-  for(let i=0;i<n;i++){
-    const total = pool.reduce((a,p)=>a+p.peso,0);
-    let r = Math.random()*total;
-    let idx = 0;
-    for(;idx<pool.length;idx++){
-      r -= pool[idx].peso;
-      if(r<=0) break;
+  Object.keys(qtdPorPosicao).forEach(posicao=>{
+    const qtd = Number(qtdPorPosicao[posicao]) || 0;
+    if(qtd <= 0) return;
+
+    const daPosicao = baseTodo
+      .filter(r=>(r.posicao||"").trim() === posicao)
+      .map(r=>({
+        id: r.id,
+        nome: r.nome,
+        time: r.time,
+        idade: r.idade,
+        overall: r.overall,
+        peso: Math.max(0.1, num(r.overall) + (num(r.nota_media)*3) - (num(r.convocacoes_qtd)*0.5))
+      }));
+
+    const pool = daPosicao.slice();
+    const n = Math.min(qtd, pool.length);
+
+    for(let i=0;i<n;i++){
+      const total = pool.reduce((a,p)=>a+p.peso,0);
+      let r = Math.random()*total;
+      let idx = 0;
+      for(;idx<pool.length;idx++){
+        r -= pool[idx].peso;
+        if(r<=0) break;
+      }
+      idx = Math.min(idx, pool.length-1);
+      escolhidos.push(pool[idx]);
+      pool.splice(idx,1);
     }
-    idx = Math.min(idx, pool.length-1);
-    escolhidos.push(pool[idx]);
-    pool.splice(idx,1);
-  }
+  });
 
   return escolhidos;
 }
@@ -18469,8 +18488,8 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       </select>
     </div>
     <div class="form-field" id="selecaoQtdAutoField" style="display:none">
-      <label>Quantidade de jogadores</label>
-      <input name="quantidade" type="number" value="23">
+      <label>Quantidade por posição</label>
+      <div id="selecaoQtdPorPosicaoBox" class="competition-checks"></div>
     </div>
     <div class="form-field full"><label>Observações</label><textarea name="observacoes"></textarea></div>
     <div class="form-actions">
@@ -18478,6 +18497,20 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       <button class="gold-btn" id="saveBtn">Criar convocação</button>
     </div>
   `;
+
+  const posicoesDisponiveis = [...new Set(getSelecaoBaseForSeason().map(r=>(r.posicao||"").trim()).filter(Boolean))].sort();
+
+  const qtdPorPosicaoBox = $("selecaoQtdPorPosicaoBox");
+  if(qtdPorPosicaoBox){
+    qtdPorPosicaoBox.innerHTML = posicoesDisponiveis.length
+      ? posicoesDisponiveis.map(p=>`
+          <label class="comp-check">
+            <strong>${escapeHtml(p)}</strong>
+            <input type="number" min="0" value="0" data-posicao-qtd="${escapeAttr(p)}" style="width:70px">
+          </label>
+        `).join("")
+      : "<small>Nenhuma posição cadastrada na base ainda. Adicione jogadores com posição primeiro.</small>";
+  }
 
   const modoSelect = form.querySelector("[name='modo']");
   const qtdField = $("selecaoQtdAutoField");
@@ -18517,11 +18550,15 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       const convocacaoId = res.data.id;
 
       if(data.modo === "automatica"){
-        const qtd = Number(data.quantidade) || 23;
-        const escolhidos = gerarConvocacaoAutomatica(qtd);
+        const qtdPorPosicao = {};
+        (qtdPorPosicaoBox ? [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")] : []).forEach(input=>{
+          qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
+        });
+
+        const escolhidos = gerarConvocacaoAutomaticaPorPosicao(qtdPorPosicao);
 
         if(!escolhidos.length){
-          throw new Error("Base de jogadores vazia — adicione jogadores antes de gerar automaticamente.");
+          throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
         }
 
         const r2 = await apiPost({
@@ -18563,25 +18600,53 @@ var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(c
   const base = getSelecaoBaseForSeason();
   const existingConvocados = getTable("SELECAO_CONVOCADOS").filter(c=>String(c.convocacao_id)===String(convocacaoId));
   const existingIds = new Set(existingConvocados.map(c=>String(c.jogador_base_id)));
+  const posicoes = [...new Set(base.map(r=>(r.posicao||"").trim()).filter(Boolean))].sort();
+
+  // Guarda quem já foi marcado, mesmo trocando o filtro de posição (senão perde a seleção).
+  const selecionadosAtuais = new Set(existingIds);
+
+  const renderChecklist = (filtroPosicao)=>{
+    const filtrados = filtroPosicao ? base.filter(r=>(r.posicao||"").trim()===filtroPosicao) : base;
+    const list = $("selecaoPickerList");
+    if(!list) return;
+
+    list.innerHTML = filtrados.map(r=>`
+      <label class="comp-check">
+        <input type="checkbox" data-jogador-id="${r.id}" ${selecionadosAtuais.has(String(r.id))?"checked":""}>
+        <strong>${escapeHtml(r.posicao||"-")}</strong> — ${escapeHtml(r.nome||"-")} — ${escapeHtml(r.time||"-")} (OVR ${escapeHtml(String(r.overall||"-"))})
+      </label>
+    `).join("") || "<small>Nenhum jogador nessa posição.</small>";
+
+    list.querySelectorAll("input[type=checkbox]").forEach(chk=>{
+      chk.onchange = ()=>{
+        const id = chk.dataset.jogadorId;
+        if(chk.checked) selecionadosAtuais.add(id); else selecionadosAtuais.delete(id);
+      };
+    });
+  };
 
   modalTitle.textContent = "Escolher jogadores convocados";
   modalBox.classList.add("wide");
   form.className = "form-grid";
 
   form.innerHTML = `
-    <div class="competition-checks" style="max-height:400px;overflow:auto">
-      ${base.map(r=>`
-        <label class="comp-check">
-          <input type="checkbox" name="jogador_${r.id}" ${existingIds.has(String(r.id))?"checked":""}>
-          ${escapeHtml(r.nome||"-")} — ${escapeHtml(r.time||"-")} (OVR ${escapeHtml(String(r.overall||"-"))})
-        </label>
-      `).join("") || "<small>Nenhum jogador na base desta temporada. Adicione jogadores primeiro.</small>"}
+    <div class="form-field">
+      <label>Filtrar por posição</label>
+      <select id="selecaoPickerPosFilter">
+        <option value="">Todas as posições (${base.length} jogadores)</option>
+        ${posicoes.map(p=>`<option value="${escapeAttr(p)}">${escapeHtml(p)} (${base.filter(r=>(r.posicao||"").trim()===p).length})</option>`).join("")}
+      </select>
     </div>
+    <div class="competition-checks" id="selecaoPickerList" style="max-height:380px;overflow:auto"></div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
       <button class="gold-btn" id="saveBtn">Salvar convocados</button>
     </div>
   `;
+
+  renderChecklist("");
+  const filterSelect = $("selecaoPickerPosFilter");
+  if(filterSelect) filterSelect.onchange = ()=>renderChecklist(filterSelect.value);
 
   form.onsubmit = async e=>{
     e.preventDefault();
@@ -18590,8 +18655,7 @@ var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(c
     setButtonSaving(btn);
 
     try{
-      const data = Object.fromEntries(new FormData(form).entries());
-      const selecionados = base.filter(r=>data[`jogador_${r.id}`]);
+      const selecionados = base.filter(r=>selecionadosAtuais.has(String(r.id)));
 
       const res = await apiPost({
         action:"saveSelecaoConvocados",
