@@ -18238,7 +18238,7 @@ var renderSelecaoBaseList = function renderSelecaoBaseList(){
   el.innerHTML = rows.map(r=>`
     <article class="entity-card">
       <div class="entity-top">
-        <div class="entity-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+        <div class="selecao-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
         <div>
           <h3>${escapeHtml(r.nome||"-")}</h3>
           <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • <strong>${escapeHtml(r.posicao||"-")}</strong> • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
