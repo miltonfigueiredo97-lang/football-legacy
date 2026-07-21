@@ -18185,6 +18185,8 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 // ===== V3.9.0 SELEÇÃO BRASILEIRA (base de jogadores + convocações) =====
 let selecaoSeasonId = "";
 let selecaoSelectedTeam = null;
+let selecaoSlotState = { convocacaoId:null, slots:{}, base:[] };
+let selecaoSlotPickerOpenFor = null;
 
 var getSelecaoSeasonRecords = function getSelecaoSeasonRecords(){
   return getCareerSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
@@ -18499,7 +18501,7 @@ var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
   }
 }
 
-var gerarConvocacaoAutomaticaPorPosicao = function gerarConvocacaoAutomaticaPorPosicao(qtdPorPosicao){
+var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosicao, criterio){
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
 
@@ -18515,24 +18517,44 @@ var gerarConvocacaoAutomaticaPorPosicao = function gerarConvocacaoAutomaticaPorP
         time: r.time,
         idade: r.idade,
         overall: r.overall,
+        foto_url: r.foto_url,
+        nota_media: r.nota_media,
+        convocacoes_qtd: r.convocacoes_qtd,
         peso: Math.max(0.1, num(r.overall) + (num(r.nota_media)*3) - (num(r.convocacoes_qtd)*0.5))
       }));
 
-    const pool = daPosicao.slice();
-    const n = Math.min(qtd, pool.length);
+    let selecionadosDaPosicao = [];
 
-    for(let i=0;i<n;i++){
-      const total = pool.reduce((a,p)=>a+p.peso,0);
-      let r = Math.random()*total;
-      let idx = 0;
-      for(;idx<pool.length;idx++){
-        r -= pool[idx].peso;
-        if(r<=0) break;
+    if(criterio === "aleatoria"){
+      // Sorteio ponderado (overall + nota média*3 - convocações*0.5), sem repetir.
+      const pool = daPosicao.slice();
+      const n = Math.min(qtd, pool.length);
+      for(let i=0;i<n;i++){
+        const total = pool.reduce((a,p)=>a+p.peso,0);
+        let r = Math.random()*total;
+        let idx = 0;
+        for(;idx<pool.length;idx++){
+          r -= pool[idx].peso;
+          if(r<=0) break;
+        }
+        idx = Math.min(idx, pool.length-1);
+        selecionadosDaPosicao.push(pool[idx]);
+        pool.splice(idx,1);
       }
-      idx = Math.min(idx, pool.length-1);
-      escolhidos.push(pool[idx]);
-      pool.splice(idx,1);
+    }else{
+      // Critérios determinísticos: ordena e pega os N primeiros.
+      const ordenado = daPosicao.slice().sort((a,b)=>{
+        if(criterio === "menos_convocados") return num(a.convocacoes_qtd) - num(b.convocacoes_qtd);
+        if(criterio === "mais_convocados") return num(b.convocacoes_qtd) - num(a.convocacoes_qtd);
+        if(criterio === "melhores_notas") return num(b.nota_media) - num(a.nota_media);
+        if(criterio === "piores_notas") return num(a.nota_media) - num(b.nota_media);
+        if(criterio === "maiores_overalls") return num(b.overall) - num(a.overall);
+        return 0;
+      });
+      selecionadosDaPosicao = ordenado.slice(0, qtd);
     }
+
+    escolhidos.push(...selecionadosDaPosicao);
   });
 
   return escolhidos;
@@ -18552,11 +18574,16 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field"><label>Data</label><input name="data" type="date"></div>
     <div class="form-field"><label>Modo</label>
       <select name="modo">
-        <option value="manual">Manual — eu escolho os jogadores</option>
-        <option value="automatica">Automática — gerar aleatoriamente</option>
+        <option value="manual">Manual — eu escolho cada jogador</option>
+        <option value="automatica_aleatoria">Automática — sorteio aleatório (ponderado)</option>
+        <option value="automatica_menos_convocados">Automática — menos convocados primeiro</option>
+        <option value="automatica_mais_convocados">Automática — mais convocados primeiro</option>
+        <option value="automatica_melhores_notas">Automática — melhores notas</option>
+        <option value="automatica_piores_notas">Automática — piores notas</option>
+        <option value="automatica_maiores_overalls">Automática — maiores overalls</option>
       </select>
     </div>
-    <div class="form-field" id="selecaoQtdAutoField" style="display:none">
+    <div class="form-field full" id="selecaoQtdAutoField">
       <label>Quantidade por posição</label>
       <div id="selecaoQtdPorPosicaoBox" class="competition-checks"></div>
     </div>
@@ -18579,14 +18606,6 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
           </label>
         `).join("")
       : "<small>Nenhuma posição cadastrada na base ainda. Adicione jogadores com posição primeiro.</small>";
-  }
-
-  const modoSelect = form.querySelector("[name='modo']");
-  const qtdField = $("selecaoQtdAutoField");
-  if(modoSelect && qtdField){
-    modoSelect.addEventListener("change", ()=>{
-      qtdField.style.display = modoSelect.value === "automatica" ? "" : "none";
-    });
   }
 
   form.onsubmit = async e=>{
@@ -18618,13 +18637,14 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
 
       const convocacaoId = res.data.id;
 
-      if(data.modo === "automatica"){
-        const qtdPorPosicao = {};
-        (qtdPorPosicaoBox ? [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")] : []).forEach(input=>{
-          qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
-        });
+      const qtdPorPosicao = {};
+      (qtdPorPosicaoBox ? [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")] : []).forEach(input=>{
+        qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
+      });
 
-        const escolhidos = gerarConvocacaoAutomaticaPorPosicao(qtdPorPosicao);
+      if(data.modo && data.modo.startsWith("automatica")){
+        const criterio = data.modo.replace("automatica_","") || "aleatoria";
+        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio);
 
         if(!escolhidos.length){
           throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
@@ -18649,11 +18669,16 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         renderSelecaoConvocacoesList();
         setStatus(`Convocação criada com ${escolhidos.length} jogadores.`,"ok");
       }else{
+        const totalVagas = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
+        if(totalVagas <= 0){
+          throw new Error("Defina quantas vagas por posição você quer preencher (maior que zero).");
+        }
+
         clearButtonSaving(btn);
         closeModal();
         await loadData();
         renderSelecaoConvocacoesList();
-        openSelecaoConvocadosPickerForm(convocacaoId);
+        openSelecaoConvocadosSlotPicker(convocacaoId, qtdPorPosicao);
       }
     }catch(err){
       clearButtonSaving(btn);
@@ -18665,93 +18690,189 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
   modal.classList.add("active");
 }
 
-var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(convocacaoId){
+var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(convocacaoId, qtdPorPosicaoOpcional){
   const base = getSelecaoBaseForSeason();
   const existingConvocados = getTable("SELECAO_CONVOCADOS").filter(c=>String(c.convocacao_id)===String(convocacaoId));
-  const existingIds = new Set(existingConvocados.map(c=>String(c.jogador_base_id)));
-  const posicoes = [...new Set(base.map(r=>(r.posicao||"").trim()).filter(Boolean))].sort();
 
-  // Guarda quem já foi marcado, mesmo trocando o filtro de posição (senão perde a seleção).
-  const selecionadosAtuais = new Set(existingIds);
+  // Se não veio quantidade por posição (ex: reabrindo uma convocação já existente
+  // pra editar), deduz a partir de quantos jogadores já convocados existem em cada posição.
+  let qtdPorPosicao = qtdPorPosicaoOpcional;
+  const existingByPos = {};
+  existingConvocados.forEach(c=>{
+    const jogador = base.find(b=>String(b.id)===String(c.jogador_base_id));
+    const pos = jogador ? ((jogador.posicao||"").trim() || "SEM POSIÇÃO") : "SEM POSIÇÃO";
+    if(!existingByPos[pos]) existingByPos[pos] = [];
+    existingByPos[pos].push(String(c.jogador_base_id));
+  });
 
-  const renderChecklist = (filtroPosicao)=>{
-    const filtrados = filtroPosicao ? base.filter(r=>(r.posicao||"").trim()===filtroPosicao) : base;
-    const list = $("selecaoPickerList");
-    if(!list) return;
+  if(!qtdPorPosicao){
+    qtdPorPosicao = {};
+    Object.keys(existingByPos).forEach(pos=>{ qtdPorPosicao[pos] = existingByPos[pos].length; });
+  }
 
-    list.innerHTML = filtrados.map(r=>`
-      <label class="comp-check">
-        <input type="checkbox" data-jogador-id="${r.id}" ${selecionadosAtuais.has(String(r.id))?"checked":""}>
-        <strong>${escapeHtml(r.posicao||"-")}</strong> — ${escapeHtml(r.nome||"-")} — ${escapeHtml(r.time||"-")} (OVR ${escapeHtml(String(r.overall||"-"))})
-      </label>
-    `).join("") || "<small>Nenhum jogador nessa posição.</small>";
+  const slots = {};
+  Object.keys(qtdPorPosicao).forEach(pos=>{
+    const qtd = Number(qtdPorPosicao[pos])||0;
+    if(qtd<=0) return;
+    const jaConvocados = existingByPos[pos] || [];
+    const arr = [];
+    for(let i=0;i<qtd;i++) arr.push(jaConvocados[i] || null);
+    slots[pos] = arr;
+  });
 
-    list.querySelectorAll("input[type=checkbox]").forEach(chk=>{
-      chk.onchange = ()=>{
-        const id = chk.dataset.jogadorId;
-        if(chk.checked) selecionadosAtuais.add(id); else selecionadosAtuais.delete(id);
-      };
-    });
-  };
+  selecaoSlotState = { convocacaoId, slots, base };
+  selecaoSlotPickerOpenFor = null;
 
   modalTitle.textContent = "Escolher jogadores convocados";
   modalBox.classList.add("wide");
   form.className = "form-grid";
 
   form.innerHTML = `
-    <div class="form-field">
-      <label>Filtrar por posição</label>
-      <select id="selecaoPickerPosFilter">
-        <option value="">Todas as posições (${base.length} jogadores)</option>
-        ${posicoes.map(p=>`<option value="${escapeAttr(p)}">${escapeHtml(p)} (${base.filter(r=>(r.posicao||"").trim()===p).length})</option>`).join("")}
-      </select>
-    </div>
-    <div class="competition-checks" id="selecaoPickerList" style="max-height:380px;overflow:auto"></div>
+    <div id="selecaoSlotsContainer"></div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
-      <button class="gold-btn" id="saveBtn">Salvar convocados</button>
+      <button class="gold-btn" type="button" id="saveSlotsBtn" onclick="salvarSlotsConvocacao()">Salvar convocados</button>
     </div>
   `;
 
-  renderChecklist("");
-  const filterSelect = $("selecaoPickerPosFilter");
-  if(filterSelect) filterSelect.onchange = ()=>renderChecklist(filterSelect.value);
-
-  form.onsubmit = async e=>{
-    e.preventDefault();
-    const btn = $("saveBtn");
-    if(btn && btn.disabled) return;
-    setButtonSaving(btn);
-
-    try{
-      const selecionados = base.filter(r=>selecionadosAtuais.has(String(r.id)));
-
-      const res = await apiPost({
-        action:"saveSelecaoConvocados",
-        convocacao_id: convocacaoId,
-        jogadores: selecionados.map(j=>({
-          jogador_base_id: j.id,
-          nome: j.nome,
-          time: j.time,
-          idade_na_convocacao: j.idade,
-          overall_na_convocacao: j.overall
-        }))
-      });
-      if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar convocados.");
-
-      clearButtonSaving(btn);
-      closeModal();
-      await loadData();
-      renderSelecaoConvocacoesList();
-      setStatus(`${selecionados.length} jogadores convocados salvos.`,"ok");
-    }catch(err){
-      clearButtonSaving(btn);
-      setStatus("Erro ao salvar convocados: "+err.message,"error");
-      console.error(err);
-    }
-  };
-
+  renderSelecaoSlotsUI();
   modal.classList.add("active");
+}
+
+var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
+  const container = $("selecaoSlotsContainer");
+  if(!container) return;
+
+  const { slots, base } = selecaoSlotState;
+  const posicoesComVaga = Object.keys(slots);
+
+  if(!posicoesComVaga.length){
+    container.innerHTML = emptyCard("Nenhuma vaga definida. Feche e crie a convocação novamente definindo quantidade por posição.");
+    return;
+  }
+
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>posicoesComVaga.includes(p));
+  const extras = posicoesComVaga.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const ordemFinal = [...ordenadas, ...extras];
+
+  container.innerHTML = ordemFinal.map(pos=>{
+    const arr = slots[pos];
+    const preenchidos = arr.filter(Boolean).length;
+
+    const slotsHtml = arr.map((jogId, idx)=>{
+      const jogador = jogId ? base.find(b=>String(b.id)===String(jogId)) : null;
+
+      if(jogador){
+        return `<div class="selecao-slot filled">
+          <div class="selecao-avatar" style="width:56px;height:56px">${jogador.foto_url?`<img src="${escapeAttr(jogador.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
+          <strong>${escapeHtml(jogador.nome||"-")}</strong>
+          <small>${escapeHtml(jogador.time||"-")} • OVR ${escapeHtml(String(jogador.overall||"-"))}</small>
+          <div class="selecao-slot-actions">
+            <button type="button" onclick="abrirEscolhaSlot('${escapeAttr(pos)}',${idx})">Trocar</button>
+            <button type="button" class="delete" onclick="removerSlotConvocacao('${escapeAttr(pos)}',${idx})">Remover</button>
+          </div>
+        </div>`;
+      }
+
+      return `<button type="button" class="selecao-slot empty" onclick="abrirEscolhaSlot('${escapeAttr(pos)}',${idx})">+ Escolher</button>`;
+    }).join("");
+
+    const painelCandidatos = (selecaoSlotPickerOpenFor && selecaoSlotPickerOpenFor.posicao===pos)
+      ? renderSelecaoCandidatosHtml(pos)
+      : "";
+
+    return `
+      <div class="selecao-posicao-grupo">
+        <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${preenchidos}/${arr.length})</small></h4>
+        <div class="selecao-slots-row">${slotsHtml}</div>
+        ${painelCandidatos}
+      </div>
+    `;
+  }).join("");
+}
+
+var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
+  const { slots, base } = selecaoSlotState;
+  const idxAberto = selecaoSlotPickerOpenFor.index;
+
+  const usados = new Set();
+  Object.entries(slots).forEach(([p,arr])=>{
+    arr.forEach((id,i)=>{
+      if(id && !(p===pos && i===idxAberto)) usados.add(String(id));
+    });
+  });
+
+  const candidatos = base.filter(r=>((r.posicao||"").trim()===pos) && !usados.has(String(r.id)));
+
+  return `<div class="selecao-candidatos-panel">
+    ${candidatos.map(c=>`
+      <button type="button" class="selecao-candidato-card" onclick="escolherCandidatoSlot('${c.id}')">
+        <div class="selecao-avatar" style="width:48px;height:48px">${c.foto_url?`<img src="${escapeAttr(c.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
+        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small></div>
+      </button>
+    `).join("") || "<small>Nenhum jogador disponível nessa posição (todos já usados em outra vaga, ou base vazia).</small>"}
+    <button type="button" class="ghost-btn" onclick="fecharEscolhaSlot()">Cancelar</button>
+  </div>`;
+}
+
+var abrirEscolhaSlot = function abrirEscolhaSlot(pos, idx){
+  selecaoSlotPickerOpenFor = {posicao:pos, index:idx};
+  renderSelecaoSlotsUI();
+}
+
+var fecharEscolhaSlot = function fecharEscolhaSlot(){
+  selecaoSlotPickerOpenFor = null;
+  renderSelecaoSlotsUI();
+}
+
+var escolherCandidatoSlot = function escolherCandidatoSlot(jogadorId){
+  if(!selecaoSlotPickerOpenFor) return;
+  const {posicao, index} = selecaoSlotPickerOpenFor;
+  selecaoSlotState.slots[posicao][index] = jogadorId;
+  selecaoSlotPickerOpenFor = null;
+  renderSelecaoSlotsUI();
+}
+
+var removerSlotConvocacao = function removerSlotConvocacao(pos, idx){
+  selecaoSlotState.slots[pos][idx] = null;
+  renderSelecaoSlotsUI();
+}
+
+var salvarSlotsConvocacao = async function salvarSlotsConvocacao(){
+  const btn = $("saveSlotsBtn");
+  if(btn && btn.disabled) return;
+  setButtonSaving(btn);
+
+  try{
+    const { convocacaoId, slots, base } = selecaoSlotState;
+    const jogadorIds = [];
+    Object.values(slots).forEach(arr=>arr.forEach(id=>{ if(id) jogadorIds.push(id); }));
+
+    const selecionados = base.filter(r=>jogadorIds.includes(String(r.id)) || jogadorIds.includes(r.id));
+
+    const res = await apiPost({
+      action:"saveSelecaoConvocados",
+      convocacao_id: convocacaoId,
+      jogadores: selecionados.map(j=>({
+        jogador_base_id: j.id,
+        nome: j.nome,
+        time: j.time,
+        idade_na_convocacao: j.idade,
+        overall_na_convocacao: j.overall
+      }))
+    });
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar convocados.");
+
+    clearButtonSaving(btn);
+    closeModal();
+    await loadData();
+    renderSelecaoConvocacoesList();
+    setStatus(`${selecionados.length} jogadores convocados salvos.`,"ok");
+  }catch(err){
+    clearButtonSaving(btn);
+    setStatus("Erro ao salvar convocados: "+err.message,"error");
+    console.error(err);
+  }
 }
 
 var renderSelecaoConvocacoesPage = function renderSelecaoConvocacoesPage(){
@@ -18815,7 +18936,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         </div>
 
         <div class="entity-actions">
-          <button onclick="openSelecaoConvocadosPickerForm('${c.id}')">Editar convocados</button>
+          <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
           <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
           <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
         </div>
@@ -18891,7 +19012,12 @@ window.deleteSelecaoJogador = deleteSelecaoJogador;
 window.searchTeamsForSelecao = searchTeamsForSelecao;
 window.selectSelecaoTeam = selectSelecaoTeam;
 window.openSelecaoConvocacaoForm = openSelecaoConvocacaoForm;
-window.openSelecaoConvocadosPickerForm = openSelecaoConvocadosPickerForm;
+window.openSelecaoConvocadosSlotPicker = openSelecaoConvocadosSlotPicker;
+window.abrirEscolhaSlot = abrirEscolhaSlot;
+window.fecharEscolhaSlot = fecharEscolhaSlot;
+window.escolherCandidatoSlot = escolherCandidatoSlot;
+window.removerSlotConvocacao = removerSlotConvocacao;
+window.salvarSlotsConvocacao = salvarSlotsConvocacao;
 window.saveConvocacaoNotas = saveConvocacaoNotas;
 window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;
 window.renderSelecaoBrasileira = renderSelecaoBrasileira;
