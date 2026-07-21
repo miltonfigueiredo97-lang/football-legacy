@@ -2477,6 +2477,8 @@ var renderPageById = function renderPageById(pageId, force=false){
     try{ renderMuseu(); }catch(err){ console.error("Erro em renderMuseu", err); }
   }else if(page === "selecaobrasileira"){
     try{ renderSelecaoBrasileira(); }catch(err){ console.error("Erro em renderSelecaoBrasileira", err); }
+  }else if(page === "selecaoconvocacoes"){
+    try{ renderSelecaoConvocacoesPage(); }catch(err){ console.error("Erro em renderSelecaoConvocacoesPage", err); }
   }
 
   renderedPages[page] = true;
@@ -12177,7 +12179,8 @@ var FL_pageIdsV3784 = function FL_pageIdsV3784(){
     "records",
     "clubes",
     "museu",
-    "selecaobrasileira"
+    "selecaobrasileira",
+    "selecaoconvocacoes"
   ];
 }
 
@@ -18191,6 +18194,8 @@ var getSelecaoBaseForSeason = function getSelecaoBaseForSeason(seasonId=selecaoS
   return getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_temporada_id)===String(seasonId));
 }
 
+var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","CA"];
+
 var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const select = $("selecaoSeasonSelect");
   if(!select) return;
@@ -18199,8 +18204,7 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
 
   if(!seasons.length){
     select.innerHTML = `<option value="">Nenhuma temporada</option>`;
-    if($("selecaoBaseList")) $("selecaoBaseList").innerHTML = emptyCard("Crie uma temporada primeiro.");
-    if($("selecaoConvocacoesList")) $("selecaoConvocacoesList").innerHTML = "";
+    if($("selecaoBaseGrouped")) $("selecaoBaseGrouped").innerHTML = emptyCard("Crie uma temporada primeiro.");
     return;
   }
 
@@ -18212,8 +18216,7 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
 
   select.onchange = ()=>{
     selecaoSeasonId = select.value;
-    renderSelecaoBaseList();
-    renderSelecaoConvocacoesList();
+    renderSelecaoBaseGrouped();
   };
 
   const addBtn = $("selecaoAddJogadorBtn");
@@ -18222,26 +18225,17 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const copyBtn = $("selecaoCopyPrevBtn");
   if(copyBtn) copyBtn.onclick = selecaoCopyPrevSeason;
 
-  const novaConvBtn = $("selecaoNovaConvocacaoBtn");
-  if(novaConvBtn) novaConvBtn.onclick = ()=>openSelecaoConvocacaoForm();
-
-  renderSelecaoBaseList();
-  renderSelecaoConvocacoesList();
+  renderSelecaoBaseGrouped();
 }
 
-var renderSelecaoBaseList = function renderSelecaoBaseList(){
-  const el = $("selecaoBaseList");
-  if(!el) return;
-
-  const rows = getSelecaoBaseForSeason();
-
-  el.innerHTML = rows.map(r=>`
+var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
+  return `
     <article class="entity-card">
       <div class="entity-top">
         <div class="selecao-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
         <div>
           <h3>${escapeHtml(r.nome||"-")}</h3>
-          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • <strong>${escapeHtml(r.posicao||"-")}</strong> • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
+          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
         </div>
       </div>
       <small>Convocações: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
@@ -18250,7 +18244,43 @@ var renderSelecaoBaseList = function renderSelecaoBaseList(){
         <button class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
       </div>
     </article>
-  `).join("") || emptyCard("Nenhum jogador na base desta temporada ainda.");
+  `;
+}
+
+// FIX V3.9.1: base organizada por posição — goleiros primeiro, depois zagueiros,
+// laterais, volantes, meias, atacantes (nessa ordem). Dentro de cada posição os
+// jogadores quebram linha normalmente (o "até 7 por linha" é só o efeito natural
+// da grade responsiva numa tela cheia). Posições fora da lista conhecida aparecem
+// no final, agrupadas por nome.
+var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
+  const el = $("selecaoBaseGrouped");
+  if(!el) return;
+
+  const rows = getSelecaoBaseForSeason();
+
+  if(!rows.length){
+    el.innerHTML = emptyCard("Nenhum jogador na base desta temporada ainda.");
+    return;
+  }
+
+  const grupos = {};
+  rows.forEach(r=>{
+    const pos = (r.posicao||"").trim().toUpperCase() || "SEM POSIÇÃO";
+    if(!grupos[pos]) grupos[pos] = [];
+    grupos[pos].push(r);
+  });
+
+  const posicoesPresentes = Object.keys(grupos);
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>posicoesPresentes.includes(p));
+  const extras = posicoesPresentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const ordemFinal = [...ordenadas, ...extras];
+
+  el.innerHTML = ordemFinal.map(pos=>`
+    <div class="selecao-posicao-grupo">
+      <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
+      <div class="cards-list">${grupos[pos].map(selecaoJogadorCardHtml).join("")}</div>
+    </div>
+  `).join("");
 }
 
 var searchTeamsForSelecao = async function searchTeamsForSelecao(){
@@ -18379,7 +18409,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
       clearButtonSaving(btn);
       closeModal();
       await loadData();
-      renderSelecaoBrasileira();
+      renderSelecaoBaseGrouped();
       setStatus("Jogador salvo na base.","ok");
     }catch(err){
       clearButtonSaving(btn);
@@ -18397,7 +18427,7 @@ var deleteSelecaoJogador = async function deleteSelecaoJogador(id){
     const res = await apiPost({action:"delete", table:"SELECAO_BASE_TEMPORADA", id});
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao excluir.");
     await loadData();
-    renderSelecaoBrasileira();
+    renderSelecaoBaseGrouped();
     setStatus("Jogador removido da base.","ok");
   }catch(err){
     setStatus("Erro ao excluir jogador: "+err.message,"error");
@@ -18423,7 +18453,7 @@ var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
     });
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao copiar base.");
     await loadData();
-    renderSelecaoBrasileira();
+    renderSelecaoBaseGrouped();
     setStatus(`Base copiada de ${prev.temporada} (${res.data?.copiados||0} jogadores).`,"ok");
   }catch(err){
     setStatus("Erro ao copiar base: "+err.message,"error");
@@ -18577,13 +18607,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         clearButtonSaving(btn);
         closeModal();
         await loadData();
-        renderSelecaoBrasileira();
+        renderSelecaoConvocacoesList();
         setStatus(`Convocação criada com ${escolhidos.length} jogadores.`,"ok");
       }else{
         clearButtonSaving(btn);
         closeModal();
         await loadData();
-        renderSelecaoBrasileira();
+        renderSelecaoConvocacoesList();
         openSelecaoConvocadosPickerForm(convocacaoId);
       }
     }catch(err){
@@ -18673,7 +18703,7 @@ var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(c
       clearButtonSaving(btn);
       closeModal();
       await loadData();
-      renderSelecaoBrasileira();
+      renderSelecaoConvocacoesList();
       setStatus(`${selecionados.length} jogadores convocados salvos.`,"ok");
     }catch(err){
       clearButtonSaving(btn);
@@ -18683,6 +18713,35 @@ var openSelecaoConvocadosPickerForm = function openSelecaoConvocadosPickerForm(c
   };
 
   modal.classList.add("active");
+}
+
+var renderSelecaoConvocacoesPage = function renderSelecaoConvocacoesPage(){
+  const select = $("selecaoConvSeasonSelect");
+  if(!select) return;
+
+  const seasons = getSelecaoSeasonRecords();
+
+  if(!seasons.length){
+    select.innerHTML = `<option value="">Nenhuma temporada</option>`;
+    if($("selecaoConvocacoesList")) $("selecaoConvocacoesList").innerHTML = emptyCard("Crie uma temporada primeiro.");
+    return;
+  }
+
+  if(!selecaoSeasonId || !seasons.find(s=>String(s.id)===String(selecaoSeasonId))){
+    selecaoSeasonId = String(seasons[0].id);
+  }
+
+  select.innerHTML = seasons.map(s=>`<option value="${s.id}" ${String(s.id)===String(selecaoSeasonId)?"selected":""}>${escapeHtml(s.temporada||"-")}</option>`).join("");
+
+  select.onchange = ()=>{
+    selecaoSeasonId = select.value;
+    renderSelecaoConvocacoesList();
+  };
+
+  const novaConvBtn = $("selecaoNovaConvocacaoBtn");
+  if(novaConvBtn) novaConvBtn.onclick = ()=>openSelecaoConvocacaoForm();
+
+  renderSelecaoConvocacoesList();
 }
 
 var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
@@ -18767,7 +18826,7 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
     const res = await apiPost({action:"updateNotasConvocacao", notas});
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar notas.");
     await loadData();
-    renderSelecaoBrasileira();
+    renderSelecaoConvocacoesList();
     setStatus("Notas da convocação salvas. Base atualizada.","ok");
   }catch(err){
     setStatus("Erro ao salvar notas: "+err.message,"error");
@@ -18780,7 +18839,7 @@ var deleteSelecaoConvocacao = async function deleteSelecaoConvocacao(id){
     const res = await apiPost({action:"delete", table:"SELECAO_CONVOCACOES", id});
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao excluir.");
     await loadData();
-    renderSelecaoBrasileira();
+    renderSelecaoConvocacoesList();
     setStatus("Convocação excluída.","ok");
   }catch(err){
     setStatus("Erro ao excluir convocação: "+err.message,"error");
@@ -18796,3 +18855,5 @@ window.openSelecaoConvocadosPickerForm = openSelecaoConvocadosPickerForm;
 window.saveConvocacaoNotas = saveConvocacaoNotas;
 window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;
 window.renderSelecaoBrasileira = renderSelecaoBrasileira;
+window.renderSelecaoConvocacoesPage = renderSelecaoConvocacoesPage;
+window.renderSelecaoBaseGrouped = renderSelecaoBaseGrouped;
