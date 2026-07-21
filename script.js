@@ -18323,6 +18323,26 @@ var selectSelecaoTeam = function selectSelecaoTeam(team){
   }
 }
 
+var buscarFotoAutomaticaSelecao = async function buscarFotoAutomaticaSelecao(){
+  const nomeInput = form.querySelector('[name="nome"]');
+  const fotoInput = form.querySelector('[name="foto_url"]');
+  const fotoPreview = $("selecaoFotoPreview");
+  const nome = nomeInput?.value?.trim();
+
+  if(!nome){ setStatus("Digite o nome do jogador antes de buscar a foto.","error"); return; }
+
+  setStatus("Buscando foto...","");
+  try{
+    const url = await FL_fetchPlayerPhotoV3790(nome);
+    if(!url){ setStatus("Nenhuma foto encontrada para esse nome.","error"); return; }
+    if(fotoInput) fotoInput.value = url;
+    if(fotoPreview) fotoPreview.innerHTML = `<img src="${escapeAttr(url)}" style="width:64px;height:64px;object-fit:cover;border-radius:12px" onerror="this.style.display='none'">`;
+    setStatus("Foto encontrada.","ok");
+  }catch(err){
+    setStatus("Erro ao buscar foto: "+err.message,"error");
+  }
+}
+
 var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
   if(!selecaoSeasonId){ alert("Selecione uma temporada primeiro."); return; }
 
@@ -18354,11 +18374,30 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
     </div>
     <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
     <div class="form-field"><label>Overall</label><input name="overall" type="number" value="${escapeAttr(existing?.overall||"")}"></div>
+    <div class="form-field full">
+      <label>Foto do jogador</label>
+      <div class="file-row">
+        <input name="foto_url" value="${escapeAttr(existing?.foto_url||"")}" placeholder="URL da foto (automática, importada ou colada manualmente)">
+        <button type="button" class="upload-btn" onclick="triggerUpload('foto_url')">Importar</button>
+        <button type="button" class="ghost-btn" onclick="buscarFotoAutomaticaSelecao()">Buscar automática</button>
+      </div>
+      <input type="file" id="file_foto_url" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadToCloudinary(event,'foto_url')">
+      <div id="selecaoFotoPreview" style="margin-top:8px">${existing?.foto_url ? `<img src="${escapeAttr(existing.foto_url)}" style="width:64px;height:64px;object-fit:cover;border-radius:12px" onerror="this.style.display='none'">` : ""}</div>
+    </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
       <button class="gold-btn" id="saveBtn">${existing?"Salvar edição":"Adicionar"}</button>
     </div>
   `;
+
+  const fotoInput = form.querySelector('[name="foto_url"]');
+  const fotoPreview = $("selecaoFotoPreview");
+  if(fotoInput && fotoPreview){
+    fotoInput.addEventListener("input", ()=>{
+      const url = fotoInput.value.trim();
+      fotoPreview.innerHTML = url ? `<img src="${escapeAttr(url)}" style="width:64px;height:64px;object-fit:cover;border-radius:12px" onerror="this.style.display='none'">` : "";
+    });
+  }
 
   form.onsubmit = async e=>{
     e.preventDefault();
@@ -18374,7 +18413,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
       const time = selecaoSelectedTeam?.name || typedTeam || "";
       const escudo = selecaoSelectedTeam?.badge || existing?.escudo_time_url || "";
 
-      let foto = existing?.foto_url || "";
+      let foto = (data.foto_url||"").trim() || existing?.foto_url || "";
       if(!foto){
         try{ foto = await FL_fetchPlayerPhotoV3790(data.nome); }catch(errFoto){}
       }
@@ -18847,6 +18886,7 @@ var deleteSelecaoConvocacao = async function deleteSelecaoConvocacao(id){
 }
 
 window.openSelecaoJogadorForm = openSelecaoJogadorForm;
+window.buscarFotoAutomaticaSelecao = buscarFotoAutomaticaSelecao;
 window.deleteSelecaoJogador = deleteSelecaoJogador;
 window.searchTeamsForSelecao = searchTeamsForSelecao;
 window.selectSelecaoTeam = selectSelecaoTeam;
