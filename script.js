@@ -18501,7 +18501,7 @@ var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
   }
 }
 
-var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, idadeAlvo){
+var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, idadeAlvo, overallBalance){
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
 
@@ -18552,7 +18552,14 @@ var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosic
         if(criterio === "maiores_overalls") return num(b.overall) - num(a.overall);
         if(criterio === "mais_velhos") return num(b.idade) - num(a.idade);
         if(criterio === "mais_novos") return num(a.idade) - num(b.idade);
-        if(criterio === "idade_media") return Math.abs(num(a.idade)-alvo) - Math.abs(num(b.idade)-alvo);
+        if(criterio === "idade_media"){
+          // Equilibra a proximidade da idade alvo com a preferência de overall,
+          // sem deixar o overall dominar completamente a escolha por idade.
+          const direcao = overallBalance === "maior" ? 1 : (overallBalance === "menor" ? -1 : 0);
+          const scoreA = Math.abs(num(a.idade)-alvo) - (direcao * 0.15 * num(a.overall));
+          const scoreB = Math.abs(num(b.idade)-alvo) - (direcao * 0.15 * num(b.overall));
+          return scoreA - scoreB;
+        }
         return 0;
       });
       selecionadosDaPosicao = ordenado.slice(0, qtd);
@@ -18594,6 +18601,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       <label>Idade média desejada</label>
       <input name="idade_media" type="number" min="15" max="45" value="25">
       <small>Escolhe, posição por posição, os jogadores com idade mais próxima desse valor. Se faltar jogador exatamente nessa idade, ele pega o mais próximo disponível.</small>
+      <label style="margin-top:8px">Também equilibrar com</label>
+      <select name="overall_balance">
+        <option value="none">Nenhum — só a idade</option>
+        <option value="maior">Maior overall possível</option>
+        <option value="menor">Menor overall possível</option>
+      </select>
+      <small>Entre jogadores com idade parecida, prioriza quem tem overall maior (ou menor) — sem abrir mão da idade alvo por completo.</small>
     </div>
     <div class="form-field full" id="selecaoQtdAutoField">
       <label>Quantidade por posição</label>
@@ -18664,7 +18678,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
 
       if(data.modo && data.modo.startsWith("automatica")){
         const criterio = data.modo.replace("automatica_","") || "aleatoria";
-        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media);
+        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media, data.overall_balance);
 
         if(!escolhidos.length){
           throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
