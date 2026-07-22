@@ -19012,6 +19012,33 @@ var renderSelecaoConvocacoesPage = function renderSelecaoConvocacoesPage(){
   renderSelecaoConvocacoesList();
 }
 
+var SELECAO_MODO_LABELS = {
+  manual: "Manual",
+  automatica_aleatoria: "Sorteio aleatório",
+  automatica_menos_convocados: "Menos convocados primeiro",
+  automatica_mais_convocados: "Mais convocados primeiro",
+  automatica_melhores_notas: "Melhores notas",
+  automatica_piores_notas: "Piores notas",
+  automatica_maiores_overalls: "Maiores overalls",
+  automatica_mais_velhos: "Só os mais velhos",
+  automatica_mais_novos: "Só os mais novos",
+  automatica_idade_media: "Por idade média"
+};
+
+var formatSelecaoModo = function formatSelecaoModo(modo){
+  return SELECAO_MODO_LABELS[modo] || modo || "-";
+}
+
+var formatSelecaoData = function formatSelecaoData(dataStr){
+  const raw = String(dataStr||"").trim();
+  if(!raw) return "";
+  // Aceita tanto "2026-01-20" quanto timestamps ISO completos ("2026-01-20T08:00:00.000Z").
+  const soData = raw.split("T")[0];
+  const partes = soData.split("-");
+  if(partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  return soData;
+}
+
 var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
   const el = $("selecaoConvocacoesList");
   if(!el) return;
@@ -19053,10 +19080,12 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         <div class="selecao-conv-lista">
           ${grupos[pos].map(j=>`
             <div class="selecao-conv-jogador">
-              <div class="selecao-avatar" style="width:52px;height:52px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
-              <div class="selecao-conv-info">
-                <strong>${escapeHtml(j.nome)}</strong>
-                <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
+              <div class="selecao-conv-jogador-topo">
+                <div class="selecao-avatar" style="width:52px;height:52px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+                <div class="selecao-conv-info">
+                  <strong>${escapeHtml(j.nome)}</strong>
+                  <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
+                </div>
               </div>
               <div class="selecao-conv-notas">
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
@@ -19075,7 +19104,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         <div class="entity-top">
           <div>
             <h3>${escapeHtml(c.nome_convocacao||"-")}</h3>
-            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(c.modo||"-")}${c.data?(" • "+escapeHtml(c.data)):""} • ${convocadosComBase.length} convocados</small>
+            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(formatSelecaoModo(c.modo))}${c.data?(" • "+escapeHtml(formatSelecaoData(c.data))):""} • ${convocadosComBase.length} convocados</small>
           </div>
         </div>
         ${c.competicao_ou_contexto ? `<small>${escapeHtml(c.competicao_ou_contexto)}</small>` : ""}
