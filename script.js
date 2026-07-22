@@ -19073,12 +19073,10 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         <div class="selecao-conv-lista">
           ${grupos[pos].map(j=>`
             <div class="selecao-conv-jogador">
-              <div class="selecao-conv-jogador-topo">
-                <div class="selecao-avatar" style="width:52px;height:52px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
-                <div class="selecao-conv-info">
-                  <strong>${escapeHtml(j.nome)}</strong>
-                  <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
-                </div>
+              <div class="selecao-avatar" style="width:64px;height:64px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+              <div class="selecao-conv-info">
+                <strong>${escapeHtml(j.nome)}</strong>
+                <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
               </div>
               <div class="selecao-conv-notas">
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
@@ -19101,13 +19099,16 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
 
     return `
       <article class="entity-card">
-        <div class="entity-top">
+        <div class="selecao-conv-header">
           <div>
-            <h3>${escapeHtml(c.nome_convocacao||"-")}</h3>
-            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(formatSelecaoModo(c.modo))}${c.data?(" • "+escapeHtml(formatSelecaoData(c.data))):""} • ${convocadosComBase.length} convocados${idadeMediaConv!==null?` • idade média ${idadeMediaConv}`:""}${overallMedioConv!==null?` • OVR médio ${overallMedioConv}`:""}</small>
+            <h2 class="selecao-conv-titulo">${escapeHtml(c.nome_convocacao||"-")}</h2>
+            <small class="selecao-conv-sub">${escapeHtml(c.tipo||"-")}${c.tipo&&c.modo?" • ":""}${escapeHtml(formatSelecaoModo(c.modo))}${c.competicao_ou_contexto?` • ${escapeHtml(c.competicao_ou_contexto)}`:""}</small>
+          </div>
+          <div class="selecao-conv-medias">
+            ${idadeMediaConv!==null ? `<div class="selecao-conv-media-box"><strong>${idadeMediaConv}</strong><span>Idade média</span></div>` : ""}
+            ${overallMedioConv!==null ? `<div class="selecao-conv-media-box"><strong>${overallMedioConv}</strong><span>Overall médio</span></div>` : ""}
           </div>
         </div>
-        ${c.competicao_ou_contexto ? `<small>${escapeHtml(c.competicao_ou_contexto)}</small>` : ""}
 
         <div id="convocadosGrid_${c.id}">${rosterHtml}</div>
 
