@@ -18764,7 +18764,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         closeModal();
         await loadData();
         renderSelecaoConvocacoesList();
-        setStatus(`Convocação criada com ${escolhidos.length} jogadores.`,"ok");
+        const faltou = totalVagasPedidas - escolhidos.length;
+        setStatus(
+          faltou > 0
+            ? `Convocação criada com ${escolhidos.length} jogadores (faltaram ${faltou} — não havia gente suficiente na base para alguma posição).`
+            : `Convocação criada com ${escolhidos.length} jogadores.`,
+          faltou > 0 ? "error" : "ok"
+        );
       }else{
         const totalVagas = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
         if(totalVagas <= 0){
@@ -19006,31 +19012,70 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
   if(!el) return;
 
   const convocacoes = getTable("SELECAO_CONVOCACOES").filter(c=>String(c.carreira_temporada_id)===String(selecaoSeasonId));
+  const baseTodo = getTable("SELECAO_BASE_TEMPORADA");
 
   el.innerHTML = convocacoes.map(c=>{
     const convocados = getTable("SELECAO_CONVOCADOS").filter(j=>String(j.convocacao_id)===String(c.id));
+
+    // Junta cada convocado com os dados da base (foto, escudo, posição) pelo jogador_base_id.
+    const convocadosComBase = convocados.map(j=>{
+      const jogadorBase = baseTodo.find(b=>String(b.id)===String(j.jogador_base_id));
+      return {
+        convocadoId: j.id,
+        nome: j.nome || (jogadorBase && jogadorBase.nome) || "-",
+        time: j.time || (jogadorBase && jogadorBase.time) || "-",
+        overall: j.overall_na_convocacao || (jogadorBase && jogadorBase.overall) || "-",
+        posicao: (jogadorBase && jogadorBase.posicao) || "SEM POSIÇÃO",
+        foto_url: jogadorBase ? jogadorBase.foto_url : "",
+        escudo_time_url: jogadorBase ? jogadorBase.escudo_time_url : "",
+        nota: j.nota, foi_bem: j.foi_bem, foi_mal: j.foi_mal, observacao: j.observacao
+      };
+    });
+
+    const grupos = {};
+    convocadosComBase.forEach(j=>{
+      if(!grupos[j.posicao]) grupos[j.posicao] = [];
+      grupos[j.posicao].push(j);
+    });
+    const presentes = Object.keys(grupos);
+    const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+    const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+    const ordemFinal = [...ordenadas, ...extras];
+
+    const rosterHtml = ordemFinal.map(pos=>`
+      <div class="selecao-posicao-grupo">
+        <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
+        <div class="selecao-conv-lista">
+          ${grupos[pos].map(j=>`
+            <div class="selecao-conv-jogador">
+              <div class="selecao-avatar" style="width:52px;height:52px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+              <div class="selecao-conv-info">
+                <strong>${escapeHtml(j.nome)}</strong>
+                <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
+              </div>
+              <div class="selecao-conv-notas">
+                <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
+                <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}"> 👍</label>
+                <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}"> 👎</label>
+                <input name="obs_${j.convocadoId}" placeholder="Observação" title="Observação">
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `).join("") || "<small>Nenhum jogador convocado ainda. Clique em \"Editar convocados\" para escolher.</small>";
 
     return `
       <article class="entity-card">
         <div class="entity-top">
           <div>
             <h3>${escapeHtml(c.nome_convocacao||"-")}</h3>
-            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(c.modo||"-")}${c.data?(" • "+escapeHtml(c.data)):""}</small>
+            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(c.modo||"-")}${c.data?(" • "+escapeHtml(c.data)):""} • ${convocadosComBase.length} convocados</small>
           </div>
         </div>
         ${c.competicao_ou_contexto ? `<small>${escapeHtml(c.competicao_ou_contexto)}</small>` : ""}
 
-        <div class="season-stats-grid" id="convocadosGrid_${c.id}">
-          ${convocados.map(j=>`
-            <div class="season-stats-row">
-              <strong>${escapeHtml(j.nome||"-")}</strong>
-              <input name="nota_${j.id}" type="number" step="0.1" placeholder="Nota">
-              <label><input type="checkbox" name="bem_${j.id}"> Bom</label>
-              <label><input type="checkbox" name="mal_${j.id}"> Ruim</label>
-              <input name="obs_${j.id}" placeholder="Observação">
-            </div>
-          `).join("") || "<small>Nenhum jogador convocado ainda.</small>"}
-        </div>
+        <div id="convocadosGrid_${c.id}">${rosterHtml}</div>
 
         <div class="entity-actions">
           <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
