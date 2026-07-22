@@ -19073,15 +19073,13 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         <div class="selecao-conv-lista">
           ${grupos[pos].map(j=>`
             <div class="selecao-conv-jogador">
-              <div class="selecao-avatar" style="width:64px;height:64px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
-              <div class="selecao-conv-info">
-                <strong>${escapeHtml(j.nome)}</strong>
-                <small>${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:12px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} • OVR ${escapeHtml(String(j.overall))}</small>
-              </div>
-              <div class="selecao-conv-notas">
+              <strong class="selecao-conv-nome">${escapeHtml(j.nome)}</strong>
+              <div class="selecao-conv-linha">
+                <div class="selecao-avatar" style="width:34px;height:34px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+                <span class="selecao-conv-time">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:11px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} · ${escapeHtml(String(j.overall))}</span>
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
-                <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}"> 👍</label>
-                <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}"> 👎</label>
+                <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
+                <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
                 <input name="obs_${j.convocadoId}" placeholder="Observação" title="Observação">
               </div>
             </div>
