@@ -10268,7 +10268,12 @@ var FL_keyV3778 = function FL_keyV3778(value){
 var FL_isBallonModalV3778 = function FL_isBallonModalV3778(){
   const title = (typeof modalTitle !== "undefined" && modalTitle ? modalTitle.textContent : "").toLowerCase();
   const txt = (typeof form !== "undefined" && form ? form.textContent : "").toLowerCase();
-  return title.includes("bola de ouro") || txt.includes("ranking bola de ouro") || (txt.includes("jogador") && txt.includes("valor"));
+  // FIX V3.8.14: removido o critério genérico "contém jogador E valor em algum
+  // lugar do texto" — todo formulário real da Bola de Ouro já define o título
+  // com "Bola de Ouro" explicitamente, então esse fallback só causava falsos
+  // positivos sequestrando o submit de QUALQUER outro formulário do site que
+  // por coincidência mencionasse as duas palavras (ex: Seleção Brasileira).
+  return title.includes("bola de ouro") || txt.includes("ranking bola de ouro");
 }
 
 var FL_fieldTypeV3778 = function FL_fieldTypeV3778(input){
@@ -18604,7 +18609,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field" id="selecaoIdadeMediaField" style="display:none">
       <label>Idade média desejada</label>
       <input name="idade_media" type="number" min="15" max="45" value="25">
-      <small>Escolhe, posição por posição, os jogadores com idade mais próxima desse valor. Se faltar jogador exatamente nessa idade, ele pega o mais próximo disponível.</small>
+      <small>Escolhe, posição por posição, os jogadores com idade mais próxima da idade escolhida acima. Se faltar jogador exatamente nessa idade, ele pega o mais próximo disponível.</small>
       <label style="margin-top:8px">Também equilibrar com</label>
       <select name="overall_balance">
         <option value="none">Nenhum — só a idade</option>
