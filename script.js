@@ -18501,7 +18501,7 @@ var selecaoCopyPrevSeason = async function selecaoCopyPrevSeason(){
   }
 }
 
-var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosicao, criterio){
+var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, idadeAlvo){
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
 
@@ -18543,12 +18543,16 @@ var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosic
       }
     }else{
       // Critérios determinísticos: ordena e pega os N primeiros.
+      const alvo = num(idadeAlvo);
       const ordenado = daPosicao.slice().sort((a,b)=>{
         if(criterio === "menos_convocados") return num(a.convocacoes_qtd) - num(b.convocacoes_qtd);
         if(criterio === "mais_convocados") return num(b.convocacoes_qtd) - num(a.convocacoes_qtd);
         if(criterio === "melhores_notas") return num(b.nota_media) - num(a.nota_media);
         if(criterio === "piores_notas") return num(a.nota_media) - num(b.nota_media);
         if(criterio === "maiores_overalls") return num(b.overall) - num(a.overall);
+        if(criterio === "mais_velhos") return num(b.idade) - num(a.idade);
+        if(criterio === "mais_novos") return num(a.idade) - num(b.idade);
+        if(criterio === "idade_media") return Math.abs(num(a.idade)-alvo) - Math.abs(num(b.idade)-alvo);
         return 0;
       });
       selecionadosDaPosicao = ordenado.slice(0, qtd);
@@ -18581,7 +18585,15 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         <option value="automatica_melhores_notas">Automática — melhores notas</option>
         <option value="automatica_piores_notas">Automática — piores notas</option>
         <option value="automatica_maiores_overalls">Automática — maiores overalls</option>
+        <option value="automatica_mais_velhos">Automática — só os mais velhos</option>
+        <option value="automatica_mais_novos">Automática — só os mais novos</option>
+        <option value="automatica_idade_media">Automática — por idade média desejada</option>
       </select>
+    </div>
+    <div class="form-field" id="selecaoIdadeMediaField" style="display:none">
+      <label>Idade média desejada</label>
+      <input name="idade_media" type="number" min="15" max="45" value="25">
+      <small>Escolhe, posição por posição, os jogadores com idade mais próxima desse valor. Se faltar jogador exatamente nessa idade, ele pega o mais próximo disponível.</small>
     </div>
     <div class="form-field full" id="selecaoQtdAutoField">
       <label>Quantidade por posição</label>
@@ -18606,6 +18618,14 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
           </label>
         `).join("")
       : "<small>Nenhuma posição cadastrada na base ainda. Adicione jogadores com posição primeiro.</small>";
+  }
+
+  const modoSelect = form.querySelector("[name='modo']");
+  const idadeMediaField = $("selecaoIdadeMediaField");
+  if(modoSelect && idadeMediaField){
+    modoSelect.addEventListener("change", ()=>{
+      idadeMediaField.style.display = modoSelect.value === "automatica_idade_media" ? "" : "none";
+    });
   }
 
   form.onsubmit = async e=>{
@@ -18644,7 +18664,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
 
       if(data.modo && data.modo.startsWith("automatica")){
         const criterio = data.modo.replace("automatica_","") || "aleatoria";
-        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio);
+        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media);
 
         if(!escolhidos.length){
           throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
