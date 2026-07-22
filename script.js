@@ -18585,16 +18585,20 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field"><label>Data</label><input name="data" type="date"></div>
     <div class="form-field"><label>Modo</label>
       <select name="modo">
-        <option value="manual">Manual — eu escolho cada jogador</option>
-        <option value="automatica_aleatoria">Automática — sorteio aleatório (ponderado)</option>
-        <option value="automatica_menos_convocados">Automática — menos convocados primeiro</option>
-        <option value="automatica_mais_convocados">Automática — mais convocados primeiro</option>
-        <option value="automatica_melhores_notas">Automática — melhores notas</option>
-        <option value="automatica_piores_notas">Automática — piores notas</option>
-        <option value="automatica_maiores_overalls">Automática — maiores overalls</option>
-        <option value="automatica_mais_velhos">Automática — só os mais velhos</option>
-        <option value="automatica_mais_novos">Automática — só os mais novos</option>
-        <option value="automatica_idade_media">Automática — por idade média desejada</option>
+        <optgroup label="Manual">
+          <option value="manual">Eu escolho cada jogador</option>
+        </optgroup>
+        <optgroup label="Automática — critério">
+          <option value="automatica_aleatoria">Sorteio aleatório (ponderado)</option>
+          <option value="automatica_idade_media">Por idade média desejada</option>
+          <option value="automatica_maiores_overalls">Maiores overalls</option>
+          <option value="automatica_mais_velhos">Só os mais velhos</option>
+          <option value="automatica_mais_novos">Só os mais novos</option>
+          <option value="automatica_melhores_notas">Melhores notas</option>
+          <option value="automatica_piores_notas">Piores notas</option>
+          <option value="automatica_menos_convocados">Menos convocados primeiro</option>
+          <option value="automatica_mais_convocados">Mais convocados primeiro</option>
+        </optgroup>
       </select>
     </div>
     <div class="form-field" id="selecaoIdadeMediaField" style="display:none">
@@ -18610,8 +18614,8 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       <small>Entre jogadores com idade parecida, prioriza quem tem overall maior (ou menor) — sem abrir mão da idade alvo por completo.</small>
     </div>
     <div class="form-field full" id="selecaoQtdAutoField">
-      <label>Quantidade por posição</label>
-      <div id="selecaoQtdPorPosicaoBox" class="competition-checks"></div>
+      <label>Quantidade por posição <small id="selecaoQtdTotalLabel" style="font-weight:400"></small></label>
+      <div id="selecaoQtdPorPosicaoBox" class="selecao-qtd-lista"></div>
     </div>
     <div class="form-field full"><label>Observações</label><textarea name="observacoes"></textarea></div>
     <div class="form-actions">
@@ -18620,18 +18624,72 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     </div>
   `;
 
-  const posicoesDisponiveis = [...new Set(getSelecaoBaseForSeason().map(r=>(r.posicao||"").trim()).filter(Boolean))].sort();
+  const LIMITE_CONVOCACAO = 26;
+  const baseAtual = getSelecaoBaseForSeason();
+  const contagemPorPosicao = {};
+  baseAtual.forEach(r=>{
+    const pos = (r.posicao||"").trim();
+    if(!pos) return;
+    contagemPorPosicao[pos] = (contagemPorPosicao[pos]||0) + 1;
+  });
+
+  const presentes = Object.keys(contagemPorPosicao);
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+  const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const posicoesDisponiveis = [...ordenadas, ...extras];
+
+  // Distribuição padrão inteligente: tenta sempre fechar em 26, proporcional
+  // a quantos jogadores existem em cada posição na base (quem tem mais jogadores
+  // cadastrados ganha um pouco mais de vagas por padrão — dá pra ajustar na mão).
+  const totalBase = posicoesDisponiveis.reduce((a,p)=>a+contagemPorPosicao[p],0) || 1;
+  const distribuicaoPadrao = {};
+  let somaProvisoria = 0;
+  posicoesDisponiveis.forEach(p=>{
+    const qtd = Math.min(contagemPorPosicao[p], Math.floor(LIMITE_CONVOCACAO * (contagemPorPosicao[p]/totalBase)));
+    distribuicaoPadrao[p] = qtd;
+    somaProvisoria += qtd;
+  });
+  // Distribui o restante (arredondamento) posição por posição até fechar 26 ou acabar jogador disponível.
+  let resto = LIMITE_CONVOCACAO - somaProvisoria;
+  let iSeguranca = 0;
+  while(resto > 0 && iSeguranca < 500){
+    for(const p of posicoesDisponiveis){
+      if(resto<=0) break;
+      if(distribuicaoPadrao[p] < contagemPorPosicao[p]){
+        distribuicaoPadrao[p]++;
+        resto--;
+      }
+    }
+    iSeguranca++;
+    if(posicoesDisponiveis.every(p=>distribuicaoPadrao[p] >= contagemPorPosicao[p])) break;
+  }
 
   const qtdPorPosicaoBox = $("selecaoQtdPorPosicaoBox");
+  const totalLabel = $("selecaoQtdTotalLabel");
+
+  const atualizarTotalLabel = ()=>{
+    if(!qtdPorPosicaoBox || !totalLabel) return;
+    const total = [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")]
+      .reduce((a,i)=>a+(Number(i.value)||0), 0);
+    totalLabel.textContent = `— ${total} / ${LIMITE_CONVOCACAO} jogadores`;
+    totalLabel.style.color = total > LIMITE_CONVOCACAO ? "#f87171" : "var(--muted)";
+  };
+
   if(qtdPorPosicaoBox){
     qtdPorPosicaoBox.innerHTML = posicoesDisponiveis.length
       ? posicoesDisponiveis.map(p=>`
-          <label class="comp-check">
-            <strong>${escapeHtml(p)}</strong>
-            <input type="number" min="0" value="0" data-posicao-qtd="${escapeAttr(p)}" style="width:70px">
-          </label>
+          <div class="selecao-qtd-linha">
+            <span class="selecao-qtd-posicao">${escapeHtml(p)}</span>
+            <small class="selecao-qtd-disponivel">${contagemPorPosicao[p]} na base</small>
+            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="${distribuicaoPadrao[p]}" data-posicao-qtd="${escapeAttr(p)}">
+          </div>
         `).join("")
       : "<small>Nenhuma posição cadastrada na base ainda. Adicione jogadores com posição primeiro.</small>";
+
+    qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]").forEach(input=>{
+      input.addEventListener("input", atualizarTotalLabel);
+    });
+    atualizarTotalLabel();
   }
 
   const modoSelect = form.querySelector("[name='modo']");
@@ -18652,6 +18710,16 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       const data = Object.fromEntries(new FormData(form).entries());
       if(!data.nome_convocacao || !data.nome_convocacao.trim()) throw new Error("Informe o nome da convocação.");
 
+      const qtdPorPosicao = {};
+      (qtdPorPosicaoBox ? [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")] : []).forEach(input=>{
+        qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
+      });
+
+      const totalVagasPedidas = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
+      if(totalVagasPedidas > 26){
+        throw new Error(`Total de ${totalVagasPedidas} jogadores passa do limite de 26. Ajuste a quantidade por posição.`);
+      }
+
       const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId)) || {};
 
       const record = {
@@ -18670,11 +18738,6 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar convocação.");
 
       const convocacaoId = res.data.id;
-
-      const qtdPorPosicao = {};
-      (qtdPorPosicaoBox ? [...qtdPorPosicaoBox.querySelectorAll("[data-posicao-qtd]")] : []).forEach(input=>{
-        qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
-      });
 
       if(data.modo && data.modo.startsWith("automatica")){
         const criterio = data.modo.replace("automatica_","") || "aleatoria";
