@@ -19074,14 +19074,18 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
           ${grupos[pos].map(j=>`
             <div class="selecao-conv-jogador">
               <div class="selecao-conv-topo">
-                <div class="selecao-avatar" style="width:30px;height:30px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
                 <strong>${escapeHtml(j.nome)}</strong>
-                <span class="selecao-conv-time">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" style="height:11px;vertical-align:middle;margin-right:3px" onerror="this.style.display='none'">` : ""}${escapeHtml(j.time)} · ${escapeHtml(String(j.overall))}</span>
+                ${j.idade ? `<span class="selecao-conv-idade">${escapeHtml(String(j.idade))} anos</span>` : ""}
               </div>
               <div class="selecao-conv-linha">
+                <div class="selecao-avatar" style="width:48px;height:48px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+                <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
+                <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
                 <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
                 <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
+              </div>
+              <div class="selecao-conv-obs-linha">
                 <input name="obs_${j.convocadoId}" placeholder="Observação" title="Observação">
               </div>
             </div>
