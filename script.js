@@ -19077,10 +19077,12 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
                 <strong>${escapeHtml(j.nome)}</strong>
                 ${j.idade ? `<span class="selecao-conv-idade">${escapeHtml(String(j.idade))} anos</span>` : ""}
               </div>
-              <div class="selecao-conv-linha">
+              <div class="selecao-conv-identidade">
                 <div class="selecao-avatar" style="width:48px;height:48px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
                 <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
                 <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
+              </div>
+              <div class="selecao-conv-avaliacao">
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
                 <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
                 <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
