@@ -18201,7 +18201,17 @@ var getSelecaoBaseForSeason = function getSelecaoBaseForSeason(seasonId=selecaoS
   return getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_temporada_id)===String(seasonId));
 }
 
-var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","CA"];
+var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","ATA"];
+
+var normalizarPosicaoSelecao = function normalizarPosicaoSelecao(valor){
+  const v = (valor||"").trim().toUpperCase();
+  if(v === "CA" || v === "ATACANTE" || v === "CENTROAVANTE") return "ATA";
+  return v;
+}
+
+// Template padrão de convocação (26 no total): usado como quantidade inicial
+// sugerida ao criar uma convocação, ajustável pelo usuário.
+var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, ATA:4};
 
 var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const select = $("selecaoSeasonSelect");
@@ -18376,7 +18386,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
       <datalist id="selecaoPosicoesList">
         <option value="GOL"><option value="ZAG"><option value="LD"><option value="LE">
         <option value="VOL"><option value="MC"><option value="MEI"><option value="PD">
-        <option value="PE"><option value="CA">
+        <option value="PE"><option value="ATA">
       </datalist>
     </div>
     <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
@@ -18433,7 +18443,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
         temporada: seasonRecord.temporada || "",
         nome: data.nome.trim(),
         time,
-        posicao: (data.posicao||"").trim().toUpperCase(),
+        posicao: normalizarPosicaoSelecao(data.posicao),
         idade: data.idade || "",
         overall: data.overall || "",
         foto_url: foto || "",
@@ -18643,31 +18653,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
   const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
   const posicoesDisponiveis = [...ordenadas, ...extras];
 
-  // Distribuição padrão inteligente: tenta sempre fechar em 26, proporcional
-  // a quantos jogadores existem em cada posição na base (quem tem mais jogadores
-  // cadastrados ganha um pouco mais de vagas por padrão — dá pra ajustar na mão).
-  const totalBase = posicoesDisponiveis.reduce((a,p)=>a+contagemPorPosicao[p],0) || 1;
+  // Template fixo de convocação (26 no total): GOL 3, ZAG 4, LD 2, LE 2, VOL 1,
+  // MC 2, MEI 2, PD 3, PE 3, ATA 4. Capado pelo que realmente existe na base.
   const distribuicaoPadrao = {};
-  let somaProvisoria = 0;
   posicoesDisponiveis.forEach(p=>{
-    const qtd = Math.min(contagemPorPosicao[p], Math.floor(LIMITE_CONVOCACAO * (contagemPorPosicao[p]/totalBase)));
-    distribuicaoPadrao[p] = qtd;
-    somaProvisoria += qtd;
+    const sugerido = SELECAO_TEMPLATE_26[p] || 0;
+    distribuicaoPadrao[p] = Math.min(sugerido, contagemPorPosicao[p]);
   });
-  // Distribui o restante (arredondamento) posição por posição até fechar 26 ou acabar jogador disponível.
-  let resto = LIMITE_CONVOCACAO - somaProvisoria;
-  let iSeguranca = 0;
-  while(resto > 0 && iSeguranca < 500){
-    for(const p of posicoesDisponiveis){
-      if(resto<=0) break;
-      if(distribuicaoPadrao[p] < contagemPorPosicao[p]){
-        distribuicaoPadrao[p]++;
-        resto--;
-      }
-    }
-    iSeguranca++;
-    if(posicoesDisponiveis.every(p=>distribuicaoPadrao[p] >= contagemPorPosicao[p])) break;
-  }
 
   const qtdPorPosicaoBox = $("selecaoQtdPorPosicaoBox");
   const totalLabel = $("selecaoQtdTotalLabel");
@@ -19057,6 +19049,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         nome: j.nome || (jogadorBase && jogadorBase.nome) || "-",
         time: j.time || (jogadorBase && jogadorBase.time) || "-",
         overall: j.overall_na_convocacao || (jogadorBase && jogadorBase.overall) || "-",
+        idade: j.idade_na_convocacao || (jogadorBase && jogadorBase.idade) || "",
         posicao: (jogadorBase && jogadorBase.posicao) || "SEM POSIÇÃO",
         foto_url: jogadorBase ? jogadorBase.foto_url : "",
         escudo_time_url: jogadorBase ? jogadorBase.escudo_time_url : "",
@@ -19099,12 +19092,19 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       </div>
     `).join("") || "<small>Nenhum jogador convocado ainda. Clique em \"Editar convocados\" para escolher.</small>";
 
+    const idadeMediaConv = convocadosComBase.length
+      ? Math.round((convocadosComBase.reduce((a,j)=>a+num(j.idade),0)/convocadosComBase.length)*10)/10
+      : null;
+    const overallMedioConv = convocadosComBase.length
+      ? Math.round((convocadosComBase.reduce((a,j)=>a+num(j.overall),0)/convocadosComBase.length)*10)/10
+      : null;
+
     return `
       <article class="entity-card">
         <div class="entity-top">
           <div>
             <h3>${escapeHtml(c.nome_convocacao||"-")}</h3>
-            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(formatSelecaoModo(c.modo))}${c.data?(" • "+escapeHtml(formatSelecaoData(c.data))):""} • ${convocadosComBase.length} convocados</small>
+            <small>${escapeHtml(c.tipo||"-")} • ${escapeHtml(formatSelecaoModo(c.modo))}${c.data?(" • "+escapeHtml(formatSelecaoData(c.data))):""} • ${convocadosComBase.length} convocados${idadeMediaConv!==null?` • idade média ${idadeMediaConv}`:""}${overallMedioConv!==null?` • OVR médio ${overallMedioConv}`:""}</small>
           </div>
         </div>
         ${c.competicao_ou_contexto ? `<small>${escapeHtml(c.competicao_ou_contexto)}</small>` : ""}
@@ -19170,13 +19170,13 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
 }
 
 var deleteSelecaoConvocacao = async function deleteSelecaoConvocacao(id){
-  if(!confirm("Excluir esta convocação?")) return;
+  if(!confirm("Excluir esta convocação? Isso também remove os jogadores convocados dela.")) return;
   try{
-    const res = await apiPost({action:"delete", table:"SELECAO_CONVOCACOES", id});
+    const res = await apiPost({action:"deleteSelecaoConvocacaoCascata", id});
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao excluir.");
     await loadData();
     renderSelecaoConvocacoesList();
-    setStatus("Convocação excluída.","ok");
+    setStatus("Convocação e seus convocados excluídos.","ok");
   }catch(err){
     setStatus("Erro ao excluir convocação: "+err.message,"error");
   }
