@@ -37,7 +37,7 @@
 .selecao-qtd-linha input{width:100%;text-align:center}
 
 .selecao-conv-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.selecao-conv-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;align-items:start}
+.selecao-conv-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;align-items:start}
 .selecao-conv-titulo{font-size:1.5em;font-weight:900;color:white}
 .selecao-conv-sub{color:var(--muted)}
 .selecao-conv-medias{display:flex;gap:12px}
