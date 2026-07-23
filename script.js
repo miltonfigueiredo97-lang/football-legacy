@@ -18321,7 +18321,13 @@ var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
   el.innerHTML = ordemFinal.map(pos=>`
     <div class="selecao-posicao-grupo">
       <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
-      <div class="cards-list">${grupos[pos].map(selecaoJogadorCardHtml).join("")}</div>
+      <div class="cards-list">${grupos[pos].slice().sort((a,b)=>{
+        const oa = num(a.overall), ob = num(b.overall);
+        if(oa===0 && ob===0) return 0;
+        if(oa===0) return 1;
+        if(ob===0) return -1;
+        return ob-oa;
+      }).map(selecaoJogadorCardHtml).join("")}</div>
     </div>
   `).join("");
 }
@@ -19142,11 +19148,19 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
     const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
     const ordemFinal = [...ordenadas, ...extras];
 
+    const ordenarPorOverall = arr => arr.slice().sort((a,b)=>{
+      const oa = num(a.overall), ob = num(b.overall);
+      if(oa===0 && ob===0) return 0;
+      if(oa===0) return 1;
+      if(ob===0) return -1;
+      return ob-oa;
+    });
+
     const rosterHtml = ordemFinal.map(pos=>`
       <div class="selecao-posicao-grupo">
         <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
         <div class="selecao-conv-lista">
-          ${grupos[pos].map(j=>`
+          ${ordenarPorOverall(grupos[pos]).map(j=>`
             <div class="selecao-conv-jogador">
               <div class="selecao-conv-topo">
                 <strong>${escapeHtml(j.nome)}</strong>
