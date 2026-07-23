@@ -19191,13 +19191,13 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
           </div>
         </div>
 
-        <div id="convocadosGrid_${c.id}">${rosterHtml}</div>
-
-        <div class="entity-actions">
+        <div class="entity-actions" style="margin-top:0;margin-bottom:16px">
           <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
           <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
           <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
         </div>
+
+        <div id="convocadosGrid_${c.id}">${rosterHtml}</div>
       </article>
     `;
   }).join("") || emptyCard("Nenhuma convocação nesta temporada ainda.");
