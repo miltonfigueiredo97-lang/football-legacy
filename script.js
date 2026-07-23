@@ -18201,17 +18201,39 @@ var getSelecaoBaseForSeason = function getSelecaoBaseForSeason(seasonId=selecaoS
   return getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_temporada_id)===String(seasonId));
 }
 
-var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","ATA"];
+var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","CA"];
 
 var normalizarPosicaoSelecao = function normalizarPosicaoSelecao(valor){
   const v = (valor||"").trim().toUpperCase();
-  if(v === "CA" || v === "ATACANTE" || v === "CENTROAVANTE") return "ATA";
+  if(v === "ATA" || v === "ATACANTE" || v === "CENTROAVANTE") return "CA";
   return v;
 }
 
 // Template padrão de convocação (26 no total): usado como quantidade inicial
 // sugerida ao criar uma convocação, ajustável pelo usuário.
-var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, ATA:4};
+var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, CA:4};
+
+var corrigirPosicoesAtaParaCaSelecao = async function corrigirPosicoesAtaParaCaSelecao(){
+  const todos = getTable("SELECAO_BASE_TEMPORADA");
+  const comDivergencia = todos.filter(r=>String(r.posicao||"").trim().toUpperCase() !== normalizarPosicaoSelecao(r.posicao));
+
+  if(!comDivergencia.length) return;
+
+  for(const r of comDivergencia){
+    try{
+      await apiPost({
+        action:"update",
+        table:"SELECAO_BASE_TEMPORADA",
+        id:r.id,
+        record:{posicao: normalizarPosicaoSelecao(r.posicao)}
+      });
+    }catch(err){
+      console.error("Erro ao corrigir posição do jogador "+r.id, err);
+    }
+  }
+
+  await loadData();
+}
 
 var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const select = $("selecaoSeasonSelect");
@@ -18243,6 +18265,10 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   if(copyBtn) copyBtn.onclick = selecaoCopyPrevSeason;
 
   renderSelecaoBaseGrouped();
+
+  corrigirPosicoesAtaParaCaSelecao().then(()=>{
+    if($("selecaoBaseGrouped")) renderSelecaoBaseGrouped();
+  });
 }
 
 var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
@@ -18282,7 +18308,7 @@ var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
 
   const grupos = {};
   rows.forEach(r=>{
-    const pos = (r.posicao||"").trim().toUpperCase() || "SEM POSIÇÃO";
+    const pos = normalizarPosicaoSelecao(r.posicao) || "SEM POSIÇÃO";
     if(!grupos[pos]) grupos[pos] = [];
     grupos[pos].push(r);
   });
@@ -18382,11 +18408,11 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
     <div class="team-results" id="selecaoTeamResults"></div>
     <div class="form-field">
       <label>Posição</label>
-      <input name="posicao" list="selecaoPosicoesList" value="${escapeAttr(existing?.posicao||"")}" placeholder="Ex: GOL, ZAG, LD, LE, VOL, MEI, PD, PE, CA">
+      <input name="posicao" list="selecaoPosicoesList" value="${escapeAttr(normalizarPosicaoSelecao(existing?.posicao||""))}" placeholder="Ex: GOL, ZAG, LD, LE, VOL, MEI, PD, PE, CA">
       <datalist id="selecaoPosicoesList">
         <option value="GOL"><option value="ZAG"><option value="LD"><option value="LE">
         <option value="VOL"><option value="MC"><option value="MEI"><option value="PD">
-        <option value="PE"><option value="ATA">
+        <option value="PE"><option value="CA">
       </datalist>
     </div>
     <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
@@ -18525,7 +18551,7 @@ var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosic
     if(qtd <= 0) return;
 
     const daPosicao = baseTodo
-      .filter(r=>(r.posicao||"").trim() === posicao)
+      .filter(r=>normalizarPosicaoSelecao(r.posicao) === posicao)
       .map(r=>({
         id: r.id,
         nome: r.nome,
@@ -18643,7 +18669,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
   const baseAtual = getSelecaoBaseForSeason();
   const contagemPorPosicao = {};
   baseAtual.forEach(r=>{
-    const pos = (r.posicao||"").trim();
+    const pos = normalizarPosicaoSelecao(r.posicao);
     if(!pos) return;
     contagemPorPosicao[pos] = (contagemPorPosicao[pos]||0) + 1;
   });
@@ -18800,7 +18826,7 @@ var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(c
   const existingByPos = {};
   existingConvocados.forEach(c=>{
     const jogador = base.find(b=>String(b.id)===String(c.jogador_base_id));
-    const pos = jogador ? ((jogador.posicao||"").trim() || "SEM POSIÇÃO") : "SEM POSIÇÃO";
+    const pos = jogador ? (normalizarPosicaoSelecao(jogador.posicao) || "SEM POSIÇÃO") : "SEM POSIÇÃO";
     if(!existingByPos[pos]) existingByPos[pos] = [];
     existingByPos[pos].push(String(c.jogador_base_id));
   });
@@ -18883,12 +18909,61 @@ var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
 
     return `
       <div class="selecao-posicao-grupo">
-        <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${preenchidos}/${arr.length})</small></h4>
+        <h4 class="selecao-posicao-titulo">
+          ${escapeHtml(pos)} <small>(${preenchidos}/${arr.length})</small>
+          <button type="button" class="selecao-vaga-btn" onclick="removerVagaPosicao('${escapeAttr(pos)}')" title="Remover uma vaga">−</button>
+          <button type="button" class="selecao-vaga-btn" onclick="adicionarVagaPosicao('${escapeAttr(pos)}')" title="Adicionar uma vaga">+</button>
+        </h4>
         <div class="selecao-slots-row">${slotsHtml}</div>
         ${painelCandidatos}
       </div>
     `;
-  }).join("");
+  }).join("") + renderSelecaoAdicionarPosicaoHtml();
+}
+
+var renderSelecaoAdicionarPosicaoHtml = function renderSelecaoAdicionarPosicaoHtml(){
+  const { slots, base } = selecaoSlotState;
+  const posicoesNaBase = [...new Set(base.map(r=>normalizarPosicaoSelecao(r.posicao)).filter(Boolean))];
+  const posicoesForaDaConvocacao = posicoesNaBase.filter(p=>!Object.keys(slots).includes(p));
+
+  if(!posicoesForaDaConvocacao.length) return "";
+
+  return `
+    <div class="selecao-add-posicao">
+      <select id="selecaoNovaPosicaoSelect">
+        ${posicoesForaDaConvocacao.map(p=>`<option value="${escapeAttr(p)}">${escapeHtml(p)}</option>`).join("")}
+      </select>
+      <button type="button" class="ghost-btn" onclick="adicionarPosicaoNaConvocacao()">+ Adicionar posição</button>
+    </div>
+  `;
+}
+
+var adicionarPosicaoNaConvocacao = function adicionarPosicaoNaConvocacao(){
+  const select = $("selecaoNovaPosicaoSelect");
+  if(!select || !select.value) return;
+  selecaoSlotState.slots[select.value] = [null];
+  renderSelecaoSlotsUI();
+}
+
+var adicionarVagaPosicao = function adicionarVagaPosicao(pos){
+  if(!selecaoSlotState.slots[pos]) return;
+  selecaoSlotState.slots[pos].push(null);
+  renderSelecaoSlotsUI();
+}
+
+var removerVagaPosicao = function removerVagaPosicao(pos){
+  const arr = selecaoSlotState.slots[pos];
+  if(!arr || !arr.length) return;
+
+  const ultimo = arr[arr.length-1];
+  if(ultimo){
+    const jogador = selecaoSlotState.base.find(b=>String(b.id)===String(ultimo));
+    if(!confirm(`A última vaga de ${pos} está ocupada por ${jogador?jogador.nome:"um jogador"}. Remover mesmo assim?`)) return;
+  }
+
+  arr.pop();
+  if(!arr.length) delete selecaoSlotState.slots[pos];
+  renderSelecaoSlotsUI();
 }
 
 var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
@@ -18902,7 +18977,7 @@ var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
     });
   });
 
-  const candidatos = base.filter(r=>((r.posicao||"").trim()===pos) && !usados.has(String(r.id)));
+  const candidatos = base.filter(r=>(normalizarPosicaoSelecao(r.posicao)===pos) && !usados.has(String(r.id)));
 
   return `<div class="selecao-candidatos-panel">
     ${candidatos.map(c=>`
@@ -19050,7 +19125,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         time: j.time || (jogadorBase && jogadorBase.time) || "-",
         overall: j.overall_na_convocacao || (jogadorBase && jogadorBase.overall) || "-",
         idade: j.idade_na_convocacao || (jogadorBase && jogadorBase.idade) || "",
-        posicao: (jogadorBase && jogadorBase.posicao) || "SEM POSIÇÃO",
+        posicao: (jogadorBase ? normalizarPosicaoSelecao(jogadorBase.posicao) : "") || "SEM POSIÇÃO",
         foto_url: jogadorBase ? jogadorBase.foto_url : "",
         escudo_time_url: jogadorBase ? jogadorBase.escudo_time_url : "",
         nota: j.nota, foi_bem: j.foi_bem, foi_mal: j.foi_mal, observacao: j.observacao
@@ -19200,6 +19275,9 @@ window.abrirEscolhaSlot = abrirEscolhaSlot;
 window.fecharEscolhaSlot = fecharEscolhaSlot;
 window.escolherCandidatoSlot = escolherCandidatoSlot;
 window.removerSlotConvocacao = removerSlotConvocacao;
+window.adicionarVagaPosicao = adicionarVagaPosicao;
+window.removerVagaPosicao = removerVagaPosicao;
+window.adicionarPosicaoNaConvocacao = adicionarPosicaoNaConvocacao;
 window.salvarSlotsConvocacao = salvarSlotsConvocacao;
 window.saveConvocacaoNotas = saveConvocacaoNotas;
 window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;

@@ -12,6 +12,9 @@
 .selecao-posicao-grupo{margin-bottom:24px}
 .selecao-posicao-titulo{color:var(--gold);font-size:0.95em;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .selecao-posicao-titulo small{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400}
+.selecao-vaga-btn{margin-left:6px;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.1);color:white;font-weight:900;line-height:1;text-transform:none;letter-spacing:0;font-size:0.9em}
+.selecao-vaga-btn:hover{background:var(--gold);color:#111827}
+.selecao-add-posicao{display:flex;gap:8px;align-items:center;margin-top:14px}
 .selecao-slots-row{display:flex;flex-wrap:wrap;gap:10px}
 .selecao-slot{width:120px;min-height:110px;border-radius:16px;padding:10px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
 .selecao-slot.empty{border:2px dashed var(--line);background:transparent;color:var(--muted);justify-content:center;font-weight:700}
