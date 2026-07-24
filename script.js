@@ -8421,6 +8421,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
             ${r.escudo ? `<img src="${escapeAttr(r.escudo)}" onerror="this.parentElement.innerHTML='<span>⚽</span>'">` : `<span>⚽</span>`}
           </div>
           ${ageLabel ? `<span class="season-age-v3760">${ageLabel}</span>` : ""}
+          ${r.nota_fantasy ? `<span class="season-age-v3760 season-nota-fantasy-v3760" title="Nota Fantasy">⭐ ${escapeHtml(String(r.nota_fantasy))}</span>` : ""}
           <div class="season-club-info-v3760">
             <strong>${escapeHtml(r.temporada || "-")}</strong>
             <h4>${escapeHtml(r.clube_nome || r.time || "-")}</h4>
@@ -19301,19 +19302,33 @@ window.renderSelecaoConvocacoesPage = renderSelecaoConvocacoesPage;
 window.renderSelecaoBaseGrouped = renderSelecaoBaseGrouped;
 
 // ===== V3.9.3 FANTASY — análise de mercado por IA =====
+var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
+  if(!nomeTime) return "";
+  try{
+    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(nomeTime)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const time = (json.teams||[]).find(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
+    return time ? (time.strBadge||"") : "";
+  }catch(err){
+    return "";
+  }
+}
+
 var abrirFantasyAnalise = async function abrirFantasyAnalise(){
   const protagonista = getActiveProtagonist();
   if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
   if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
 
+  const currentSeason = getCurrentSeason();
   let idadeAtual = "";
-  try{ idadeAtual = calcAgeAtSeasonV3760(getCurrentSeason()) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
+  try{ idadeAtual = calcAgeAtSeasonV3760(currentSeason) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
 
   modalTitle.textContent = "Fantasy — Análise de Mercado";
   modalBox.classList.add("wide");
   form.className = "form-grid";
   form.innerHTML = `
-    <div id="fantasyResultado"><p>Analisando a carreira de ${escapeHtml(protagonista.nome||"-")}... isso pode levar alguns segundos.</p></div>
+    <div id="fantasyResultado"><p>Analisando a carreira de ${escapeHtml(protagonista.nome||"-")}... isso pode levar de 10 a 20 segundos.</p></div>
     <div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button></div>
   `;
   modal.classList.add("active");
@@ -19323,7 +19338,8 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
       action: "gerarFantasyAnalise",
       personagem_id: protagonista.id,
       carreira_id: active.carreira_id,
-      idade_atual: idadeAtual
+      idade_atual: idadeAtual,
+      temporada_atual: currentSeason ? currentSeason.temporada : ""
     });
 
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao gerar análise.");
@@ -19331,27 +19347,56 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
     const resultDiv = $("fantasyResultado");
     if(!resultDiv) return;
 
+    const textoLimpo = String(res.data.analise||"").replace(/```json/gi,"").replace(/```/g,"").trim();
     let dados = null;
-    try{ dados = JSON.parse(res.data.analise); }catch(e){ dados = null; }
+    try{ dados = JSON.parse(textoLimpo); }catch(e){ dados = null; }
 
-    if(dados){
-      resultDiv.innerHTML = `
-        <p style="margin-bottom:14px">${escapeHtml(dados.analise||"")}</p>
-        ${dados.indice_mercado!==undefined ? `<div class="selecao-conv-media-box" style="margin-bottom:16px"><strong>${escapeHtml(String(dados.indice_mercado))}</strong><span>Índice de mercado</span></div>` : ""}
-        <h4 style="margin-bottom:10px">Propostas</h4>
-        <div class="cards-list">
-          ${(dados.propostas||[]).map(p=>`
-            <article class="entity-card">
-              <h3>${escapeHtml(p.clube||"-")}</h3>
-              <small>${escapeHtml(p.valor_transferencia||"-")} • ${escapeHtml(p.salario_anual||"-")}</small>
-              <p style="margin-top:8px">${escapeHtml(p.justificativa||"")}</p>
-            </article>
-          `).join("") || "<small>Nenhuma proposta recebida.</small>"}
-        </div>
-      `;
-    }else{
+    if(!dados){
       resultDiv.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(res.data.analise||"Sem resposta da IA.")}</pre>`;
+      return;
     }
+
+    const temp = res.data.temporada_atual || {};
+
+    resultDiv.innerHTML = `<p>Buscando escudos dos clubes...</p>`;
+
+    const propostas = dados.propostas || [];
+    const escudos = await Promise.all(propostas.map(p=>buscarEscudoTimeFantasy(p.clube)));
+
+    resultDiv.innerHTML = `
+      <div class="fantasy-header">
+        <small class="fantasy-data">${escapeHtml(temp.temporada||"-")}</small>
+        <h2>Propostas para ${escapeHtml(protagonista.nome||"-")}</h2>
+      </div>
+
+      <div class="fantasy-temporada-atual">
+        <div class="selecao-conv-escudo" style="width:32px;height:32px">${temp.escudo ? `<img src="${escapeAttr(temp.escudo)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
+        <strong>${escapeHtml(temp.clube||"-")}</strong>
+        <span>${temp.jogos||0} jogos</span>
+        <span>${temp.gols||0} gols</span>
+        <span>${temp.assistencias||0} assistências</span>
+      </div>
+
+      ${dados.nota_temporada!==undefined ? `<div class="fantasy-nota">Nota da temporada: <strong>${escapeHtml(String(dados.nota_temporada))}</strong></div>` : ""}
+
+      <p class="fantasy-analise">${escapeHtml(dados.analise||"")}</p>
+
+      ${dados.indice_mercado!==undefined ? `<div class="selecao-conv-media-box" style="margin-bottom:18px"><strong>${escapeHtml(String(dados.indice_mercado))}</strong><span>Índice de mercado</span></div>` : ""}
+
+      <h3 class="fantasy-propostas-titulo">Propostas</h3>
+      <div class="fantasy-propostas-lista">
+        ${propostas.map((p,i)=>`
+          <div class="fantasy-proposta">
+            <div class="selecao-conv-escudo" style="width:36px;height:36px">${escudos[i] ? `<img src="${escapeAttr(escudos[i])}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
+            <div class="fantasy-proposta-info">
+              <strong>${escapeHtml(p.clube||"-")}</strong>
+              <small>${p.anos_contrato?`${escapeHtml(String(p.anos_contrato))} anos de contrato • `:""}${escapeHtml(p.valor_transferencia||"-")}${p.bonus?` ${escapeHtml(p.bonus)}`:""} • ${escapeHtml(p.salario_anual||"-")}</small>
+              ${p.justificativa ? `<small class="fantasy-justificativa">${escapeHtml(p.justificativa)}</small>` : ""}
+            </div>
+          </div>
+        `).join("") || "<small>Nenhuma proposta recebida.</small>"}
+      </div>
+    `;
   }catch(err){
     const resultDiv = $("fantasyResultado");
     if(resultDiv) resultDiv.innerHTML = `<p style="color:#f87171">Erro ao gerar análise: ${escapeHtml(err.message)}</p>`;
