@@ -8422,6 +8422,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
           </div>
           ${ageLabel ? `<span class="season-age-v3760">${ageLabel}</span>` : ""}
           ${r.nota_fantasy ? `<span class="season-age-v3760 season-nota-fantasy-v3760" title="Nota Fantasy">⭐ ${escapeHtml(String(r.nota_fantasy))}</span>` : ""}
+          ${r.status ? `<span class="season-age-v3760 season-status-v3760 season-status-${escapeAttr((r.status||"").replace(/\s+/g,"-"))}">${escapeHtml(r.status==="em andamento"?"Em andamento":r.status==="finalizada"?"Finalizada":r.status==="transferido"?"Transferido":r.status)}</span>` : ""}
           <div class="season-club-info-v3760">
             <strong>${escapeHtml(r.temporada || "-")}</strong>
             <h4>${escapeHtml(r.clube_nome || r.time || "-")}</h4>
