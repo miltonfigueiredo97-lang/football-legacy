@@ -19412,7 +19412,18 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
     resultDiv.innerHTML = `<p>Buscando escudos dos clubes...</p>`;
 
     const propostas = dados.propostas || [];
-    const escudos = await Promise.all(propostas.map(p=>buscarEscudoTimeFantasy(p.clube)));
+    const buscarEscudosEmLotes = async (nomes, tamanhoLote=3, pausaMs=250)=>{
+      const resultados = [];
+      for(let i=0;i<nomes.length;i+=tamanhoLote){
+        const lote = nomes.slice(i,i+tamanhoLote);
+        const escudosLote = await Promise.all(lote.map(n=>buscarEscudoTimeFantasy(n)));
+        resultados.push(...escudosLote);
+        if(i+tamanhoLote < nomes.length) await new Promise(r=>setTimeout(r,pausaMs));
+      }
+      return resultados;
+    };
+
+    const escudos = await buscarEscudosEmLotes(propostas.map(p=>p.clube));
 
     resultDiv.innerHTML = `
       <div class="fantasy-header">
