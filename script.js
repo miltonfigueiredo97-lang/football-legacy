@@ -19303,17 +19303,52 @@ window.renderSelecaoConvocacoesPage = renderSelecaoConvocacoesPage;
 window.renderSelecaoBaseGrouped = renderSelecaoBaseGrouped;
 
 // ===== V3.9.3 FANTASY — análise de mercado por IA =====
+var FANTASY_NOMES_TIMES_PT_EN = {
+  "bayern de munique": "Bayern Munich",
+  "bayern de munich": "Bayern Munich",
+  "paris saint germain": "Paris Saint-Germain",
+  "paris saint-germain": "Paris Saint-Germain",
+  "manchester city": "Manchester City",
+  "manchester united": "Manchester United",
+  "real madrid": "Real Madrid",
+  "atletico de madrid": "Atletico Madrid",
+  "atlético de madrid": "Atletico Madrid",
+  "inter de milao": "Inter Milan",
+  "inter de milão": "Inter Milan",
+  "milan": "AC Milan",
+  "juventus": "Juventus",
+  "borussia dortmund": "Borussia Dortmund",
+  "chelsea": "Chelsea",
+  "arsenal": "Arsenal",
+  "liverpool": "Liverpool",
+  "tottenham": "Tottenham Hotspur",
+  "napoles": "Napoli",
+  "nápoles": "Napoli"
+};
+
 var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
   if(!nomeTime) return "";
-  try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(nomeTime)}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    const time = (json.teams||[]).find(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
-    return time ? (time.strBadge||"") : "";
-  }catch(err){
-    return "";
-  }
+
+  const chave = nomeTime.trim().toLowerCase();
+  const nomeTraduzido = FANTASY_NOMES_TIMES_PT_EN[chave] || nomeTime;
+
+  const tentarBusca = async (termo)=>{
+    try{
+      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(termo)}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const time = (json.teams||[]).find(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
+      return time ? (time.strBadge||"") : "";
+    }catch(err){
+      return "";
+    }
+  };
+
+  // Tenta com o nome traduzido primeiro; se não achar, tenta com o nome original
+  // (útil pra clubes que o dicionário acima não cobre ainda).
+  let escudo = await tentarBusca(nomeTraduzido);
+  if(!escudo && nomeTraduzido !== nomeTime) escudo = await tentarBusca(nomeTime);
+  return escudo;
 }
 
 var abrirFantasyAnalise = async function abrirFantasyAnalise(){
