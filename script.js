@@ -4031,6 +4031,17 @@ var renderTrofeus = function renderTrofeus(){
 
 // ===== V3.7.9 PLAYER CARD DOM FIX =====
 var findPlayerCardShell = function findPlayerCardShell(){
+  // FIX V3.9.11: antes essa função "adivinhava" o elemento certo subindo pela
+  // árvore do HTML e checando tamanho/imagem — mas às vezes (por timing de
+  // carregamento, antes do layout se estabilizar) ela subia longe demais e
+  // pegava o .hero-card inteiro (as duas colunas), quebrando o layout inteiro
+  // do Resumo (a classe player-card-shell-fixed força display:flex, destruindo
+  // o grid de duas colunas). O elemento certo já tem ID próprio — usa ele direto,
+  // sem adivinhação.
+  const direto = $("protagonistEditCard");
+  if(direto) return direto;
+
+  // Fallback antigo, só se por algum motivo o ID acima não existir.
   const nameEl = $("mainCharacter") || $("protagonistCardName") || document.querySelector("[id*='Character']");
   if(!nameEl) return null;
 
@@ -4041,7 +4052,7 @@ var findPlayerCardShell = function findPlayerCardShell(){
     const text = (el.textContent || "").toLowerCase();
     const looksLikeCard = hasImg || text.includes("atacante") || text.includes("selecione um protagonista");
 
-    if(looksLikeCard && el.offsetWidth > 120 && el.offsetHeight > 120){
+    if(looksLikeCard && el.offsetWidth > 120 && el.offsetHeight > 120 && !el.classList.contains("hero-card")){
       return el;
     }
 
