@@ -2040,8 +2040,9 @@ button[disabled],
 .season-club-side-v3760{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:8px 12px;
   min-width:0;
+  flex-wrap:wrap;
 }
 
 .season-club-crest-v3760{
