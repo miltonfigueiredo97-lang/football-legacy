@@ -19410,7 +19410,7 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
               ${p.justificativa ? `<small class="fantasy-justificativa">${escapeHtml(p.justificativa)}</small>` : ""}
             </div>
           </div>
-        `).join("") || "<small>Nenhuma proposta recebida.</small>"}
+        `).join("") || "<small>Nenhum clube demonstrou interesse concreto nesse momento — nem o clube atual quis renovar. Isso também é uma avaliação de mercado real.</small>"}
       </div>
     `;
   }catch(err){
