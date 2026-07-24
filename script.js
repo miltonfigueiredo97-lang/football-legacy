@@ -19323,8 +19323,34 @@ var FANTASY_NOMES_TIMES_PT_EN = {
   "liverpool": "Liverpool",
   "tottenham": "Tottenham Hotspur",
   "napoles": "Napoli",
-  "nápoles": "Napoli"
+  "nápoles": "Napoli",
+  "paris sg": "Paris SG",
+  "psg": "Paris SG",
+  "fc barcelona": "Barcelona",
+  "barcelona": "Barcelona",
+  "sao paulo fc": "Sao Paulo",
+  "são paulo fc": "Sao Paulo",
+  "sao paulo": "Sao Paulo",
+  "são paulo": "Sao Paulo",
+  "flamengo": "Flamengo",
+  "corinthians": "Corinthians",
+  "palmeiras": "Palmeiras",
+  "santos": "Santos",
+  "gremio": "Gremio",
+  "grêmio": "Gremio",
+  "internacional": "Internacional",
+  "atletico mineiro": "Atletico Mineiro",
+  "atlético mineiro": "Atletico Mineiro",
+  "cruzeiro": "Cruzeiro",
+  "botafogo": "Botafogo",
+  "fluminense": "Fluminense",
+  "vasco da gama": "Vasco da Gama",
+  "vasco": "Vasco da Gama"
 };
+
+var removerAcentos = function removerAcentos(str){
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
 
 var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
   if(!nomeTime) return "";
@@ -19344,11 +19370,17 @@ var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
     }
   };
 
-  // Tenta com o nome traduzido primeiro; se não achar, tenta com o nome original
-  // (útil pra clubes que o dicionário acima não cobre ainda).
-  let escudo = await tentarBusca(nomeTraduzido);
-  if(!escudo && nomeTraduzido !== nomeTime) escudo = await tentarBusca(nomeTime);
-  return escudo;
+  // Tenta várias variações até achar: nome traduzido, nome original, nome sem
+  // acentos, e nome sem prefixos/sufixos comuns tipo "FC"/"CF"/"SC".
+  const tentativas = [nomeTraduzido, nomeTime, removerAcentos(nomeTime)];
+  const semSiglas = nomeTime.replace(/\b(FC|CF|SC|AC|AFC)\b/gi,"").replace(/\s+/g," ").trim();
+  if(semSiglas && semSiglas !== nomeTime) tentativas.push(semSiglas);
+
+  for(const termo of tentativas){
+    const escudo = await tentarBusca(termo);
+    if(escudo) return escudo;
+  }
+  return "";
 }
 
 var abrirFantasyAnalise = async function abrirFantasyAnalise(){
@@ -19398,7 +19430,16 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
     const resultDiv = $("fantasyResultado");
     if(!resultDiv) return;
 
-    const textoLimpo = String(res.data.analise||"").replace(/```json/gi,"").replace(/```/g,"").trim();
+    let textoLimpo = String(res.data.analise||"").replace(/```json/gi,"").replace(/```/g,"").trim();
+    // FIX V3.9.10: às vezes a IA escreve um textinho antes ou depois do JSON
+    // apesar da instrução de mandar só JSON — pega só o trecho entre a
+    // primeira "{" e a última "}", que é bem mais robusto que confiar que
+    // a resposta inteira é JSON puro.
+    const inicioJson = textoLimpo.indexOf("{");
+    const fimJson = textoLimpo.lastIndexOf("}");
+    if(inicioJson !== -1 && fimJson !== -1 && fimJson > inicioJson){
+      textoLimpo = textoLimpo.slice(inicioJson, fimJson+1);
+    }
     let dados = null;
     try{ dados = JSON.parse(textoLimpo); }catch(e){ dados = null; }
 
