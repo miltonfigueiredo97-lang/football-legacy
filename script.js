@@ -19320,9 +19320,10 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
   if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
   if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
 
-  const currentSeason = getCurrentSeason();
+  const currentSeasonStr = getCurrentSeason();
+  const currentSeasonRecord = getCareerSeasonRecords().find(s=>String(s.temporada)===String(currentSeasonStr)) || null;
   let idadeAtual = "";
-  try{ idadeAtual = calcAgeAtSeasonV3760(currentSeason) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
+  try{ idadeAtual = calcAgeAtSeasonV3760(currentSeasonRecord) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
 
   modalTitle.textContent = "Fantasy — Análise de Mercado";
   modalBox.classList.add("wide");
@@ -19339,7 +19340,7 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
       personagem_id: protagonista.id,
       carreira_id: active.carreira_id,
       idade_atual: idadeAtual,
-      temporada_atual: currentSeason ? currentSeason.temporada : ""
+      temporada_atual: currentSeasonRecord ? currentSeasonRecord.temporada : currentSeasonStr
     });
 
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao gerar análise.");
