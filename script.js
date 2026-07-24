@@ -19320,8 +19320,18 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
   if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
   if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
 
+  // FIX V3.9.4: usa a última temporada que realmente TEM estatísticas registradas
+  // pra esse jogador (ou seja, foi de fato jogada/finalizada), em vez de confiar
+  // cegamente na temporada "selecionada" no seletor — que pode já estar apontando
+  // pra uma temporada futura criada mas ainda vazia.
+  const statsDoProtagonista = getTable("ESTATISTICAS_CARREIRA").filter(s=>String(s.personagem_id)===String(protagonista.id));
+  const temporadasComStats = getCareerSeasonRecords().filter(s=>statsDoProtagonista.some(st=>String(st.carreira_temporada_id)===String(s.id)));
+  const temporadasComStatsOrdenadas = temporadasComStats.slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
+
   const currentSeasonStr = getCurrentSeason();
-  const currentSeasonRecord = getCareerSeasonRecords().find(s=>String(s.temporada)===String(currentSeasonStr)) || null;
+  const currentSeasonRecord = temporadasComStatsOrdenadas[0]
+    || getCareerSeasonRecords().find(s=>String(s.temporada)===String(currentSeasonStr))
+    || null;
   let idadeAtual = "";
   try{ idadeAtual = calcAgeAtSeasonV3760(currentSeasonRecord) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
 
