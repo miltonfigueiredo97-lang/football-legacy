@@ -4337,6 +4337,7 @@ var startFootballLegacy = function startFootballLegacy(){
     if($("syncBtn")) $("syncBtn").onclick = loadData;
     if($("seasonCreateBtn")) $("seasonCreateBtn").onclick = openSeasonFlow;
     if($("newCareerBtn")) $("newCareerBtn").onclick = openQuickCareerForm;
+    if($("fantasyBtn")) $("fantasyBtn").onclick = abrirFantasyAnalise;
     if($("openSeasonBtn")) $("openSeasonBtn").onclick = openSeasonFlow;
     if($("top11BatchBtn")) $("top11BatchBtn").onclick = openTop11BatchForm;
     if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = openBallonBatchForm;
@@ -19298,3 +19299,64 @@ window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;
 window.renderSelecaoBrasileira = renderSelecaoBrasileira;
 window.renderSelecaoConvocacoesPage = renderSelecaoConvocacoesPage;
 window.renderSelecaoBaseGrouped = renderSelecaoBaseGrouped;
+
+// ===== V3.9.3 FANTASY — análise de mercado por IA =====
+var abrirFantasyAnalise = async function abrirFantasyAnalise(){
+  const protagonista = getActiveProtagonist();
+  if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
+  if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
+
+  let idadeAtual = "";
+  try{ idadeAtual = calcAgeAtSeasonV3760(getCurrentSeason()) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
+
+  modalTitle.textContent = "Fantasy — Análise de Mercado";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+  form.innerHTML = `
+    <div id="fantasyResultado"><p>Analisando a carreira de ${escapeHtml(protagonista.nome||"-")}... isso pode levar alguns segundos.</p></div>
+    <div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button></div>
+  `;
+  modal.classList.add("active");
+
+  try{
+    const res = await apiPost({
+      action: "gerarFantasyAnalise",
+      personagem_id: protagonista.id,
+      carreira_id: active.carreira_id,
+      idade_atual: idadeAtual
+    });
+
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao gerar análise.");
+
+    const resultDiv = $("fantasyResultado");
+    if(!resultDiv) return;
+
+    let dados = null;
+    try{ dados = JSON.parse(res.data.analise); }catch(e){ dados = null; }
+
+    if(dados){
+      resultDiv.innerHTML = `
+        <p style="margin-bottom:14px">${escapeHtml(dados.analise||"")}</p>
+        ${dados.indice_mercado!==undefined ? `<div class="selecao-conv-media-box" style="margin-bottom:16px"><strong>${escapeHtml(String(dados.indice_mercado))}</strong><span>Índice de mercado</span></div>` : ""}
+        <h4 style="margin-bottom:10px">Propostas</h4>
+        <div class="cards-list">
+          ${(dados.propostas||[]).map(p=>`
+            <article class="entity-card">
+              <h3>${escapeHtml(p.clube||"-")}</h3>
+              <small>${escapeHtml(p.valor_transferencia||"-")} • ${escapeHtml(p.salario_anual||"-")}</small>
+              <p style="margin-top:8px">${escapeHtml(p.justificativa||"")}</p>
+            </article>
+          `).join("") || "<small>Nenhuma proposta recebida.</small>"}
+        </div>
+      `;
+    }else{
+      resultDiv.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(res.data.analise||"Sem resposta da IA.")}</pre>`;
+    }
+  }catch(err){
+    const resultDiv = $("fantasyResultado");
+    if(resultDiv) resultDiv.innerHTML = `<p style="color:#f87171">Erro ao gerar análise: ${escapeHtml(err.message)}</p>`;
+    console.error(err);
+  }
+}
+
+window.abrirFantasyAnalise = abrirFantasyAnalise;
