@@ -4524,7 +4524,18 @@ var competitionSuggestions = function competitionSuggestions(team){
   }else if(country.includes("france")){
     list.push("Coupe de France","Trophée des Champions");
   }else if(country.includes("brazil")){
-    list.push("Copa do Brasil","Libertadores","Sul-Americana");
+    list.push("Copa do Brasil","Libertadores","Sul-Americana","Supercopa do Brasil","Recopa Sul-Americana");
+
+    const nomeTime = String(team?.name || "").toLowerCase();
+    const clubesPaulistas = ["corinthians","palmeiras","santos","sao paulo","são paulo","santo andre","santo andré","ponte preta","guarani","novorizontino","mirassol","botafogo-sp","red bull bragantino","bragantino"];
+    const clubesCariocas = ["flamengo","fluminense","vasco","botafogo","botafogo-rj"];
+    const clubesMineiros = ["atletico mineiro","atlético mineiro","atletico-mg","cruzeiro","america mineiro","américa mineiro"];
+    const clubesGauchos = ["gremio","grêmio","internacional"];
+
+    if(clubesPaulistas.some(c=>nomeTime.includes(c))) list.push("Paulistão");
+    else if(clubesCariocas.some(c=>nomeTime.includes(c))) list.push("Carioca");
+    else if(clubesMineiros.some(c=>nomeTime.includes(c))) list.push("Mineiro");
+    else if(clubesGauchos.some(c=>nomeTime.includes(c))) list.push("Gaúcho");
   }else if(country.includes("portugal")){
     list.push("Taça de Portugal","Taça da Liga","Supertaça");
   }else if(country.includes("netherlands")){
