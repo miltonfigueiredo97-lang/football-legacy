@@ -18278,6 +18278,16 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const copyBtn = $("selecaoCopyPrevBtn");
   if(copyBtn) copyBtn.onclick = selecaoCopyPrevSeason;
 
+  const exportarBtn = $("selecaoExportarBtn");
+  if(exportarBtn) exportarBtn.onclick = exportarPlanilhaSelecaoBase;
+
+  const importarBtn = $("selecaoImportarBtn");
+  const importarInput = $("selecaoImportarInput");
+  if(importarBtn && importarInput){
+    importarBtn.onclick = ()=>importarInput.click();
+    importarInput.onchange = (e)=>importarPlanilhaSelecaoBase(e.target.files[0]);
+  }
+
   renderSelecaoBaseGrouped();
 
   corrigirPosicoesAtaParaCaSelecao().then(()=>{
@@ -19519,3 +19529,105 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
 }
 
 window.abrirFantasyAnalise = abrirFantasyAnalise;
+
+// ===== V3.9.12 SELEÇÃO BRASILEIRA — exportar/importar planilha de overall/idade =====
+var normalizarNomeParaComparar = function normalizarNomeParaComparar(nome){
+  return String(nome||"")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
+}
+
+var exportarPlanilhaSelecaoBase = function exportarPlanilhaSelecaoBase(){
+  if(typeof XLSX === "undefined"){ setStatus("Biblioteca de planilha não carregou. Recarregue a página.","error"); return; }
+
+  const base = getSelecaoBaseForSeason();
+  if(!base.length){ setStatus("Nenhum jogador na base desta temporada pra exportar.","error"); return; }
+
+  const presentes = [...new Set(base.map(r=>(r.posicao||"").trim().toUpperCase()||"SEM POSIÇÃO"))];
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+  const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const ordemPosicoes = [...ordenadas, ...extras];
+
+  const ordenado = base.slice().sort((a,b)=>{
+    const posA = ordemPosicoes.indexOf((a.posicao||"").trim().toUpperCase()||"SEM POSIÇÃO");
+    const posB = ordemPosicoes.indexOf((b.posicao||"").trim().toUpperCase()||"SEM POSIÇÃO");
+    if(posA !== posB) return posA - posB;
+    return String(a.nome||"").localeCompare(String(b.nome||""));
+  });
+
+  const linhas = ordenado.map(r=>({
+    Nome: r.nome || "",
+    Posição: r.posicao || "",
+    Idade: r.idade || "",
+    Overall: r.overall || ""
+  }));
+
+  const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId));
+  const nomeTemporada = seasonRecord ? seasonRecord.temporada.replace(/[\/\\]/g,"-") : "temporada";
+
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  ws["!cols"] = [{wch:28},{wch:12},{wch:8},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Base");
+  XLSX.writeFile(wb, `selecao_base_${nomeTemporada}.xlsx`);
+
+  setStatus(`Planilha exportada com ${linhas.length} jogadores.`,"ok");
+}
+
+var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(file){
+  if(!file) return;
+  if(typeof XLSX === "undefined"){ setStatus("Biblioteca de planilha não carregou. Recarregue a página.","error"); return; }
+
+  setStatus("Lendo planilha...","");
+
+  try{
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, {type:"array"});
+    const primeiraAba = wb.SheetNames[0];
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[primeiraAba]);
+
+    if(!linhas.length){ setStatus("Planilha vazia ou em formato não reconhecido.","error"); return; }
+
+    const base = getSelecaoBaseForSeason();
+    const baseIndexPorNome = {};
+    base.forEach(r=>{ baseIndexPorNome[normalizarNomeParaComparar(r.nome)] = r; });
+
+    let atualizados = 0;
+    let naoEncontrados = [];
+
+    for(const linha of linhas){
+      const nomeLinha = linha.Nome || linha.nome || linha.NOME || "";
+      if(!nomeLinha) continue;
+
+      const jogador = baseIndexPorNome[normalizarNomeParaComparar(nomeLinha)];
+      if(!jogador){ naoEncontrados.push(nomeLinha); continue; }
+
+      const novaIdade = linha.Idade ?? linha.idade ?? linha.IDADE;
+      const novoOverall = linha.Overall ?? linha.overall ?? linha.OVERALL;
+
+      const record = {};
+      if(novaIdade !== undefined && novaIdade !== "") record.idade = novaIdade;
+      if(novoOverall !== undefined && novoOverall !== "") record.overall = novoOverall;
+
+      if(Object.keys(record).length){
+        await apiPost({action:"update", table:"SELECAO_BASE_TEMPORADA", id:jogador.id, record});
+        atualizados++;
+      }
+    }
+
+    await loadData();
+    renderSelecaoBaseGrouped();
+
+    let msg = `${atualizados} jogador(es) atualizado(s) a partir da planilha.`;
+    if(naoEncontrados.length) msg += ` ${naoEncontrados.length} não encontrado(s) na base: ${naoEncontrados.slice(0,5).join(", ")}${naoEncontrados.length>5?"...":""}.`;
+    setStatus(msg, naoEncontrados.length ? "error" : "ok");
+  }catch(err){
+    setStatus("Erro ao importar planilha: "+err.message,"error");
+    console.error(err);
+  }
+}
+
+window.exportarPlanilhaSelecaoBase = exportarPlanilhaSelecaoBase;
+window.importarPlanilhaSelecaoBase = importarPlanilhaSelecaoBase;
