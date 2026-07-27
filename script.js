@@ -2479,6 +2479,8 @@ var renderPageById = function renderPageById(pageId, force=false){
     try{ renderSelecaoBrasileira(); }catch(err){ console.error("Erro em renderSelecaoBrasileira", err); }
   }else if(page === "selecaoconvocacoes"){
     try{ renderSelecaoConvocacoesPage(); }catch(err){ console.error("Erro em renderSelecaoConvocacoesPage", err); }
+  }else if(page === "selecaoestatisticas"){
+    try{ renderSelecaoEstatisticasPage(); }catch(err){ console.error("Erro em renderSelecaoEstatisticasPage", err); }
   }
 
   renderedPages[page] = true;
@@ -12210,7 +12212,8 @@ var FL_pageIdsV3784 = function FL_pageIdsV3784(){
     "clubes",
     "museu",
     "selecaobrasileira",
-    "selecaoconvocacoes"
+    "selecaoconvocacoes",
+    "selecaoestatisticas"
   ];
 }
 
@@ -19642,3 +19645,102 @@ var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(fil
 
 window.exportarPlanilhaSelecaoBase = exportarPlanilhaSelecaoBase;
 window.importarPlanilhaSelecaoBase = importarPlanilhaSelecaoBase;
+
+// ===== V3.9.13 SELEÇÃO BRASILEIRA — Estatísticas históricas (evolução entre bases) =====
+var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
+  const el = $("selecaoEstatisticasTabela");
+  if(!el) return;
+
+  if(!active.carreira_id){
+    el.innerHTML = emptyCard("Selecione uma carreira primeiro.");
+    return;
+  }
+
+  const seasons = getSelecaoSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(b.temporada,a.temporada));
+  // acima ordenado ascendente (mais antiga primeiro), pra virar colunas da esquerda pra direita
+
+  if(!seasons.length){
+    el.innerHTML = emptyCard("Nenhuma temporada da Seleção Brasileira criada ainda.");
+    return;
+  }
+
+  const todosOsRegistros = getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_id)===String(active.carreira_id));
+
+  // Agrupa por nome normalizado (o mesmo jogador pode ter um ID diferente em cada base/temporada, já que copiar cria registros novos).
+  const porJogador = {};
+  todosOsRegistros.forEach(r=>{
+    const chave = normalizarNomeParaComparar(r.nome);
+    if(!chave) return;
+    if(!porJogador[chave]){
+      porJogador[chave] = { nome: r.nome, posicao: r.posicao, porTemporada: {} };
+    }
+    porJogador[chave].porTemporada[r.carreira_temporada_id] = r;
+    // Mantém a posição mais recente conhecida (última temporada com esse jogador vence, já que iteramos em qualquer ordem — ajusta abaixo).
+  });
+
+  // Ajusta posição pra usar a ocorrência mais recente do jogador (por ordem de temporada).
+  Object.values(porJogador).forEach(jogador=>{
+    let maisRecente = null;
+    seasons.forEach(s=>{
+      if(jogador.porTemporada[s.id]) maisRecente = jogador.porTemporada[s.id];
+    });
+    if(maisRecente) jogador.posicao = maisRecente.posicao;
+  });
+
+  const jogadores = Object.values(porJogador).sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||"")));
+
+  if(!jogadores.length){
+    el.innerHTML = emptyCard("Nenhum jogador cadastrado em nenhuma base ainda.");
+    return;
+  }
+
+  const calcularTendencia = (jogador)=>{
+    const overalls = seasons
+      .map(s=>jogador.porTemporada[s.id])
+      .filter(Boolean)
+      .map(r=>num(r.overall))
+      .filter(v=>v>0);
+
+    if(overalls.length < 2) return {simbolo:"–", cor:"var(--muted)"};
+
+    const primeiro = overalls[0];
+    const ultimo = overalls[overalls.length-1];
+
+    if(ultimo > primeiro) return {simbolo:"▲ Em ascensão", cor:"#34d399"};
+    if(ultimo < primeiro) return {simbolo:"▼ Em declínio", cor:"#f87171"};
+    return {simbolo:"— Estável", cor:"var(--muted)"};
+  };
+
+  el.innerHTML = `
+    <div class="selecao-stats-tabela-wrap">
+      <table class="selecao-stats-tabela">
+        <thead>
+          <tr>
+            <th>Jogador</th>
+            <th>Posição</th>
+            ${seasons.map(s=>`<th>${escapeHtml(s.temporada||"-")}</th>`).join("")}
+            <th>Tendência</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${jogadores.map(j=>{
+            const tendencia = calcularTendencia(j);
+            return `
+              <tr>
+                <td class="selecao-stats-nome">${escapeHtml(j.nome||"-")}</td>
+                <td>${escapeHtml(j.posicao||"-")}</td>
+                ${seasons.map(s=>{
+                  const registro = j.porTemporada[s.id];
+                  return `<td>${registro ? escapeHtml(String(registro.overall||"-")) : `<span class="selecao-stats-ausente">—</span>`}</td>`;
+                }).join("")}
+                <td style="color:${tendencia.cor};font-weight:700">${tendencia.simbolo}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;

@@ -2086,6 +2086,14 @@ button[disabled],
   color:#34d399;
 }
 
+.selecao-stats-tabela-wrap{overflow-x:auto;border-radius:16px;border:1px solid var(--line)}
+.selecao-stats-tabela{width:100%;border-collapse:collapse;font-size:0.85em;white-space:nowrap}
+.selecao-stats-tabela th,.selecao-stats-tabela td{padding:10px 14px;text-align:center;border-bottom:1px solid var(--line)}
+.selecao-stats-tabela th{background:rgba(255,255,255,.04);color:var(--gold);font-size:0.8em;text-transform:uppercase;letter-spacing:0.03em}
+.selecao-stats-nome{text-align:left!important;font-weight:700}
+.selecao-stats-ausente{color:var(--muted);opacity:0.4}
+.selecao-stats-tabela tbody tr:hover{background:rgba(255,255,255,.03)}
+
 .season-status-em-andamento{
   background:rgba(96,165,250,.13);
   border-color:rgba(96,165,250,.36);
