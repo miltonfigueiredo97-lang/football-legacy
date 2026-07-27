@@ -19656,6 +19656,17 @@ var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
     return;
   }
 
+  const ordemSelect = $("selecaoStatsOrdemSelect");
+  if(ordemSelect && !ordemSelect.dataset.bound){
+    ordemSelect.dataset.bound = "1";
+    ordemSelect.value = window.__selecaoStatsOrdem || "posicao";
+    ordemSelect.onchange = ()=>{
+      window.__selecaoStatsOrdem = ordemSelect.value;
+      renderSelecaoEstatisticasPage();
+    };
+  }
+  const ordemAtual = window.__selecaoStatsOrdem || "posicao";
+
   const seasons = getSelecaoSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(b.temporada,a.temporada));
   // acima ordenado ascendente (mais antiga primeiro), pra virar colunas da esquerda pra direita
 
@@ -19665,6 +19676,7 @@ var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
   }
 
   const todosOsRegistros = getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_id)===String(active.carreira_id));
+  const todosOsConvocados = getTable("SELECAO_CONVOCADOS");
 
   // Agrupa por nome normalizado (o mesmo jogador pode ter um ID diferente em cada base/temporada, já que copiar cria registros novos).
   const porJogador = {};
@@ -19675,19 +19687,28 @@ var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
       porJogador[chave] = { nome: r.nome, posicao: r.posicao, porTemporada: {} };
     }
     porJogador[chave].porTemporada[r.carreira_temporada_id] = r;
-    // Mantém a posição mais recente conhecida (última temporada com esse jogador vence, já que iteramos em qualquer ordem — ajusta abaixo).
   });
 
-  // Ajusta posição pra usar a ocorrência mais recente do jogador (por ordem de temporada).
+  // Ajusta posição pra usar a ocorrência mais recente do jogador (por ordem de temporada),
+  // e conta quantas vezes ele foi convocado em cada temporada (pelo jogador_base_id daquela base específica).
   Object.values(porJogador).forEach(jogador=>{
     let maisRecente = null;
     seasons.forEach(s=>{
-      if(jogador.porTemporada[s.id]) maisRecente = jogador.porTemporada[s.id];
+      const registro = jogador.porTemporada[s.id];
+      if(registro) maisRecente = registro;
     });
     if(maisRecente) jogador.posicao = maisRecente.posicao;
+
+    jogador.convocacoesPorTemporada = {};
+    seasons.forEach(s=>{
+      const registro = jogador.porTemporada[s.id];
+      if(!registro) return;
+      const qtd = todosOsConvocados.filter(c=>String(c.jogador_base_id)===String(registro.id)).length;
+      jogador.convocacoesPorTemporada[s.id] = qtd;
+    });
   });
 
-  const jogadores = Object.values(porJogador).sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||"")));
+  const jogadores = Object.values(porJogador);
 
   if(!jogadores.length){
     el.innerHTML = emptyCard("Nenhum jogador cadastrado em nenhuma base ainda.");
@@ -19711,36 +19732,147 @@ var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
     return {simbolo:"— Estável", cor:"var(--muted)"};
   };
 
+  window.__selecaoStatsJogadores = jogadores;
+  window.__selecaoStatsSeasons = seasons;
+
+  const linhaHtml = (j)=>{
+    const tendencia = calcularTendencia(j);
+    const chaveJogador = normalizarNomeParaComparar(j.nome);
+    return `
+      <tr class="selecao-stats-linha" onclick="abrirGraficoJogadorSelecao('${escapeAttr(chaveJogador)}')">
+        <td class="selecao-stats-nome">${escapeHtml(j.nome||"-")}</td>
+        <td>${escapeHtml(j.posicao||"-")}</td>
+        ${seasons.map(s=>{
+          const registro = j.porTemporada[s.id];
+          if(!registro) return `<td><span class="selecao-stats-ausente">—</span></td>`;
+          const qtdConv = j.convocacoesPorTemporada[s.id] || 0;
+          return `<td>${escapeHtml(String(registro.overall||"-"))}<br><small class="selecao-stats-conv">${qtdConv}x convocado</small></td>`;
+        }).join("")}
+        <td style="color:${tendencia.cor};font-weight:700">${tendencia.simbolo}</td>
+      </tr>
+    `;
+  };
+
+  const cabecalho = `
+    <tr>
+      <th>Jogador</th>
+      <th>Posição</th>
+      ${seasons.map(s=>`<th>${escapeHtml(s.temporada||"-")}</th>`).join("")}
+      <th>Tendência</th>
+    </tr>
+  `;
+
+  let corpoHtml = "";
+
+  if(ordemAtual === "posicao"){
+    const grupos = {};
+    jogadores.forEach(j=>{
+      const pos = (j.posicao||"").trim().toUpperCase() || "SEM POSIÇÃO";
+      if(!grupos[pos]) grupos[pos] = [];
+      grupos[pos].push(j);
+    });
+
+    const presentes = Object.keys(grupos);
+    const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+    const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+    const ordemFinal = [...ordenadas, ...extras];
+
+    corpoHtml = ordemFinal.map(pos=>{
+      const jogadoresDaPosicao = grupos[pos].slice().sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||"")));
+      return `
+        <tr class="selecao-stats-grupo-header"><td colspan="${3+seasons.length}">${escapeHtml(pos)} (${jogadoresDaPosicao.length})</td></tr>
+        ${jogadoresDaPosicao.map(linhaHtml).join("")}
+      `;
+    }).join("");
+  }else{
+    corpoHtml = jogadores.slice().sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||""))).map(linhaHtml).join("");
+  }
+
   el.innerHTML = `
     <div class="selecao-stats-tabela-wrap">
       <table class="selecao-stats-tabela">
-        <thead>
-          <tr>
-            <th>Jogador</th>
-            <th>Posição</th>
-            ${seasons.map(s=>`<th>${escapeHtml(s.temporada||"-")}</th>`).join("")}
-            <th>Tendência</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${jogadores.map(j=>{
-            const tendencia = calcularTendencia(j);
-            return `
-              <tr>
-                <td class="selecao-stats-nome">${escapeHtml(j.nome||"-")}</td>
-                <td>${escapeHtml(j.posicao||"-")}</td>
-                ${seasons.map(s=>{
-                  const registro = j.porTemporada[s.id];
-                  return `<td>${registro ? escapeHtml(String(registro.overall||"-")) : `<span class="selecao-stats-ausente">—</span>`}</td>`;
-                }).join("")}
-                <td style="color:${tendencia.cor};font-weight:700">${tendencia.simbolo}</td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
+        <thead>${cabecalho}</thead>
+        <tbody>${corpoHtml}</tbody>
       </table>
     </div>
   `;
 }
 
+var abrirGraficoJogadorSelecao = function abrirGraficoJogadorSelecao(chaveJogador){
+  const jogadores = window.__selecaoStatsJogadores || [];
+  const seasons = window.__selecaoStatsSeasons || [];
+  const jogador = jogadores.find(j=>normalizarNomeParaComparar(j.nome)===chaveJogador);
+  if(!jogador) return;
+
+  const labels = [];
+  const dadosOverall = [];
+  const dadosConvocacoes = [];
+
+  seasons.forEach(s=>{
+    const registro = jogador.porTemporada[s.id];
+    labels.push(s.temporada||"-");
+    dadosOverall.push(registro ? num(registro.overall) : null);
+    dadosConvocacoes.push(jogador.convocacoesPorTemporada[s.id] || 0);
+  });
+
+  modalTitle.textContent = `Evolução — ${jogador.nome}`;
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+  form.innerHTML = `
+    <div style="background:rgba(255,255,255,.03);border-radius:16px;padding:16px">
+      <canvas id="selecaoGraficoJogadorCanvas" height="90"></canvas>
+    </div>
+    <div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button></div>
+  `;
+  modal.classList.add("active");
+
+  setTimeout(()=>{
+    const canvas = $("selecaoGraficoJogadorCanvas");
+    if(!canvas || typeof Chart === "undefined") return;
+
+    if(window.__selecaoChartInstance){
+      window.__selecaoChartInstance.destroy();
+    }
+
+    window.__selecaoChartInstance = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Overall",
+            data: dadosOverall,
+            borderColor: "#fbbf24",
+            backgroundColor: "rgba(251,191,36,.15)",
+            spanGaps: true,
+            tension: 0.25,
+            yAxisID: "y"
+          },
+          {
+            label: "Convocações",
+            data: dadosConvocacoes,
+            borderColor: "#34d399",
+            backgroundColor: "rgba(52,211,153,.15)",
+            tension: 0.25,
+            yAxisID: "y1"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: {mode:"index", intersect:false},
+        plugins: {
+          legend: {labels:{color:"#e5e7eb"}}
+        },
+        scales: {
+          x: {ticks:{color:"#9ca3af"}, grid:{color:"rgba(255,255,255,.06)"}},
+          y: {position:"left", ticks:{color:"#fbbf24"}, grid:{color:"rgba(255,255,255,.06)"}, title:{display:true,text:"Overall",color:"#fbbf24"}},
+          y1: {position:"right", ticks:{color:"#34d399"}, grid:{display:false}, title:{display:true,text:"Convocações",color:"#34d399"}, beginAtZero:true}
+        }
+      }
+    });
+  }, 50);
+}
+
 window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;
+window.abrirGraficoJogadorSelecao = abrirGraficoJogadorSelecao;

@@ -2093,6 +2093,10 @@ button[disabled],
 .selecao-stats-nome{text-align:left!important;font-weight:700}
 .selecao-stats-ausente{color:var(--muted);opacity:0.4}
 .selecao-stats-tabela tbody tr:hover{background:rgba(255,255,255,.03)}
+.selecao-stats-linha{cursor:pointer}
+.selecao-stats-linha:hover{background:rgba(251,191,36,.06)!important}
+.selecao-stats-grupo-header td{background:rgba(251,191,36,.08)!important;color:var(--gold);font-weight:800;text-align:left!important;text-transform:uppercase;font-size:0.8em;letter-spacing:0.04em}
+.selecao-stats-conv{color:var(--muted);font-weight:400;font-size:0.85em}
 
 .season-status-em-andamento{
   background:rgba(96,165,250,.13);
