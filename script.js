@@ -19523,16 +19523,17 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
 
       <h3 class="fantasy-propostas-titulo">Propostas</h3>
       <div class="fantasy-propostas-lista">
-        ${propostas.map((p,i)=>`
+        ${dados.cenario_sem_clube ? "<small>Nesse cenário, o jogador termina a temporada <strong>sem clube</strong> — nem o time atual quis renovar, e nenhum outro clube fez proposta concreta. Isso também é uma avaliação de mercado real.</small>" : (propostas.map((p,i)=>`
           <div class="fantasy-proposta">
             <div class="selecao-conv-escudo" style="width:36px;height:36px">${escudos[i] ? `<img src="${escapeAttr(escudos[i])}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
             <div class="fantasy-proposta-info">
               <strong>${escapeHtml(p.clube||"-")}</strong>
-              <small>${p.anos_contrato?`${escapeHtml(String(p.anos_contrato))} anos de contrato • `:""}${escapeHtml(p.valor_transferencia||"-")}${p.bonus?` ${escapeHtml(p.bonus)}`:""} • ${escapeHtml(p.salario_anual||"-")}</small>
+              ${p.modalidade ? `<span class="fantasy-modalidade">${escapeHtml(p.modalidade)}</span>` : ""}
+              <small>${p.anos_contrato?`${escapeHtml(String(p.anos_contrato))} anos • `:""}${escapeHtml(p.valor_transferencia||"-")}${p.valor_opcao_compra?` (opção de compra: ${escapeHtml(p.valor_opcao_compra)})`:""}${p.bonus?` ${escapeHtml(p.bonus)}`:""} • ${escapeHtml(p.salario_anual||"-")}</small>
               ${p.justificativa ? `<small class="fantasy-justificativa">${escapeHtml(p.justificativa)}</small>` : ""}
             </div>
           </div>
-        `).join("") || "<small>Nenhum clube demonstrou interesse concreto nesse momento — nem o clube atual quis renovar. Isso também é uma avaliação de mercado real.</small>"}
+        `).join("") || "<small>Nenhum clube demonstrou interesse concreto nesse momento — nem o clube atual quis renovar. Isso também é uma avaliação de mercado real.</small>")}
       </div>
     `;
   }catch(err){
