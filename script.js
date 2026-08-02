@@ -19487,7 +19487,14 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
 
     resultDiv.innerHTML = `<p>Buscando escudos dos clubes...</p>`;
 
-    const propostas = dados.propostas || [];
+    const propostasBrutas = dados.propostas || [];
+    // Garante que a proposta do clube atual sempre vem primeiro, mesmo que a IA não respeite isso.
+    const nomeClubeAtual = normalizarNomeParaComparar(temp.clube||"");
+    const propostas = propostasBrutas.slice().sort((a,b)=>{
+      const aAtual = normalizarNomeParaComparar(a.clube||"") === nomeClubeAtual ? 0 : 1;
+      const bAtual = normalizarNomeParaComparar(b.clube||"") === nomeClubeAtual ? 0 : 1;
+      return aAtual - bAtual;
+    });
     const buscarEscudosEmLotes = async (nomes, tamanhoLote=3, pausaMs=250)=>{
       const resultados = [];
       for(let i=0;i<nomes.length;i+=tamanhoLote){
