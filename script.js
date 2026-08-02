@@ -19418,38 +19418,48 @@ var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
   return "";
 }
 
-var abrirFantasyAnalise = async function abrirFantasyAnalise(){
+var abrirFantasyAnalise = function abrirFantasyAnalise(){
   const protagonista = getActiveProtagonist();
   if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
   if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
 
-  // FIX V3.9.6: usa a última temporada marcada como "finalizada" (ou "transferido"),
-  // que é o sinal real de que a temporada acabou — ter estatísticas sozinho não
-  // era suficiente, porque uma temporada "em andamento" também pode ter algumas
-  // estatísticas parciais já digitadas.
-  const temporadasFinalizadas = getCareerSeasonRecords().filter(s=>s.status==="finalizada"||s.status==="transferido");
-  const temporadasFinalizadasOrdenadas = temporadasFinalizadas.slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
-
-  const statsDoProtagonista = getTable("ESTATISTICAS_CARREIRA").filter(s=>String(s.personagem_id)===String(protagonista.id));
-  const temporadasComStats = getCareerSeasonRecords().filter(s=>statsDoProtagonista.some(st=>String(st.carreira_temporada_id)===String(s.id)));
-  const temporadasComStatsOrdenadas = temporadasComStats.slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
-
-  const currentSeasonStr = getCurrentSeason();
-  const currentSeasonRecord = temporadasFinalizadasOrdenadas[0]
-    || temporadasComStatsOrdenadas[0]
-    || getCareerSeasonRecords().find(s=>String(s.temporada)===String(currentSeasonStr))
-    || null;
-  let idadeAtual = "";
-  try{ idadeAtual = calcAgeAtSeasonV3760(currentSeasonRecord) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
+  const seasons = getCareerSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
+  if(!seasons.length){ alert("Esse protagonista ainda não tem temporadas registradas."); return; }
 
   modalTitle.textContent = "Fantasy — Análise de Mercado";
   modalBox.classList.add("wide");
   form.className = "form-grid";
   form.innerHTML = `
-    <div id="fantasyResultado"><p>Analisando a carreira de ${escapeHtml(protagonista.nome||"-")}... isso pode levar de 10 a 20 segundos.</p></div>
-    <div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button></div>
+    <div class="form-field">
+      <label>Temporada de referência</label>
+      <select id="fantasyTemporadaSelect">
+        ${seasons.map((s,i)=>`<option value="${s.id}" ${i===0?"selected":""}>${escapeHtml(s.temporada||"-")}${s.status?` (${escapeHtml(s.status==="em andamento"?"Em andamento":s.status==="finalizada"?"Finalizada":s.status)})`:""}</option>`).join("")}
+      </select>
+      <small>Por padrão, a mais recente (mesmo que ainda esteja em andamento). Se você escolher uma temporada anterior, as posteriores são ignoradas — só as temporadas até a escolhida entram na análise.</small>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="gold-btn" onclick="executarFantasyAnalise('${protagonista.id}')">Gerar análise</button>
+    </div>
   `;
   modal.classList.add("active");
+}
+
+var executarFantasyAnalise = async function executarFantasyAnalise(personagemId){
+  const protagonista = byId("PERSONAGENS", personagemId) || getActiveProtagonist();
+  if(!protagonista) return;
+
+  const seasonSelect = $("fantasyTemporadaSelect");
+  const seasonId = seasonSelect ? seasonSelect.value : "";
+  const currentSeasonRecord = getCareerSeasonRecords().find(s=>String(s.id)===String(seasonId)) || null;
+
+  let idadeAtual = "";
+  try{ idadeAtual = calcAgeAtSeasonV3760(currentSeasonRecord) || protagonista.idade || ""; }catch(err){ idadeAtual = protagonista.idade || ""; }
+
+  form.innerHTML = `
+    <div id="fantasyResultado"><p>Analisando a carreira de ${escapeHtml(protagonista.nome||"-")} até ${escapeHtml(currentSeasonRecord?currentSeasonRecord.temporada:"-")}... isso pode levar de 10 a 20 segundos.</p></div>
+    <div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button></div>
+  `;
 
   try{
     const res = await apiPost({
@@ -19457,7 +19467,8 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
       personagem_id: protagonista.id,
       carreira_id: active.carreira_id,
       idade_atual: idadeAtual,
-      temporada_atual: currentSeasonRecord ? currentSeasonRecord.temporada : currentSeasonStr
+      temporada_atual: currentSeasonRecord ? currentSeasonRecord.temporada : "",
+      temporada_status: currentSeasonRecord ? currentSeasonRecord.status : ""
     });
 
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao gerar análise.");
@@ -19551,6 +19562,7 @@ var abrirFantasyAnalise = async function abrirFantasyAnalise(){
 }
 
 window.abrirFantasyAnalise = abrirFantasyAnalise;
+window.executarFantasyAnalise = executarFantasyAnalise;
 
 // ===== V3.9.12 SELEÇÃO BRASILEIRA — exportar/importar planilha de overall/idade =====
 var normalizarNomeParaComparar = function normalizarNomeParaComparar(nome){
