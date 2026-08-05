@@ -19490,7 +19490,12 @@ var executarFantasyAnalise = async function executarFantasyAnalise(personagemId)
     try{ dados = JSON.parse(textoLimpo); }catch(e){ dados = null; }
 
     if(!dados){
-      resultDiv.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(res.data.analise||"Sem resposta da IA.")}</pre>`;
+      const pareceCortado = !textoLimpo.trim().endsWith("}");
+      resultDiv.innerHTML = `
+        <p style="color:#f87171;margin-bottom:10px">${pareceCortado ? "A resposta da IA parece ter sido cortada no meio (ficou grande demais). Tenta gerar de novo." : "Não consegui interpretar a resposta da IA dessa vez."}</p>
+        <button type="button" class="ghost-btn" onclick="executarFantasyAnalise('${escapeAttr(protagonista.id)}')" style="margin-bottom:14px">🔄 Tentar novamente</button>
+        <pre style="white-space:pre-wrap;font-family:inherit;font-size:0.8em;opacity:0.7">${escapeHtml(res.data.analise||"Sem resposta da IA.")}</pre>
+      `;
       return;
     }
 
