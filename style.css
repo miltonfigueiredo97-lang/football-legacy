@@ -61,6 +61,12 @@
 .selecao-conv-avaliacao input[type="checkbox"]{width:16px;height:16px}
 .selecao-conv-obs-linha input{width:100%;background:#1e293b;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:white;outline:none;padding:7px 8px;font-size:0.85em}
 
+.selecao-visao-rapida{display:flex;flex-direction:column;gap:4px}
+.selecao-visao-rapida-linha{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.03)}
+.selecao-visao-rapida-pos{flex:0 0 42px;color:var(--gold);font-weight:800;font-size:0.78em}
+.selecao-visao-rapida-linha strong{flex:1;font-size:0.9em}
+.selecao-visao-rapida-time{color:var(--muted);font-size:0.85em}
+
 .fantasy-header{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .fantasy-data{color:var(--gold);text-transform:uppercase;letter-spacing:0.05em;font-size:0.78em;font-weight:700}
 .fantasy-header h2{font-size:1.4em;margin-top:4px}

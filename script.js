@@ -19194,7 +19194,9 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       return ob-oa;
     });
 
-    const rosterHtml = ordemFinal.map(pos=>`
+    const visaoRapidaAtiva = (window.__selecaoVisaoRapida || {})[c.id];
+
+    const rosterHtmlDetalhado = ordemFinal.map(pos=>`
       <div class="selecao-posicao-grupo">
         <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
         <div class="selecao-conv-lista">
@@ -19221,7 +19223,21 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
           `).join("")}
         </div>
       </div>
-    `).join("") || "<small>Nenhum jogador convocado ainda. Clique em \"Editar convocados\" para escolher.</small>";
+    `).join("");
+
+    const rosterHtmlRapido = `
+      <div class="selecao-visao-rapida">
+        ${ordemFinal.map(pos=>ordenarPorOverall(grupos[pos]).map(j=>`
+          <div class="selecao-visao-rapida-linha">
+            <span class="selecao-visao-rapida-pos">${escapeHtml(pos)}</span>
+            <strong>${escapeHtml(j.nome)}</strong>
+            <span class="selecao-visao-rapida-time">${escapeHtml(j.time)}</span>
+          </div>
+        `).join("")).join("")}
+      </div>
+    `;
+
+    const rosterHtml = (convocadosComBase.length ? (visaoRapidaAtiva ? rosterHtmlRapido : rosterHtmlDetalhado) : "") || "<small>Nenhum jogador convocado ainda. Clique em \"Editar convocados\" para escolher.</small>";
 
     const idadeMediaConv = convocadosComBase.length
       ? Math.round((convocadosComBase.reduce((a,j)=>a+num(j.idade),0)/convocadosComBase.length)*10)/10
@@ -19245,6 +19261,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
 
         <div class="entity-actions" style="margin-top:0;margin-bottom:16px">
           <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
+          <button onclick="toggleVisaoRapidaSelecao('${c.id}')">${visaoRapidaAtiva ? "📋 Visão detalhada" : "👁️ Visão rápida"}</button>
           <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
           <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
         </div>
@@ -19331,7 +19348,14 @@ window.adicionarVagaPosicao = adicionarVagaPosicao;
 window.removerVagaPosicao = removerVagaPosicao;
 window.adicionarPosicaoNaConvocacao = adicionarPosicaoNaConvocacao;
 window.salvarSlotsConvocacao = salvarSlotsConvocacao;
+var toggleVisaoRapidaSelecao = function toggleVisaoRapidaSelecao(convocacaoId){
+  window.__selecaoVisaoRapida = window.__selecaoVisaoRapida || {};
+  window.__selecaoVisaoRapida[convocacaoId] = !window.__selecaoVisaoRapida[convocacaoId];
+  renderSelecaoConvocacoesList();
+}
+
 window.saveConvocacaoNotas = saveConvocacaoNotas;
+window.toggleVisaoRapidaSelecao = toggleVisaoRapidaSelecao;
 window.deleteSelecaoConvocacao = deleteSelecaoConvocacao;
 window.renderSelecaoBrasileira = renderSelecaoBrasileira;
 window.renderSelecaoConvocacoesPage = renderSelecaoConvocacoesPage;
