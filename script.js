@@ -18359,13 +18359,7 @@ var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
   el.innerHTML = ordemFinal.map(pos=>`
     <div class="selecao-posicao-grupo">
       <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
-      <div class="cards-list">${grupos[pos].slice().sort((a,b)=>{
-        const oa = num(a.overall), ob = num(b.overall);
-        if(oa===0 && ob===0) return 0;
-        if(oa===0) return 1;
-        if(ob===0) return -1;
-        return ob-oa;
-      }).map(selecaoJogadorCardHtml).join("")}</div>
+      <div class="cards-list">${grupos[pos].slice().sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||""))).map(selecaoJogadorCardHtml).join("")}</div>
     </div>
   `).join("");
 }
