@@ -18337,10 +18337,22 @@ var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
   const el = $("selecaoBaseGrouped");
   if(!el) return;
 
-  const rows = getSelecaoBaseForSeason();
+  const searchInput = $("selecaoBaseSearchInput");
+  if(searchInput && !searchInput.dataset.bound){
+    searchInput.dataset.bound = "1";
+    searchInput.value = window.__selecaoBaseBusca || "";
+    searchInput.oninput = ()=>{
+      window.__selecaoBaseBusca = searchInput.value;
+      renderSelecaoBaseGrouped();
+    };
+  }
+  const termoBusca = normalizarNomeParaComparar(window.__selecaoBaseBusca || "");
+
+  let rows = getSelecaoBaseForSeason();
+  if(termoBusca) rows = rows.filter(r=>normalizarNomeParaComparar(r.nome||"").includes(termoBusca));
 
   if(!rows.length){
-    el.innerHTML = emptyCard("Nenhum jogador na base desta temporada ainda.");
+    el.innerHTML = emptyCard(termoBusca ? "Nenhum jogador encontrado com esse nome." : "Nenhum jogador na base desta temporada ainda.");
     return;
   }
 
