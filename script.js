@@ -18670,8 +18670,12 @@ var CRITERIOS_COMBINAVEIS_OPCOES = [
   {valor:"automatica_menos_convocados", label:"Menos convocações"},
   {valor:"automatica_mais_convocados", label:"Mais convocações"},
   {valor:"automatica_mais_velhos", label:"Mais velho"},
-  {valor:"automatica_mais_novos", label:"Mais novo"}
+  {valor:"automatica_mais_novos", label:"Mais novo"},
+  {valor:"idade_entre", label:"Idade entre X e Y"},
+  {valor:"overall_entre", label:"Overall entre X e Y"}
 ];
+
+var CRITERIOS_TIPO_FAIXA = ["idade_entre","overall_entre"];
 
 var renderCriteriosCombinaveisLista = function renderCriteriosCombinaveisLista(){
   const el = $("selecaoCriteriosLista");
@@ -18679,21 +18683,25 @@ var renderCriteriosCombinaveisLista = function renderCriteriosCombinaveisLista()
 
   const lista = window.__selecaoCriteriosCombinaveis || [];
 
-  el.innerHTML = lista.map((valorAtual, idx)=>`
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+  el.innerHTML = lista.map((item, idx)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
       <span style="min-width:20px;color:var(--muted);font-size:0.85em">${idx+1}º</span>
-      <select onchange="atualizarCriterioCombinavel(${idx}, this.value)" style="flex:1">
-        ${CRITERIOS_COMBINAVEIS_OPCOES.map(o=>`<option value="${o.valor}" ${o.valor===valorAtual?"selected":""}>${o.label}</option>`).join("")}
+      <select onchange="atualizarCriterioCombinavel(${idx}, this.value)" style="flex:1;min-width:160px">
+        ${CRITERIOS_COMBINAVEIS_OPCOES.map(o=>`<option value="${o.valor}" ${o.valor===item.tipo?"selected":""}>${o.label}</option>`).join("")}
       </select>
+      ${CRITERIOS_TIPO_FAIXA.includes(item.tipo) ? `
+        <input type="number" placeholder="Mín" value="${escapeAttr(item.min||"")}" oninput="atualizarFaixaCriterioCombinavel(${idx},'min',this.value)" style="width:70px">
+        <span style="color:var(--muted)">e</span>
+        <input type="number" placeholder="Máx" value="${escapeAttr(item.max||"")}" oninput="atualizarFaixaCriterioCombinavel(${idx},'max',this.value)" style="width:70px">
+      ` : ""}
       ${lista.length>1 ? `<button type="button" class="ghost-btn" onclick="removerCriterioCombinavel(${idx})">−</button>` : ""}
-      ${idx===0 ? `<span style="opacity:0"></span>` : ""}
     </div>
   `).join("");
 }
 
 var adicionarCriterioCombinavel = function adicionarCriterioCombinavel(){
   window.__selecaoCriteriosCombinaveis = window.__selecaoCriteriosCombinaveis || [];
-  window.__selecaoCriteriosCombinaveis.push("automatica_maiores_overalls");
+  window.__selecaoCriteriosCombinaveis.push({tipo:"automatica_maiores_overalls", min:"", max:""});
   renderCriteriosCombinaveisLista();
 }
 
@@ -18703,14 +18711,25 @@ var removerCriterioCombinavel = function removerCriterioCombinavel(idx){
 }
 
 var atualizarCriterioCombinavel = function atualizarCriterioCombinavel(idx, valor){
-  window.__selecaoCriteriosCombinaveis[idx] = valor;
+  window.__selecaoCriteriosCombinaveis[idx].tipo = valor;
+  renderCriteriosCombinaveisLista();
 }
 
-// Gera a convocação combinando vários critérios em ordem de prioridade
-// (o primeiro decide a ordem principal, os seguintes servem de desempate).
+var atualizarFaixaCriterioCombinavel = function atualizarFaixaCriterioCombinavel(idx, campo, valor){
+  window.__selecaoCriteriosCombinaveis[idx][campo] = valor;
+}
+
+// Gera a convocação combinando vários critérios em ordem de prioridade.
+// Critérios de faixa (idade/overall entre X e Y) FILTRAM quem entra na disputa.
+// Os demais critérios decidem a ordem/desempate entre os que sobraram, na ordem dada.
 var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEmOrdem){
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
+
+  const criteriosFaixa = criteriosEmOrdem.filter(c=>CRITERIOS_TIPO_FAIXA.includes(c.tipo));
+  const criteriosOrdenacao = criteriosEmOrdem
+    .filter(c=>!CRITERIOS_TIPO_FAIXA.includes(c.tipo))
+    .map(c=>c.tipo.replace("automatica_",""));
 
   const chaveDoCriterio = (r, criterio)=>{
     if(criterio === "maiores_overalls") return -num(r.overall);
@@ -18724,18 +18743,29 @@ var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriterios
     return 0;
   };
 
+  const passaNasFaixas = (r)=>{
+    return criteriosFaixa.every(c=>{
+      const valor = c.tipo === "idade_entre" ? num(r.idade) : num(r.overall);
+      const min = c.min !== "" && c.min !== undefined ? num(c.min) : -Infinity;
+      const max = c.max !== "" && c.max !== undefined ? num(c.max) : Infinity;
+      return valor >= min && valor <= max;
+    });
+  };
+
   Object.keys(qtdPorPosicao).forEach(posicao=>{
     const qtd = Number(qtdPorPosicao[posicao]) || 0;
     if(qtd <= 0) return;
 
-    const daPosicao = baseTodo.filter(r=>normalizarPosicaoSelecao(r.posicao) === posicao);
+    const daPosicao = baseTodo
+      .filter(r=>normalizarPosicaoSelecao(r.posicao) === posicao)
+      .filter(passaNasFaixas);
 
     const ordenado = daPosicao.slice().sort((a,b)=>{
-      for(const criterio of criteriosEmOrdem){
+      for(const criterio of criteriosOrdenacao){
         const diff = chaveDoCriterio(a, criterio) - chaveDoCriterio(b, criterio);
         if(diff !== 0) return diff;
       }
-      return 0;
+      return -num(a.overall) - (-num(b.overall)); // desempate padrao: maior overall primeiro
     });
 
     escolhidos.push(...ordenado.slice(0, qtd));
@@ -18763,7 +18793,6 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         </optgroup>
         <optgroup label="Automática">
           <option value="automatica_aleatoria">Sorteio aleatório (ponderado)</option>
-          <option value="automatica_idade_media">Por idade média desejada</option>
           <option value="automatica_combinada">Automático — Critérios</option>
         </optgroup>
       </select>
@@ -18772,19 +18801,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       <label>Critérios combinados (em ordem de prioridade)</label>
       <div id="selecaoCriteriosLista"></div>
       <button type="button" class="ghost-btn" onclick="adicionarCriterioCombinavel()" style="margin-top:8px">+ Adicionar critério</button>
-      <small>O primeiro critério decide a ordem principal; os seguintes servem de desempate quando o anterior empatar.</small>
-    </div>
-    <div class="form-field" id="selecaoIdadeMediaField" style="display:none">
-      <label>Idade média desejada</label>
-      <input name="idade_media" type="number" min="15" max="45" value="25">
-      <small>Escolhe, posição por posição, os jogadores com idade mais próxima da idade escolhida acima. Se faltar jogador exatamente nessa idade, ele pega o mais próximo disponível.</small>
-      <label style="margin-top:8px">Também equilibrar com</label>
-      <select name="overall_balance">
-        <option value="none">Nenhum — só a idade</option>
-        <option value="maior">Maior overall possível</option>
-        <option value="menor">Menor overall possível</option>
-      </select>
-      <small>Entre jogadores com idade parecida, prioriza quem tem overall maior (ou menor) — sem abrir mão da idade alvo por completo.</small>
+      <small>Critérios de faixa (idade/overall entre X e Y) filtram quem entra na disputa. Os demais decidem a ordem/desempate entre os que sobraram.</small>
     </div>
     <div class="form-field full" id="selecaoQtdAutoField">
       <label>Quantidade por posição <small id="selecaoQtdTotalLabel" style="font-weight:400"></small></label>
@@ -18848,15 +18865,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
   }
 
   const modoSelect = form.querySelector("[name='modo']");
-  const idadeMediaField = $("selecaoIdadeMediaField");
   const criteriosField = $("selecaoCriteriosCombinaveisField");
 
-  window.__selecaoCriteriosCombinaveis = ["automatica_maiores_overalls"];
+  window.__selecaoCriteriosCombinaveis = [{tipo:"automatica_maiores_overalls", min:"", max:""}];
   renderCriteriosCombinaveisLista();
 
   if(modoSelect){
     modoSelect.addEventListener("change", ()=>{
-      if(idadeMediaField) idadeMediaField.style.display = modoSelect.value === "automatica_idade_media" ? "" : "none";
       if(criteriosField) criteriosField.style.display = modoSelect.value === "automatica_combinada" ? "" : "none";
     });
   }
@@ -18903,12 +18918,12 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       if(data.modo && data.modo.startsWith("automatica")){
         let escolhidos;
         if(data.modo === "automatica_combinada"){
-          const criteriosEscolhidos = (window.__selecaoCriteriosCombinaveis||[]).map(v=>v.replace("automatica_",""));
+          const criteriosEscolhidos = window.__selecaoCriteriosCombinaveis || [];
           if(!criteriosEscolhidos.length) throw new Error("Adicione pelo menos um critério.");
           escolhidos = gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEscolhidos);
         }else{
           const criterio = data.modo.replace("automatica_","") || "aleatoria";
-          escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media, data.overall_balance);
+          escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio);
         }
 
         if(!escolhidos.length){
@@ -19455,6 +19470,7 @@ window.openSelecaoConvocacaoForm = openSelecaoConvocacaoForm;
 window.adicionarCriterioCombinavel = adicionarCriterioCombinavel;
 window.removerCriterioCombinavel = removerCriterioCombinavel;
 window.atualizarCriterioCombinavel = atualizarCriterioCombinavel;
+window.atualizarFaixaCriterioCombinavel = atualizarFaixaCriterioCombinavel;
 window.openSelecaoConvocadosSlotPicker = openSelecaoConvocadosSlotPicker;
 window.abrirEscolhaSlot = abrirEscolhaSlot;
 window.fecharEscolhaSlot = fecharEscolhaSlot;
