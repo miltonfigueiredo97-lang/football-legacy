@@ -18722,14 +18722,34 @@ var atualizarFaixaCriterioCombinavel = function atualizarFaixaCriterioCombinavel
 // Gera a convocação combinando vários critérios em ordem de prioridade.
 // Critérios de faixa (idade/overall entre X e Y) FILTRAM quem entra na disputa.
 // Os demais critérios decidem a ordem/desempate entre os que sobraram, na ordem dada.
+var PRIORIDADE_FIXA_CRITERIOS = {
+  // Critérios de "quantas vezes já foi convocado" sempre entram primeiro
+  // (filtram quem mais precisa/merece a chance), independente da ordem que
+  // o usuário clicou na lista — o usuário só escolhe QUAIS critérios usar,
+  // o sistema decide a sequência lógica sozinho.
+  "menos_convocados": 1,
+  "mais_convocados": 1,
+  // Critérios de qualidade (overall, nota, idade) refinam/desempatam depois.
+  "maiores_overalls": 2,
+  "menores_overalls": 2,
+  "melhores_notas": 2,
+  "piores_notas": 2,
+  "mais_velhos": 2,
+  "mais_novos": 2
+};
+
 var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEmOrdem){
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
 
   const criteriosFaixa = criteriosEmOrdem.filter(c=>CRITERIOS_TIPO_FAIXA.includes(c.tipo));
+
+  // Reordena pela prioridade fixa (convocações antes de qualidade), não pela
+  // ordem que o usuário clicou — assim ele não precisa pensar em sequência.
   const criteriosOrdenacao = criteriosEmOrdem
     .filter(c=>!CRITERIOS_TIPO_FAIXA.includes(c.tipo))
-    .map(c=>c.tipo.replace("automatica_",""));
+    .map(c=>c.tipo.replace("automatica_",""))
+    .sort((a,b)=>(PRIORIDADE_FIXA_CRITERIOS[a]||99) - (PRIORIDADE_FIXA_CRITERIOS[b]||99));
 
   const chaveDoCriterio = (r, criterio)=>{
     if(criterio === "maiores_overalls") return -num(r.overall);
@@ -18801,7 +18821,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       <label>Critérios combinados (em ordem de prioridade)</label>
       <div id="selecaoCriteriosLista"></div>
       <button type="button" class="ghost-btn" onclick="adicionarCriterioCombinavel()" style="margin-top:8px">+ Adicionar critério</button>
-      <small>Critérios de faixa (idade/overall entre X e Y) filtram quem entra na disputa. Os demais decidem a ordem/desempate entre os que sobraram.</small>
+      <small>Escolha os critérios que quiser, na ordem que preferir clicar — o sistema decide sozinho a sequência lógica certa (ex: quantas vezes já foi convocado sempre é considerado antes de overall/nota, pra realmente equilibrar os dois). Critérios de faixa (idade/overall entre X e Y) filtram quem entra na disputa.</small>
     </div>
     <div class="form-field full" id="selecaoQtdAutoField">
       <label>Quantidade por posição <small id="selecaoQtdTotalLabel" style="font-weight:400"></small></label>
