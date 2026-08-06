@@ -8483,6 +8483,13 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
   const selecao = normalizeSelectionNameV3760(old.selecao || getActivePlayerSelectionV3760());
   const badge = getSelectionBadgeV3760(selecao);
 
+  // Estatísticas por competição já salvas pra essa temporada/jogador (se houver).
+  const statsExistentes = getTable("SELECOES_ESTATISTICAS_CARREIRA").filter(r=>
+    String(r.carreira_temporada_id)===String(season.id) && String(r.personagem_id)===String(active.protagonista_id)
+  );
+  const statsPorCompeticao = {};
+  statsExistentes.forEach(r=>{ statsPorCompeticao[FL_normV3780(r.competicao)] = r; });
+
   modalTitle.textContent = `Editar seleção • ${season.temporada}`;
   modalBox.classList.add("wide");
   form.className = "selection-season-form-v3760";
@@ -8497,28 +8504,34 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
         </div>
       </div>
 
-      <div class="season-flow-grid">
-        <div class="form-field">
-          <label>Seleção</label>
-          <input name="selecao" value="${escapeAttr(selecao)}" placeholder="Ex: Brasil">
-        </div>
-        <div class="form-field">
-          <label>Jogos</label>
-          <input name="jogos" type="number" value="${escapeAttr(old.jogos || "")}">
-        </div>
-        <div class="form-field">
-          <label>Gols</label>
-          <input name="gols" type="number" value="${escapeAttr(old.gols || "")}">
-        </div>
-        <div class="form-field">
-          <label>Assistências</label>
-          <input name="assistencias" type="number" value="${escapeAttr(old.assistencias || "")}">
-        </div>
+      <div class="form-field">
+        <label>Seleção</label>
+        <input name="selecao" value="${escapeAttr(selecao)}" placeholder="Ex: Brasil">
       </div>
 
       <div class="form-field full">
-        <label>Títulos pela seleção nessa temporada</label>
-        <input name="titulos" value="${escapeAttr(old.titulos || "")}" placeholder="Ex: Copa América, Copa do Mundo">
+        <label>Competições jogadas pela seleção nessa temporada</label>
+        <div id="selecaoCompeticoesLista" class="selecao-nacional-comp-lista">
+          ${FL_SELECTION_COMPS_V3780.map(comp=>{
+            const existente = statsPorCompeticao[FL_normV3780(comp)];
+            const marcado = !!existente;
+            return `
+              <div class="selecao-nacional-comp-linha">
+                <label class="comp-check">
+                  <input type="checkbox" class="selecao-nacional-comp-check" data-comp="${escapeAttr(comp)}" ${marcado?"checked":""} onchange="toggleSelecaoNacionalCompStats(this)">
+                  ${escapeHtml(comp)}
+                </label>
+                <div class="selecao-nacional-comp-stats" style="display:${marcado?"flex":"none"}">
+                  <input type="number" placeholder="Jogos" data-campo="jogos" value="${escapeAttr(existente?.jogos||"")}">
+                  <input type="number" placeholder="Gols" data-campo="gols" value="${escapeAttr(existente?.gols||"")}">
+                  <input type="number" placeholder="Assistências" data-campo="assistencias" value="${escapeAttr(existente?.assistencias||"")}">
+                  <label class="comp-check"><input type="checkbox" data-campo="campeao" ${existente?.campeao==="sim"?"checked":""}> Campeão</label>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <small>Marque as competições que a seleção disputou nessa temporada, informe jogos/gols/assistências de cada uma, e marque "Campeão" nas que foram conquistadas. Isso alimenta o Hall de Títulos e os recordes da seleção.</small>
       </div>
 
       <div class="form-field full">
@@ -8541,16 +8554,37 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
 
     try{
       const data = Object.fromEntries(new FormData(form).entries());
+
+      const competicoes = [];
+      form.querySelectorAll(".selecao-nacional-comp-linha").forEach(linha=>{
+        const check = linha.querySelector(".selecao-nacional-comp-check");
+        if(!check || !check.checked) return;
+
+        const statsBox = linha.querySelector(".selecao-nacional-comp-stats");
+        competicoes.push({
+          competicao: check.dataset.comp,
+          jogos: statsBox.querySelector('[data-campo="jogos"]').value || "",
+          gols: statsBox.querySelector('[data-campo="gols"]').value || "",
+          assistencias: statsBox.querySelector('[data-campo="assistencias"]').value || "",
+          campeao: statsBox.querySelector('[data-campo="campeao"]').checked
+        });
+      });
+
+      const jogosTotais = competicoes.reduce((a,c)=>a+num(c.jogos),0);
+      const golsTotais = competicoes.reduce((a,c)=>a+num(c.gols),0);
+      const assistTotais = competicoes.reduce((a,c)=>a+num(c.assistencias),0);
+      const titulosTexto = competicoes.filter(c=>c.campeao).map(c=>c.competicao).join("; ");
+
       const record = {
         carreira_id: active.carreira_id || "",
         personagem_id: active.protagonista_id || "",
         carreira_temporada_id: season.id || "",
         temporada: season.temporada || "",
         selecao: normalizeSelectionNameV3760(data.selecao || selecao),
-        jogos: data.jogos || "",
-        gols: data.gols || "",
-        assistencias: data.assistencias || "",
-        titulos: data.titulos || "",
+        jogos: jogosTotais || "",
+        gols: golsTotais || "",
+        assistencias: assistTotais || "",
+        titulos: titulosTexto,
         observacao: data.observacao || ""
       };
 
@@ -8561,17 +8595,19 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
       const result = await apiPost(payload);
       if(!result.ok) throw new Error(result.error || "Erro ao salvar seleção.");
 
-      if(!Array.isArray(db.SELECOES_CARREIRA)) db.SELECOES_CARREIRA = [];
-
-      if(old.id){
-        const idx = db.SELECOES_CARREIRA.findIndex(r=>String(r.id)===String(old.id));
-        if(idx >= 0) db.SELECOES_CARREIRA[idx] = Object.assign({}, db.SELECOES_CARREIRA[idx], record);
-      }else{
-        db.SELECOES_CARREIRA.push(Object.assign({}, record, result?.data || {}, {id:result?.data?.id || result?.id || ("local_"+Date.now())}));
-      }
+      const resultCompeticoes = await apiPost({
+        action: "saveSelecaoNacionalCompeticoes",
+        carreira_id: active.carreira_id || "",
+        personagem_id: active.protagonista_id || "",
+        carreira_temporada_id: season.id || "",
+        temporada: season.temporada || "",
+        competicoes
+      });
+      if(!resultCompeticoes.ok) throw new Error(resultCompeticoes.error || "Erro ao salvar competições da seleção.");
 
       clearButtonSaving(btn);
       closeModal();
+      await loadData();
       renderAll();
       setStatus("Seleção salva.", "ok");
     }catch(err){
@@ -8583,6 +8619,13 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
 
   modal.classList.add("active");
 }
+
+var toggleSelecaoNacionalCompStats = function toggleSelecaoNacionalCompStats(checkbox){
+  const linha = checkbox.closest(".selecao-nacional-comp-linha");
+  const statsBox = linha?.querySelector(".selecao-nacional-comp-stats");
+  if(statsBox) statsBox.style.display = checkbox.checked ? "flex" : "none";
+}
+window.toggleSelecaoNacionalCompStats = toggleSelecaoNacionalCompStats;
 
 var injectSelectionFieldOnPersonagemFormV3760 = function injectSelectionFieldOnPersonagemFormV3760(){
   try{
