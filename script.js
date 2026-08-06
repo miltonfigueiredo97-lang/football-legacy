@@ -18723,19 +18723,25 @@ var atualizarFaixaCriterioCombinavel = function atualizarFaixaCriterioCombinavel
 // Critérios de faixa (idade/overall entre X e Y) FILTRAM quem entra na disputa.
 // Os demais critérios decidem a ordem/desempate entre os que sobraram, na ordem dada.
 var PRIORIDADE_FIXA_CRITERIOS = {
-  // Critérios de "quantas vezes já foi convocado" sempre entram primeiro
-  // (filtram quem mais precisa/merece a chance), independente da ordem que
-  // o usuário clicou na lista — o usuário só escolhe QUAIS critérios usar,
-  // o sistema decide a sequência lógica sozinho.
+  // Prioridade fixa, aplicada sempre nessa ordem independente de qual direção
+  // (maior/menor, melhor/pior) o usuário escolher pra cada um, e independente
+  // da ordem que ele clicou na lista:
+  //
+  // 1º Convocações — quem merece/precisa da chance primeiro (justiça de rotação)
+  // 2º Nota real    — desempenho já provado jogando de verdade pela seleção
+  // 3º Overall      — potencial/qualidade em geral (mais teórico, vem do clube)
+  // 4º Idade        — desempate final, mais estratégico (passado x futuro)
+  //
+  // O usuário só escolhe QUAIS critérios entram e em qual direção; o sistema
+  // decide a sequência sozinho.
   "menos_convocados": 1,
   "mais_convocados": 1,
-  // Critérios de qualidade (overall, nota, idade) refinam/desempatam depois.
-  "maiores_overalls": 2,
-  "menores_overalls": 2,
   "melhores_notas": 2,
   "piores_notas": 2,
-  "mais_velhos": 2,
-  "mais_novos": 2
+  "maiores_overalls": 3,
+  "menores_overalls": 3,
+  "mais_velhos": 4,
+  "mais_novos": 4
 };
 
 var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEmOrdem){
