@@ -19218,7 +19218,8 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
                 <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
               </div>
               <div class="selecao-conv-avaliacao">
-                <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota" title="Nota">
+                <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 1" title="Nota do 1º jogo">
+                <input name="nota2_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 2" title="Nota do 2º jogo">
                 <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
                 <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
               </div>
@@ -19283,10 +19284,12 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
     if(!grid) return;
     getTable("SELECAO_CONVOCADOS").filter(j=>String(j.convocacao_id)===String(c.id)).forEach(j=>{
       const notaInput = grid.querySelector(`[name="nota_${j.id}"]`);
+      const nota2Input = grid.querySelector(`[name="nota2_${j.id}"]`);
       const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
       const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
       const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
       if(notaInput) notaInput.value = j.nota || "";
+      if(nota2Input) nota2Input.value = j.nota2 || "";
       if(bemInput) bemInput.checked = (j.foi_bem===true||j.foi_bem==="true"||j.foi_bem==="SIM"||j.foi_bem==="sim");
       if(malInput) malInput.checked = (j.foi_mal===true||j.foi_mal==="true"||j.foi_mal==="SIM"||j.foi_mal==="sim");
       if(obsInput) obsInput.value = j.observacao || "";
@@ -19302,6 +19305,7 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
 
   const notas = convocados.map(j=>{
     const notaInput = grid.querySelector(`[name="nota_${j.id}"]`);
+    const nota2Input = grid.querySelector(`[name="nota2_${j.id}"]`);
     const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
     const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
     const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
@@ -19309,6 +19313,7 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
     return {
       id: j.id,
       nota: notaInput ? notaInput.value : "",
+      nota2: nota2Input ? nota2Input.value : "",
       foi_bem: bemInput ? bemInput.checked : false,
       foi_mal: malInput ? malInput.checked : false,
       observacao: obsInput ? obsInput.value : ""
