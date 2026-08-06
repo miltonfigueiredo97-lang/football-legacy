@@ -18761,17 +18761,10 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         <optgroup label="Manual">
           <option value="manual">Eu escolho cada jogador</option>
         </optgroup>
-        <optgroup label="Automática — critério">
+        <optgroup label="Automática">
           <option value="automatica_aleatoria">Sorteio aleatório (ponderado)</option>
           <option value="automatica_idade_media">Por idade média desejada</option>
-          <option value="automatica_combinada">Critérios combináveis (múltiplos)</option>
-          <option value="automatica_maiores_overalls">Maiores overalls</option>
-          <option value="automatica_mais_velhos">Só os mais velhos</option>
-          <option value="automatica_mais_novos">Só os mais novos</option>
-          <option value="automatica_melhores_notas">Melhores notas</option>
-          <option value="automatica_piores_notas">Piores notas</option>
-          <option value="automatica_menos_convocados">Menos convocados primeiro</option>
-          <option value="automatica_mais_convocados">Mais convocados primeiro</option>
+          <option value="automatica_combinada">Automático — Critérios</option>
         </optgroup>
       </select>
     </div>
@@ -19045,6 +19038,7 @@ var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
           <div class="selecao-avatar" style="width:56px;height:56px">${jogador.foto_url?`<img src="${escapeAttr(jogador.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
           <strong>${escapeHtml(jogador.nome||"-")}</strong>
           <small>${escapeHtml(jogador.time||"-")} • OVR ${escapeHtml(String(jogador.overall||"-"))}</small>
+          <small>${jogador.convocacoes_qtd||0}x • Nota ${jogador.nota_media||"-"}</small>
           <div class="selecao-slot-actions">
             <button type="button" onclick="abrirEscolhaSlot('${escapeAttr(pos)}',${idx})">Trocar</button>
             <button type="button" class="delete" onclick="removerSlotConvocacao('${escapeAttr(pos)}',${idx})">Remover</button>
@@ -19135,7 +19129,7 @@ var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
     ${candidatos.map(c=>`
       <button type="button" class="selecao-candidato-card" onclick="escolherCandidatoSlot('${c.id}')">
         <div class="selecao-avatar" style="width:48px;height:48px">${c.foto_url?`<img src="${escapeAttr(c.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
-        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small></div>
+        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small><br><small>${c.convocacoes_qtd||0}x convocado • Nota real: ${c.nota_media||"-"}</small></div>
       </button>
     `).join("") || "<small>Nenhum jogador disponível nessa posição (todos já usados em outra vaga, ou base vazia).</small>"}
     <button type="button" class="ghost-btn" onclick="fecharEscolhaSlot()">Cancelar</button>
@@ -19280,6 +19274,8 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         posicao: (jogadorBase ? normalizarPosicaoSelecao(jogadorBase.posicao) : "") || "SEM POSIÇÃO",
         foto_url: jogadorBase ? jogadorBase.foto_url : "",
         escudo_time_url: jogadorBase ? jogadorBase.escudo_time_url : "",
+        convocacoes_qtd: jogadorBase ? jogadorBase.convocacoes_qtd : 0,
+        nota_media: jogadorBase ? jogadorBase.nota_media : "",
         nota: j.nota, foi_bem: j.foi_bem, foi_mal: j.foi_mal, observacao: j.observacao
       };
     });
@@ -19315,18 +19311,22 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
                 ${j.idade ? `<span class="selecao-conv-idade">${escapeHtml(String(j.idade))} anos</span>` : ""}
               </div>
               <div class="selecao-conv-identidade">
-                <div class="selecao-avatar" style="width:48px;height:48px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
-                <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
-                <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
+                <div class="selecao-avatar" style="width:64px;height:64px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+                <div class="selecao-conv-identidade-texto">
+                  <div>
+                    <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
+                    <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
+                  </div>
+                  <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x convocado • Nota real: ${j.nota_media||"-"}</small>
+                </div>
               </div>
               <div class="selecao-conv-avaliacao">
                 <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 1" title="Nota do 1º jogo">
                 <input name="nota2_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 2" title="Nota do 2º jogo">
-                <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
-                <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
-              </div>
-              <div class="selecao-conv-obs-linha">
-                <input name="obs_${j.convocadoId}" placeholder="Observação" title="Observação">
+                <div class="selecao-conv-joias">
+                  <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
+                  <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
+                </div>
               </div>
             </div>
           `).join("")}
