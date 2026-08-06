@@ -18662,6 +18662,88 @@ var gerarConvocacaoPorCriterio = function gerarConvocacaoPorCriterio(qtdPorPosic
   return escolhidos;
 }
 
+var CRITERIOS_COMBINAVEIS_OPCOES = [
+  {valor:"automatica_maiores_overalls", label:"Maior overall"},
+  {valor:"automatica_menores_overalls", label:"Menor overall"},
+  {valor:"automatica_melhores_notas", label:"Maior nota real"},
+  {valor:"automatica_piores_notas", label:"Menor nota real"},
+  {valor:"automatica_menos_convocados", label:"Menos convocações"},
+  {valor:"automatica_mais_convocados", label:"Mais convocações"},
+  {valor:"automatica_mais_velhos", label:"Mais velho"},
+  {valor:"automatica_mais_novos", label:"Mais novo"}
+];
+
+var renderCriteriosCombinaveisLista = function renderCriteriosCombinaveisLista(){
+  const el = $("selecaoCriteriosLista");
+  if(!el) return;
+
+  const lista = window.__selecaoCriteriosCombinaveis || [];
+
+  el.innerHTML = lista.map((valorAtual, idx)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <span style="min-width:20px;color:var(--muted);font-size:0.85em">${idx+1}º</span>
+      <select onchange="atualizarCriterioCombinavel(${idx}, this.value)" style="flex:1">
+        ${CRITERIOS_COMBINAVEIS_OPCOES.map(o=>`<option value="${o.valor}" ${o.valor===valorAtual?"selected":""}>${o.label}</option>`).join("")}
+      </select>
+      ${lista.length>1 ? `<button type="button" class="ghost-btn" onclick="removerCriterioCombinavel(${idx})">−</button>` : ""}
+      ${idx===0 ? `<span style="opacity:0"></span>` : ""}
+    </div>
+  `).join("");
+}
+
+var adicionarCriterioCombinavel = function adicionarCriterioCombinavel(){
+  window.__selecaoCriteriosCombinaveis = window.__selecaoCriteriosCombinaveis || [];
+  window.__selecaoCriteriosCombinaveis.push("automatica_maiores_overalls");
+  renderCriteriosCombinaveisLista();
+}
+
+var removerCriterioCombinavel = function removerCriterioCombinavel(idx){
+  window.__selecaoCriteriosCombinaveis.splice(idx, 1);
+  renderCriteriosCombinaveisLista();
+}
+
+var atualizarCriterioCombinavel = function atualizarCriterioCombinavel(idx, valor){
+  window.__selecaoCriteriosCombinaveis[idx] = valor;
+}
+
+// Gera a convocação combinando vários critérios em ordem de prioridade
+// (o primeiro decide a ordem principal, os seguintes servem de desempate).
+var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEmOrdem){
+  const baseTodo = getSelecaoBaseForSeason();
+  const escolhidos = [];
+
+  const chaveDoCriterio = (r, criterio)=>{
+    if(criterio === "maiores_overalls") return -num(r.overall);
+    if(criterio === "menores_overalls") return num(r.overall);
+    if(criterio === "melhores_notas") return -num(r.nota_media);
+    if(criterio === "piores_notas") return num(r.nota_media);
+    if(criterio === "menos_convocados") return num(r.convocacoes_qtd);
+    if(criterio === "mais_convocados") return -num(r.convocacoes_qtd);
+    if(criterio === "mais_velhos") return -num(r.idade);
+    if(criterio === "mais_novos") return num(r.idade);
+    return 0;
+  };
+
+  Object.keys(qtdPorPosicao).forEach(posicao=>{
+    const qtd = Number(qtdPorPosicao[posicao]) || 0;
+    if(qtd <= 0) return;
+
+    const daPosicao = baseTodo.filter(r=>normalizarPosicaoSelecao(r.posicao) === posicao);
+
+    const ordenado = daPosicao.slice().sort((a,b)=>{
+      for(const criterio of criteriosEmOrdem){
+        const diff = chaveDoCriterio(a, criterio) - chaveDoCriterio(b, criterio);
+        if(diff !== 0) return diff;
+      }
+      return 0;
+    });
+
+    escolhidos.push(...ordenado.slice(0, qtd));
+  });
+
+  return escolhidos;
+}
+
 var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
   if(!selecaoSeasonId){ alert("Selecione uma temporada primeiro."); return; }
 
@@ -18682,6 +18764,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         <optgroup label="Automática — critério">
           <option value="automatica_aleatoria">Sorteio aleatório (ponderado)</option>
           <option value="automatica_idade_media">Por idade média desejada</option>
+          <option value="automatica_combinada">Critérios combináveis (múltiplos)</option>
           <option value="automatica_maiores_overalls">Maiores overalls</option>
           <option value="automatica_mais_velhos">Só os mais velhos</option>
           <option value="automatica_mais_novos">Só os mais novos</option>
@@ -18691,6 +18774,12 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
           <option value="automatica_mais_convocados">Mais convocados primeiro</option>
         </optgroup>
       </select>
+    </div>
+    <div class="form-field full" id="selecaoCriteriosCombinaveisField" style="display:none">
+      <label>Critérios combinados (em ordem de prioridade)</label>
+      <div id="selecaoCriteriosLista"></div>
+      <button type="button" class="ghost-btn" onclick="adicionarCriterioCombinavel()" style="margin-top:8px">+ Adicionar critério</button>
+      <small>O primeiro critério decide a ordem principal; os seguintes servem de desempate quando o anterior empatar.</small>
     </div>
     <div class="form-field" id="selecaoIdadeMediaField" style="display:none">
       <label>Idade média desejada</label>
@@ -18767,9 +18856,15 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
 
   const modoSelect = form.querySelector("[name='modo']");
   const idadeMediaField = $("selecaoIdadeMediaField");
-  if(modoSelect && idadeMediaField){
+  const criteriosField = $("selecaoCriteriosCombinaveisField");
+
+  window.__selecaoCriteriosCombinaveis = ["automatica_maiores_overalls"];
+  renderCriteriosCombinaveisLista();
+
+  if(modoSelect){
     modoSelect.addEventListener("change", ()=>{
-      idadeMediaField.style.display = modoSelect.value === "automatica_idade_media" ? "" : "none";
+      if(idadeMediaField) idadeMediaField.style.display = modoSelect.value === "automatica_idade_media" ? "" : "none";
+      if(criteriosField) criteriosField.style.display = modoSelect.value === "automatica_combinada" ? "" : "none";
     });
   }
 
@@ -18813,8 +18908,15 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
       const convocacaoId = res.data.id;
 
       if(data.modo && data.modo.startsWith("automatica")){
-        const criterio = data.modo.replace("automatica_","") || "aleatoria";
-        const escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media, data.overall_balance);
+        let escolhidos;
+        if(data.modo === "automatica_combinada"){
+          const criteriosEscolhidos = (window.__selecaoCriteriosCombinaveis||[]).map(v=>v.replace("automatica_",""));
+          if(!criteriosEscolhidos.length) throw new Error("Adicione pelo menos um critério.");
+          escolhidos = gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEscolhidos);
+        }else{
+          const criterio = data.modo.replace("automatica_","") || "aleatoria";
+          escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio, data.idade_media, data.overall_balance);
+        }
 
         if(!escolhidos.length){
           throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
@@ -19350,6 +19452,9 @@ window.deleteSelecaoJogador = deleteSelecaoJogador;
 window.searchTeamsForSelecao = searchTeamsForSelecao;
 window.selectSelecaoTeam = selectSelecaoTeam;
 window.openSelecaoConvocacaoForm = openSelecaoConvocacaoForm;
+window.adicionarCriterioCombinavel = adicionarCriterioCombinavel;
+window.removerCriterioCombinavel = removerCriterioCombinavel;
+window.atualizarCriterioCombinavel = atualizarCriterioCombinavel;
 window.openSelecaoConvocadosSlotPicker = openSelecaoConvocadosSlotPicker;
 window.abrirEscolhaSlot = abrirEscolhaSlot;
 window.fecharEscolhaSlot = fecharEscolhaSlot;
