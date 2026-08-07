@@ -18710,6 +18710,10 @@ var CRITERIOS_COMBINAVEIS_OPCOES = [
   {valor:"automatica_menores_overalls", label:"Menor overall"},
   {valor:"automatica_melhores_notas", label:"Maior nota real"},
   {valor:"automatica_piores_notas", label:"Menor nota real"},
+  {valor:"automatica_mais_joinhas_positivas", label:"Mais 👍"},
+  {valor:"automatica_menos_joinhas_positivas", label:"Menos 👍"},
+  {valor:"automatica_mais_joinhas_negativas", label:"Mais 👎"},
+  {valor:"automatica_menos_joinhas_negativas", label:"Menos 👎"},
   {valor:"automatica_menos_convocados", label:"Menos convocações"},
   {valor:"automatica_mais_convocados", label:"Mais convocações"},
   {valor:"automatica_mais_velhos", label:"Mais velho"},
@@ -18771,20 +18775,25 @@ var PRIORIDADE_FIXA_CRITERIOS = {
   // da ordem que ele clicou na lista:
   //
   // 1º Convocações — quem merece/precisa da chance primeiro (justiça de rotação)
-  // 2º Nota real    — desempenho já provado jogando de verdade pela seleção
-  // 3º Overall      — potencial/qualidade em geral (mais teórico, vem do clube)
-  // 4º Idade        — desempate final, mais estratégico (passado x futuro)
+  // 2º Joinhas      — quantidade de 👍/👎 recebidos, feedback direto do usuário
+  // 3º Nota real    — desempenho já provado jogando de verdade pela seleção
+  // 4º Overall      — potencial/qualidade em geral (mais teórico, vem do clube)
+  // 5º Idade        — desempate final, mais estratégico (passado x futuro)
   //
   // O usuário só escolhe QUAIS critérios entram e em qual direção; o sistema
   // decide a sequência sozinho.
   "menos_convocados": 1,
   "mais_convocados": 1,
-  "melhores_notas": 2,
-  "piores_notas": 2,
-  "maiores_overalls": 3,
-  "menores_overalls": 3,
-  "mais_velhos": 4,
-  "mais_novos": 4
+  "mais_joinhas_positivas": 2,
+  "menos_joinhas_positivas": 2,
+  "mais_joinhas_negativas": 2,
+  "menos_joinhas_negativas": 2,
+  "melhores_notas": 3,
+  "piores_notas": 3,
+  "maiores_overalls": 4,
+  "menores_overalls": 4,
+  "mais_velhos": 5,
+  "mais_novos": 5
 };
 
 var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criteriosEmOrdem){
@@ -18809,6 +18818,10 @@ var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriterios
     if(criterio === "mais_convocados") return -num(r.convocacoes_qtd);
     if(criterio === "mais_velhos") return -num(r.idade);
     if(criterio === "mais_novos") return num(r.idade);
+    if(criterio === "mais_joinhas_positivas") return -num(r.bom_qtd);
+    if(criterio === "menos_joinhas_positivas") return num(r.bom_qtd);
+    if(criterio === "mais_joinhas_negativas") return -num(r.ruim_qtd);
+    if(criterio === "menos_joinhas_negativas") return num(r.ruim_qtd);
     return 0;
   };
 
@@ -19305,6 +19318,9 @@ var renderSelecaoConvocacoesPage = function renderSelecaoConvocacoesPage(){
 
   const novaConvBtn = $("selecaoNovaConvocacaoBtn");
   if(novaConvBtn) novaConvBtn.onclick = ()=>openSelecaoConvocacaoForm();
+
+  const melhores11Btn = $("selecaoMelhores11Btn");
+  if(melhores11Btn) melhores11Btn.onclick = ()=>abrirMelhores11Selecao();
 
   renderSelecaoConvocacoesList();
 }
@@ -20126,3 +20142,126 @@ var abrirGraficoJogadorSelecao = function abrirGraficoJogadorSelecao(chaveJogado
 
 window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;
 window.abrirGraficoJogadorSelecao = abrirGraficoJogadorSelecao;
+
+// ===== V3.9.15 SELEÇÃO BRASILEIRA — Melhores 11 (por nota real ou overall) =====
+var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
+  const base = getSelecaoBaseForSeason();
+  if(!base.length){ alert("Nenhum jogador na base desta temporada."); return; }
+
+  const presentes = [...new Set(base.map(r=>normalizarPosicaoSelecao(r.posicao)||"SEM POSIÇÃO"))];
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+  const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const posicoesDisponiveis = [...ordenadas, ...extras];
+
+  const contagemPorPosicao = {};
+  base.forEach(r=>{
+    const pos = normalizarPosicaoSelecao(r.posicao)||"SEM POSIÇÃO";
+    contagemPorPosicao[pos] = (contagemPorPosicao[pos]||0)+1;
+  });
+
+  modalTitle.textContent = "Melhores 11 — Seleção Brasileira";
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+  form.innerHTML = `
+    <div class="form-field">
+      <label>Ordenar por</label>
+      <select id="melhores11CriterioSelect">
+        <option value="nota_media">Nota real</option>
+        <option value="overall">Overall</option>
+      </select>
+    </div>
+    <div class="form-field full">
+      <label>Quantidade por posição</label>
+      <div id="melhores11QtdBox" class="selecao-qtd-lista">
+        ${posicoesDisponiveis.map(p=>`
+          <div class="selecao-qtd-linha">
+            <span class="selecao-qtd-posicao">${escapeHtml(p)}</span>
+            <small class="selecao-qtd-disponivel">${contagemPorPosicao[p]} na base</small>
+            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="0" data-posicao-qtd="${escapeAttr(p)}">
+          </div>
+        `).join("")}
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
+      <button type="button" class="gold-btn" onclick="gerarMelhores11Selecao()">Gerar Melhores 11</button>
+    </div>
+    <div id="melhores11Resultado"></div>
+  `;
+
+  modal.classList.add("active");
+}
+
+var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
+  const base = getSelecaoBaseForSeason();
+  const criterio = $("melhores11CriterioSelect")?.value || "nota_media";
+  const qtdBox = $("melhores11QtdBox");
+  const resultDiv = $("melhores11Resultado");
+  if(!qtdBox || !resultDiv) return;
+
+  const qtdPorPosicao = {};
+  qtdBox.querySelectorAll("[data-posicao-qtd]").forEach(input=>{
+    qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
+  });
+
+  const totalPedido = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
+  if(totalPedido <= 0){
+    resultDiv.innerHTML = `<small style="color:#f87171">Defina a quantidade por posição (maior que zero) primeiro.</small>`;
+    return;
+  }
+
+  const grupos = {};
+  Object.keys(qtdPorPosicao).forEach(pos=>{
+    const qtd = qtdPorPosicao[pos];
+    if(qtd<=0) return;
+
+    const daPosicao = base
+      .filter(r=>(normalizarPosicaoSelecao(r.posicao)||"SEM POSIÇÃO")===pos)
+      .slice()
+      .sort((a,b)=>{
+        const va = num(a[criterio]), vb = num(b[criterio]);
+        if(va===0 && vb===0) return 0;
+        if(va===0) return 1;
+        if(vb===0) return -1;
+        return vb-va;
+      });
+
+    grupos[pos] = daPosicao.slice(0, qtd);
+  });
+
+  const presentes = Object.keys(grupos);
+  const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
+  const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
+  const ordemFinal = [...ordenadas, ...extras];
+
+  const rotulo = criterio === "overall" ? "OVR" : "Nota";
+
+  resultDiv.innerHTML = ordemFinal.map(pos=>`
+    <div class="selecao-posicao-grupo">
+      <h4 class="selecao-posicao-titulo">${escapeHtml(pos)} <small>(${grupos[pos].length})</small></h4>
+      <div class="selecao-conv-lista">
+        ${grupos[pos].map(j=>`
+          <div class="selecao-conv-jogador">
+            <div class="selecao-conv-topo">
+              <strong>${escapeHtml(j.nome||"-")}</strong>
+              ${j.idade ? `<span class="selecao-conv-idade">${escapeHtml(String(j.idade))} anos</span>` : ""}
+            </div>
+            <div class="selecao-conv-identidade">
+              <div class="selecao-avatar" style="width:56px;height:56px">${j.foto_url ? `<img src="${escapeAttr(j.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
+              <div class="selecao-conv-identidade-texto">
+                <div>
+                  <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
+                  <span class="selecao-conv-overall">${escapeHtml(rotulo)} ${escapeHtml(String(j[criterio]||"-"))}</span>
+                </div>
+                <small class="selecao-conv-historico">OVR ${escapeHtml(String(j.overall||"-"))} • Nota real: ${escapeHtml(String(j.nota_media||"-"))}</small>
+              </div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("") || "<small>Nenhum jogador encontrado pras posições/quantidades escolhidas.</small>";
+}
+
+window.abrirMelhores11Selecao = abrirMelhores11Selecao;
+window.gerarMelhores11Selecao = gerarMelhores11Selecao;
