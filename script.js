@@ -18289,7 +18289,7 @@ var normalizarPosicaoSelecao = function normalizarPosicaoSelecao(valor){
 
 // Template padrão de convocação (26 no total): usado como quantidade inicial
 // sugerida ao criar uma convocação, ajustável pelo usuário.
-var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, MC:3, MEI:2, PD:3, PE:3, CA:4};
+var SELECAO_TEMPLATE_26 = {GOL:2, ZAG:3, LD:2, LE:2, MC:4, MEI:2, PD:3, PE:3, CA:5};
 
 var corrigirPosicoesAtaParaCaSelecao = async function corrigirPosicoesAtaParaCaSelecao(){
   const todos = getTable("SELECAO_BASE_TEMPORADA");
