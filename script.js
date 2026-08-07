@@ -18992,11 +18992,6 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         observacoes: data.observacoes || ""
       };
 
-      const res = await apiPost({action:"create", table:"SELECAO_CONVOCACOES", record});
-      if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar convocação.");
-
-      const convocacaoId = res.data.id;
-
       if(data.modo && data.modo.startsWith("automatica")){
         let escolhidos;
         if(data.modo === "automatica_combinada"){
@@ -19008,9 +19003,18 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
           escolhidos = gerarConvocacaoPorCriterio(qtdPorPosicao, criterio);
         }
 
+        // FIX V3.9.16: antes disso já tinha criado a convocação na planilha e só
+        // DEPOIS conferia se achou jogador — se desse zero, a convocação ficava
+        // criada mas vazia/quebrada (nunca era apagada). Agora confere ANTES de
+        // criar nada.
         if(!escolhidos.length){
-          throw new Error("Nenhum jogador escolhido — defina a quantidade por posição (maior que zero).");
+          throw new Error("Nenhum jogador passou nos critérios escolhidos (provavelmente algum filtro de faixa — idade/overall entre X e Y — deixou alguma posição sem ninguém elegível). Ajuste os critérios e tente de novo. Nada foi criado.");
         }
+
+        const res = await apiPost({action:"create", table:"SELECAO_CONVOCACOES", record});
+        if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar convocação.");
+
+        const convocacaoId = res.data.id;
 
         const r2 = await apiPost({
           action:"saveSelecaoConvocados",
@@ -19041,6 +19045,10 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         if(totalVagas <= 0){
           throw new Error("Defina quantas vagas por posição você quer preencher (maior que zero).");
         }
+
+        const res = await apiPost({action:"create", table:"SELECAO_CONVOCACOES", record});
+        if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar convocação.");
+        const convocacaoId = res.data.id;
 
         clearButtonSaving(btn);
         closeModal();
