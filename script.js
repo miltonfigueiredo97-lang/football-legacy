@@ -18989,7 +18989,8 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         modo: data.modo || "manual",
         competicao_ou_contexto: data.competicao_ou_contexto || "",
         data: data.data || "",
-        observacoes: data.observacoes || ""
+        observacoes: data.observacoes || "",
+        vagas_por_posicao: JSON.stringify(qtdPorPosicao)
       };
 
       if(data.modo && data.modo.startsWith("automatica")){
@@ -19071,8 +19072,19 @@ var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(c
   const existingConvocados = getTable("SELECAO_CONVOCADOS").filter(c=>String(c.convocacao_id)===String(convocacaoId));
 
   // Se não veio quantidade por posição (ex: reabrindo uma convocação já existente
-  // pra editar), deduz a partir de quantos jogadores já convocados existem em cada posição.
+  // pra editar), tenta primeiro recuperar o que foi salvo no próprio registro da
+  // convocação (vagas_por_posicao) — assim funciona mesmo se ainda não tiver
+  // nenhum jogador escolhido. Só se isso não existir (convocações antigas, de
+  // antes dessa correção) é que deduz a partir dos convocados já escolhidos.
   let qtdPorPosicao = qtdPorPosicaoOpcional;
+
+  if(!qtdPorPosicao){
+    const convocacaoRecord = getTable("SELECAO_CONVOCACOES").find(c=>String(c.id)===String(convocacaoId));
+    if(convocacaoRecord && convocacaoRecord.vagas_por_posicao){
+      try{ qtdPorPosicao = JSON.parse(convocacaoRecord.vagas_por_posicao); }catch(err){ qtdPorPosicao = null; }
+    }
+  }
+
   const existingByPos = {};
   existingConvocados.forEach(c=>{
     const jogador = base.find(b=>String(b.id)===String(c.jogador_base_id));
@@ -19276,6 +19288,9 @@ var salvarSlotsConvocacao = async function salvarSlotsConvocacao(){
 
     const selecionados = base.filter(r=>jogadorIds.includes(String(r.id)) || jogadorIds.includes(r.id));
 
+    const qtdPorPosicaoAtual = {};
+    Object.keys(slots).forEach(pos=>{ qtdPorPosicaoAtual[pos] = slots[pos].length; });
+
     const res = await apiPost({
       action:"saveSelecaoConvocados",
       convocacao_id: convocacaoId,
@@ -19288,6 +19303,15 @@ var salvarSlotsConvocacao = async function salvarSlotsConvocacao(){
       }))
     });
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar convocados.");
+
+    // Atualiza as vagas salvas no registro da convocação (caso o usuário tenha
+    // mexido no +/- de vagas durante a edição), pra continuar reabrindo certo depois.
+    await apiPost({
+      action:"update",
+      table:"SELECAO_CONVOCACOES",
+      id: convocacaoId,
+      record: { vagas_por_posicao: JSON.stringify(qtdPorPosicaoAtual) }
+    });
 
     clearButtonSaving(btn);
     closeModal();
