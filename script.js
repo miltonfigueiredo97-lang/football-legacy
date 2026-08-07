@@ -10934,6 +10934,7 @@ window.getSelectionTotalsV3760 = FL_selectionTotalsV3780;
 
 // ---------- Modal seleção mais forte ----------
 const FL_SELECTION_COMPS_V3780 = [
+  "Amistoso",
   "Copa do Mundo",
   "Copa América",
   "Eurocopa",
@@ -19492,6 +19493,8 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       ? Math.round((convocadosComBase.reduce((a,j)=>a+num(j.overall),0)/convocadosComBase.length)*10)/10
       : null;
 
+    const minimizada = (window.__selecaoMinimizada || {})[c.id];
+
     return `
       <article class="entity-card">
         <div class="selecao-conv-header">
@@ -19506,13 +19509,14 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         </div>
 
         <div class="entity-actions" style="margin-top:0;margin-bottom:16px">
+          <button onclick="toggleMinimizarConvocacao('${c.id}')">${minimizada ? "🔽 Expandir" : "🔼 Minimizar"}</button>
           <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
           <button onclick="toggleVisaoRapidaSelecao('${c.id}')">${visaoRapidaAtiva ? "📋 Visão detalhada" : "👁️ Visão rápida"}</button>
           <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
           <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
         </div>
 
-        <div id="convocadosGrid_${c.id}">${rosterHtml}</div>
+        <div id="convocadosGrid_${c.id}" style="display:${minimizada?"none":""}">${rosterHtml}</div>
       </article>
     `;
   }).join("") || emptyCard("Nenhuma convocação nesta temporada ainda.");
@@ -19656,6 +19660,13 @@ window.adicionarVagaPosicao = adicionarVagaPosicao;
 window.removerVagaPosicao = removerVagaPosicao;
 window.adicionarPosicaoNaConvocacao = adicionarPosicaoNaConvocacao;
 window.salvarSlotsConvocacao = salvarSlotsConvocacao;
+var toggleMinimizarConvocacao = function toggleMinimizarConvocacao(convocacaoId){
+  window.__selecaoMinimizada = window.__selecaoMinimizada || {};
+  window.__selecaoMinimizada[convocacaoId] = !window.__selecaoMinimizada[convocacaoId];
+  renderSelecaoConvocacoesList();
+}
+window.toggleMinimizarConvocacao = toggleMinimizarConvocacao;
+
 var toggleVisaoRapidaSelecao = function toggleVisaoRapidaSelecao(convocacaoId){
   window.__selecaoVisaoRapida = window.__selecaoVisaoRapida || {};
   window.__selecaoVisaoRapida[convocacaoId] = !window.__selecaoVisaoRapida[convocacaoId];
@@ -20235,6 +20246,8 @@ window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;
 window.abrirGraficoJogadorSelecao = abrirGraficoJogadorSelecao;
 
 // ===== V3.9.15 SELEÇÃO BRASILEIRA — Melhores 11 (por nota real ou overall) =====
+var SELECAO_MELHORES11_TEMPLATE = {GOL:2, ZAG:3, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, ATA:6};
+
 var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
   const base = getSelecaoBaseForSeason();
   if(!base.length){ alert("Nenhum jogador na base desta temporada."); return; }
@@ -20262,22 +20275,27 @@ var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
       <button type="button" class="ghost-btn" onclick="adicionarCriterioMelhores11()" style="margin-top:8px">+ Adicionar critério</button>
     </div>
     <div class="form-field full">
-      <label>Quantidade por posição</label>
+      <label>Quantidade por posição <small id="melhores11QtdTotalLabel" style="font-weight:400"></small></label>
       <div id="melhores11QtdBox" class="selecao-qtd-lista">
-        ${posicoesDisponiveis.map(p=>`
+        ${posicoesDisponiveis.map(p=>{
+          const sugerido = Math.min(SELECAO_MELHORES11_TEMPLATE[p]||0, contagemPorPosicao[p]);
+          return `
           <div class="selecao-qtd-linha">
             <span class="selecao-qtd-posicao">${escapeHtml(p)}</span>
             <small class="selecao-qtd-disponivel">${contagemPorPosicao[p]} na base</small>
-            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="0" data-posicao-qtd="${escapeAttr(p)}" oninput="gerarMelhores11Selecao()">
+            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="${sugerido}" data-posicao-qtd="${escapeAttr(p)}" oninput="atualizarMelhores11TotalLabel();gerarMelhores11Selecao()">
           </div>
-        `).join("")}
+        `;}).join("")}
       </div>
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
+      <button type="button" class="gold-btn" onclick="salvarMelhores11ComoConvocacao()">💾 Salvar escalação</button>
     </div>
     <div id="melhores11Resultado"></div>
   `;
+
+  atualizarMelhores11TotalLabel();
 
   renderMelhores11CriteriosLista();
   modal.classList.add("active");
@@ -20326,6 +20344,77 @@ var atualizarCriterioMelhores11 = function atualizarCriterioMelhores11(idx, valo
 var atualizarFaixaCriterioMelhores11 = function atualizarFaixaCriterioMelhores11(idx, campo, valor){
   window.__melhores11Criterios[idx][campo] = valor;
   gerarMelhores11Selecao();
+}
+
+var atualizarMelhores11TotalLabel = function atualizarMelhores11TotalLabel(){
+  const qtdBox = $("melhores11QtdBox");
+  const label = $("melhores11QtdTotalLabel");
+  if(!qtdBox || !label) return;
+  const total = [...qtdBox.querySelectorAll("[data-posicao-qtd]")].reduce((a,i)=>a+(Number(i.value)||0),0);
+  label.textContent = `— ${total} / 26 jogadores`;
+  label.style.color = total > 26 ? "#f87171" : "var(--muted)";
+}
+
+var salvarMelhores11ComoConvocacao = async function salvarMelhores11ComoConvocacao(){
+  const qtdBox = $("melhores11QtdBox");
+  if(!qtdBox) return;
+
+  const qtdPorPosicao = {};
+  qtdBox.querySelectorAll("[data-posicao-qtd]").forEach(input=>{
+    qtdPorPosicao[input.dataset.posicaoQtd] = Number(input.value)||0;
+  });
+
+  const totalPedido = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
+  if(totalPedido <= 0){ alert("Defina a quantidade por posição primeiro."); return; }
+
+  const criterios = window.__melhores11Criterios || [];
+  const escolhidos = gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criterios);
+  if(!escolhidos.length){ alert("Nenhum jogador encontrado pra essa combinação de critérios/quantidades."); return; }
+
+  const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId)) || {};
+  const nomeConvocacoesExistentes = getTable("SELECAO_CONVOCACOES").filter(c=>String(c.carreira_temporada_id)===String(selecaoSeasonId)).length;
+
+  try{
+    const res = await apiPost({
+      action:"create",
+      table:"SELECAO_CONVOCACOES",
+      record:{
+        carreira_id: active.carreira_id,
+        carreira_temporada_id: selecaoSeasonId,
+        temporada: seasonRecord.temporada || "",
+        nome_convocacao: `Melhores 11 (${nomeConvocacoesExistentes+1})`,
+        tipo: "Melhores 11",
+        modo: "melhores11",
+        competicao_ou_contexto: "",
+        data: "",
+        observacoes: "",
+        vagas_por_posicao: JSON.stringify(qtdPorPosicao)
+      }
+    });
+    if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao criar escalação.");
+
+    const convocacaoId = res.data.id;
+
+    const r2 = await apiPost({
+      action:"saveSelecaoConvocados",
+      convocacao_id: convocacaoId,
+      jogadores: escolhidos.map(j=>({
+        jogador_base_id: j.id,
+        nome: j.nome,
+        time: j.time,
+        idade_na_convocacao: j.idade,
+        overall_na_convocacao: j.overall
+      }))
+    });
+    if(!r2 || !r2.ok) throw new Error((r2&&r2.error)||"Erro ao salvar jogadores da escalação.");
+
+    closeModal();
+    await loadData();
+    renderSelecaoConvocacoesList();
+    setStatus(`Escalação salva com ${escolhidos.length} jogadores, junto das convocações.`,"ok");
+  }catch(err){
+    setStatus("Erro ao salvar escalação: "+err.message,"error");
+  }
 }
 
 var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
@@ -20387,6 +20476,8 @@ var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
 }
 
 window.abrirMelhores11Selecao = abrirMelhores11Selecao;
+window.atualizarMelhores11TotalLabel = atualizarMelhores11TotalLabel;
+window.salvarMelhores11ComoConvocacao = salvarMelhores11ComoConvocacao;
 window.renderMelhores11CriteriosLista = renderMelhores11CriteriosLista;
 window.adicionarCriterioMelhores11 = adicionarCriterioMelhores11;
 window.removerCriterioMelhores11 = removerCriterioMelhores11;
