@@ -19536,6 +19536,41 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
   });
 }
 
+// Recalcula convocacoes_qtd/nota_media/bom_qtd/ruim_qtd na base LOCALMENTE
+// (em memória), espelhando a mesma lógica do Apps Script, mas sem precisar
+// recarregar tudo do servidor — evita apagar digitação em andamento.
+var atualizarAgregadosSelecaoBaseLocal = function atualizarAgregadosSelecaoBaseLocal(jogadorBaseIds){
+  const convocados = getTable("SELECAO_CONVOCADOS");
+  const base = getTable("SELECAO_BASE_TEMPORADA");
+
+  jogadorBaseIds.forEach(jogadorBaseId=>{
+    if(!jogadorBaseId) return;
+    const doJogador = convocados.filter(c=>String(c.jogador_base_id)===String(jogadorBaseId));
+    const qtd = doJogador.length;
+
+    const notasReais = [];
+    doJogador.forEach(c=>{
+      const n1 = num(c.nota), n2 = num(c.nota2);
+      const validas = [];
+      if(c.nota!==undefined && c.nota!=="" && n1>0) validas.push(n1);
+      if(c.nota2!==undefined && c.nota2!=="" && n2>0) validas.push(n2);
+      if(validas.length) notasReais.push(Math.max(...validas));
+    });
+    const notaMedia = notasReais.length ? Math.round((notasReais.reduce((a,b)=>a+b,0)/notasReais.length)*100)/100 : "";
+
+    const bomQtd = doJogador.filter(c=>c.foi_bem===true||c.foi_bem==="true"||c.foi_bem==="TRUE"||c.foi_bem==="SIM"||c.foi_bem==="sim").length;
+    const ruimQtd = doJogador.filter(c=>c.foi_mal===true||c.foi_mal==="true"||c.foi_mal==="TRUE"||c.foi_mal==="SIM"||c.foi_mal==="sim").length;
+
+    const registro = base.find(r=>String(r.id)===String(jogadorBaseId));
+    if(registro){
+      registro.convocacoes_qtd = qtd;
+      registro.nota_media = notaMedia;
+      registro.bom_qtd = bomQtd;
+      registro.ruim_qtd = ruimQtd;
+    }
+  });
+}
+
 var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
   const grid = document.getElementById("convocadosGrid_"+convocacaoId);
   if(!grid) return;
@@ -19562,8 +19597,27 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
   try{
     const res = await apiPost({action:"updateNotasConvocacao", notas});
     if(!res || !res.ok) throw new Error((res&&res.error)||"Erro ao salvar notas.");
-    await loadData();
-    renderSelecaoConvocacoesList();
+
+    // FIX V3.9.23: antes chamava loadData(), que apaga a base inteira da
+    // memória e recarrega tudo do zero, forçando um re-render da tela inteira
+    // — se você estivesse digitando nota em OUTRA convocação ao mesmo tempo,
+    // isso apagava. Agora só atualiza os dados em memória, sem re-renderizar
+    // nada (os campos já mostram o que você digitou).
+    const convocadosTable = getTable("SELECAO_CONVOCADOS");
+    const afetados = new Set();
+    notas.forEach(n=>{
+      const registro = convocadosTable.find(c=>String(c.id)===String(n.id));
+      if(registro){
+        registro.nota = n.nota;
+        registro.nota2 = n.nota2;
+        registro.foi_bem = n.foi_bem;
+        registro.foi_mal = n.foi_mal;
+        registro.observacao = n.observacao;
+        if(registro.jogador_base_id) afetados.add(String(registro.jogador_base_id));
+      }
+    });
+    atualizarAgregadosSelecaoBaseLocal([...afetados]);
+
     setStatus("Notas da convocação salvas. Base atualizada.","ok");
   }catch(err){
     setStatus("Erro ao salvar notas: "+err.message,"error");
