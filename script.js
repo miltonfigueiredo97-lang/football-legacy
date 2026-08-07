@@ -20247,7 +20247,7 @@ window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;
 window.abrirGraficoJogadorSelecao = abrirGraficoJogadorSelecao;
 
 // ===== V3.9.15 SELEÇÃO BRASILEIRA — Melhores 11 (por nota real ou overall) =====
-var SELECAO_MELHORES11_TEMPLATE = {GOL:2, ZAG:3, LD:2, LE:2, MC:3, MEI:2, PD:3, PE:3, CA:6};
+var SELECAO_MELHORES11_TEMPLATE = {GOL:2, ZAG:3, LD:2, LE:2, MC:4, MEI:2, PD:3, PE:3, CA:5};
 
 var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
   const base = getSelecaoBaseForSeason();
