@@ -7667,7 +7667,12 @@ var loadFullDbV3743Background = async function loadFullDbV3743Background(){
     renderAll();
 
     // Tenta preservar a aba atual se o renderAll mexer no estado.
-    if(activePage && typeof navigate === "function"){
+    // FIX V3.9.22: as tabelas da Seleção Brasileira (convocações, base, etc.)
+    // já vêm completas desde o carregamento inicial rápido — não precisam do
+    // carregamento completo em segundo plano. Re-renderizar essas páginas aqui
+    // apagava notas que o usuário estava digitando e ainda não tinha salvo.
+    const paginasSelecaoBrasileira = ["selecaobrasileira","selecaoconvocacoes","selecaoestatisticas"];
+    if(activePage && typeof navigate === "function" && !paginasSelecaoBrasileira.includes(activePage)){
       try{ navigate(activePage); }catch(err){}
     }
 
@@ -20191,16 +20196,16 @@ var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
     contagemPorPosicao[pos] = (contagemPorPosicao[pos]||0)+1;
   });
 
+  window.__melhores11Criterios = [{tipo:"automatica_melhores_notas", min:"", max:""}];
+
   modalTitle.textContent = "Melhores 11 — Seleção Brasileira";
   modalBox.classList.add("wide");
   form.className = "form-grid";
   form.innerHTML = `
-    <div class="form-field">
-      <label>Ordenar por</label>
-      <select id="melhores11CriterioSelect">
-        <option value="nota_media">Nota real</option>
-        <option value="overall">Overall</option>
-      </select>
+    <div class="form-field full">
+      <label>Critérios (ao vivo — muda o time conforme você ajusta)</label>
+      <div id="melhores11CriteriosLista"></div>
+      <button type="button" class="ghost-btn" onclick="adicionarCriterioMelhores11()" style="margin-top:8px">+ Adicionar critério</button>
     </div>
     <div class="form-field full">
       <label>Quantidade por posição</label>
@@ -20209,24 +20214,67 @@ var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
           <div class="selecao-qtd-linha">
             <span class="selecao-qtd-posicao">${escapeHtml(p)}</span>
             <small class="selecao-qtd-disponivel">${contagemPorPosicao[p]} na base</small>
-            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="0" data-posicao-qtd="${escapeAttr(p)}">
+            <input type="number" min="0" max="${contagemPorPosicao[p]}" value="0" data-posicao-qtd="${escapeAttr(p)}" oninput="gerarMelhores11Selecao()">
           </div>
         `).join("")}
       </div>
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
-      <button type="button" class="gold-btn" onclick="gerarMelhores11Selecao()">Gerar Melhores 11</button>
     </div>
     <div id="melhores11Resultado"></div>
   `;
 
+  renderMelhores11CriteriosLista();
   modal.classList.add("active");
 }
 
+var renderMelhores11CriteriosLista = function renderMelhores11CriteriosLista(){
+  const el = $("melhores11CriteriosLista");
+  if(!el) return;
+
+  const lista = window.__melhores11Criterios || [];
+
+  el.innerHTML = lista.map((item, idx)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <span style="min-width:20px;color:var(--muted);font-size:0.85em">${idx+1}º</span>
+      <select onchange="atualizarCriterioMelhores11(${idx}, this.value)" style="flex:1;min-width:160px">
+        ${CRITERIOS_COMBINAVEIS_OPCOES.map(o=>`<option value="${o.valor}" ${o.valor===item.tipo?"selected":""}>${o.label}</option>`).join("")}
+      </select>
+      ${CRITERIOS_TIPO_FAIXA.includes(item.tipo) ? `
+        <input type="number" placeholder="Mín" value="${escapeAttr(item.min||"")}" oninput="atualizarFaixaCriterioMelhores11(${idx},'min',this.value)" style="width:70px">
+        <span style="color:var(--muted)">e</span>
+        <input type="number" placeholder="Máx" value="${escapeAttr(item.max||"")}" oninput="atualizarFaixaCriterioMelhores11(${idx},'max',this.value)" style="width:70px">
+      ` : ""}
+      ${lista.length>1 ? `<button type="button" class="ghost-btn" onclick="removerCriterioMelhores11(${idx})">−</button>` : ""}
+    </div>
+  `).join("");
+
+  gerarMelhores11Selecao();
+}
+
+var adicionarCriterioMelhores11 = function adicionarCriterioMelhores11(){
+  window.__melhores11Criterios = window.__melhores11Criterios || [];
+  window.__melhores11Criterios.push({tipo:"automatica_maiores_overalls", min:"", max:""});
+  renderMelhores11CriteriosLista();
+}
+
+var removerCriterioMelhores11 = function removerCriterioMelhores11(idx){
+  window.__melhores11Criterios.splice(idx, 1);
+  renderMelhores11CriteriosLista();
+}
+
+var atualizarCriterioMelhores11 = function atualizarCriterioMelhores11(idx, valor){
+  window.__melhores11Criterios[idx].tipo = valor;
+  renderMelhores11CriteriosLista();
+}
+
+var atualizarFaixaCriterioMelhores11 = function atualizarFaixaCriterioMelhores11(idx, campo, valor){
+  window.__melhores11Criterios[idx][campo] = valor;
+  gerarMelhores11Selecao();
+}
+
 var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
-  const base = getSelecaoBaseForSeason();
-  const criterio = $("melhores11CriterioSelect")?.value || "nota_media";
   const qtdBox = $("melhores11QtdBox");
   const resultDiv = $("melhores11Resultado");
   if(!qtdBox || !resultDiv) return;
@@ -20238,35 +20286,24 @@ var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
 
   const totalPedido = Object.values(qtdPorPosicao).reduce((a,b)=>a+b,0);
   if(totalPedido <= 0){
-    resultDiv.innerHTML = `<small style="color:#f87171">Defina a quantidade por posição (maior que zero) primeiro.</small>`;
+    resultDiv.innerHTML = `<small style="color:var(--muted)">Defina a quantidade por posição (maior que zero) pra ver o time.</small>`;
     return;
   }
 
+  const criterios = window.__melhores11Criterios || [];
+  const escolhidos = gerarConvocacaoPorCriteriosCombinados(qtdPorPosicao, criterios);
+
   const grupos = {};
-  Object.keys(qtdPorPosicao).forEach(pos=>{
-    const qtd = qtdPorPosicao[pos];
-    if(qtd<=0) return;
-
-    const daPosicao = base
-      .filter(r=>(normalizarPosicaoSelecao(r.posicao)||"SEM POSIÇÃO")===pos)
-      .slice()
-      .sort((a,b)=>{
-        const va = num(a[criterio]), vb = num(b[criterio]);
-        if(va===0 && vb===0) return 0;
-        if(va===0) return 1;
-        if(vb===0) return -1;
-        return vb-va;
-      });
-
-    grupos[pos] = daPosicao.slice(0, qtd);
+  escolhidos.forEach(j=>{
+    const pos = normalizarPosicaoSelecao(j.posicao)||"SEM POSIÇÃO";
+    if(!grupos[pos]) grupos[pos] = [];
+    grupos[pos].push(j);
   });
 
   const presentes = Object.keys(grupos);
   const ordenadas = SELECAO_ORDEM_POSICOES.filter(p=>presentes.includes(p));
   const extras = presentes.filter(p=>!SELECAO_ORDEM_POSICOES.includes(p)).sort();
   const ordemFinal = [...ordenadas, ...extras];
-
-  const rotulo = criterio === "overall" ? "OVR" : "Nota";
 
   resultDiv.innerHTML = ordemFinal.map(pos=>`
     <div class="selecao-posicao-grupo">
@@ -20283,17 +20320,22 @@ var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
               <div class="selecao-conv-identidade-texto">
                 <div>
                   <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
-                  <span class="selecao-conv-overall">${escapeHtml(rotulo)} ${escapeHtml(String(j[criterio]||"-"))}</span>
+                  <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall||"-"))}</span>
                 </div>
-                <small class="selecao-conv-historico">OVR ${escapeHtml(String(j.overall||"-"))} • Nota real: ${escapeHtml(String(j.nota_media||"-"))}</small>
+                <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x convocado • Nota real: ${escapeHtml(String(j.nota_media||"-"))}</small>
               </div>
             </div>
           </div>
         `).join("")}
       </div>
     </div>
-  `).join("") || "<small>Nenhum jogador encontrado pras posições/quantidades escolhidas.</small>";
+  `).join("") || "<small>Nenhum jogador encontrado pras posições/quantidades/critérios escolhidos.</small>";
 }
 
 window.abrirMelhores11Selecao = abrirMelhores11Selecao;
+window.renderMelhores11CriteriosLista = renderMelhores11CriteriosLista;
+window.adicionarCriterioMelhores11 = adicionarCriterioMelhores11;
+window.removerCriterioMelhores11 = removerCriterioMelhores11;
+window.atualizarCriterioMelhores11 = atualizarCriterioMelhores11;
+window.atualizarFaixaCriterioMelhores11 = atualizarFaixaCriterioMelhores11;
 window.gerarMelhores11Selecao = gerarMelhores11Selecao;
