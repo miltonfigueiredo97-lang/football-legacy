@@ -18278,17 +18278,18 @@ var getSelecaoBaseForSeason = function getSelecaoBaseForSeason(seasonId=selecaoS
   return getTable("SELECAO_BASE_TEMPORADA").filter(r=>String(r.carreira_temporada_id)===String(seasonId));
 }
 
-var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","VOL","MC","MEI","PD","PE","CA"];
+var SELECAO_ORDEM_POSICOES = ["GOL","ZAG","LD","LE","MC","MEI","PD","PE","CA"];
 
 var normalizarPosicaoSelecao = function normalizarPosicaoSelecao(valor){
   const v = (valor||"").trim().toUpperCase();
   if(v === "ATA" || v === "ATACANTE" || v === "CENTROAVANTE") return "CA";
+  if(v === "VOL" || v === "VOLANTE") return "MC";
   return v;
 }
 
 // Template padrão de convocação (26 no total): usado como quantidade inicial
 // sugerida ao criar uma convocação, ajustável pelo usuário.
-var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, CA:4};
+var SELECAO_TEMPLATE_26 = {GOL:3, ZAG:4, LD:2, LE:2, MC:3, MEI:2, PD:3, PE:3, CA:4};
 
 var corrigirPosicoesAtaParaCaSelecao = async function corrigirPosicoesAtaParaCaSelecao(){
   const todos = getTable("SELECAO_BASE_TEMPORADA");
@@ -18510,7 +18511,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
       <input name="posicao" list="selecaoPosicoesList" value="${escapeAttr(normalizarPosicaoSelecao(existing?.posicao||""))}" placeholder="Ex: GOL, ZAG, LD, LE, VOL, MEI, PD, PE, CA">
       <datalist id="selecaoPosicoesList">
         <option value="GOL"><option value="ZAG"><option value="LD"><option value="LE">
-        <option value="VOL"><option value="MC"><option value="MEI"><option value="PD">
+        <option value="MC"><option value="MEI"><option value="PD">
         <option value="PE"><option value="CA">
       </datalist>
     </div>
@@ -20246,7 +20247,7 @@ window.renderSelecaoEstatisticasPage = renderSelecaoEstatisticasPage;
 window.abrirGraficoJogadorSelecao = abrirGraficoJogadorSelecao;
 
 // ===== V3.9.15 SELEÇÃO BRASILEIRA — Melhores 11 (por nota real ou overall) =====
-var SELECAO_MELHORES11_TEMPLATE = {GOL:2, ZAG:3, LD:2, LE:2, VOL:1, MC:2, MEI:2, PD:3, PE:3, ATA:6};
+var SELECAO_MELHORES11_TEMPLATE = {GOL:2, ZAG:3, LD:2, LE:2, MC:3, MEI:2, PD:3, PE:3, CA:6};
 
 var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
   const base = getSelecaoBaseForSeason();
