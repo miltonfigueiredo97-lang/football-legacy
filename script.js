@@ -19498,7 +19498,7 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       ? Math.round((convocadosComBase.reduce((a,j)=>a+num(j.overall),0)/convocadosComBase.length)*10)/10
       : null;
 
-    const minimizada = (window.__selecaoMinimizada || {})[c.id];
+    const minimizada = lerSelecaoMinimizadas()[c.id];
 
     return `
       <article class="entity-card">
@@ -19684,9 +19684,21 @@ window.adicionarVagaPosicao = adicionarVagaPosicao;
 window.removerVagaPosicao = removerVagaPosicao;
 window.adicionarPosicaoNaConvocacao = adicionarPosicaoNaConvocacao;
 window.salvarSlotsConvocacao = salvarSlotsConvocacao;
+var lerSelecaoMinimizadas = function lerSelecaoMinimizadas(){
+  try{ return JSON.parse(localStorage.getItem("fl_selecao_minimizadas")||"{}"); }
+  catch(err){ return {}; }
+}
+
+var salvarSelecaoMinimizadas = function salvarSelecaoMinimizadas(estado){
+  try{ localStorage.setItem("fl_selecao_minimizadas", JSON.stringify(estado)); }
+  catch(err){ /* localStorage indisponível, ignora */ }
+}
+
 var toggleMinimizarConvocacao = function toggleMinimizarConvocacao(convocacaoId){
-  window.__selecaoMinimizada = window.__selecaoMinimizada || {};
-  window.__selecaoMinimizada[convocacaoId] = !window.__selecaoMinimizada[convocacaoId];
+  const estado = lerSelecaoMinimizadas();
+  estado[convocacaoId] = !estado[convocacaoId];
+  salvarSelecaoMinimizadas(estado);
+  window.__selecaoMinimizada = estado;
   renderSelecaoConvocacoesList();
 }
 window.toggleMinimizarConvocacao = toggleMinimizarConvocacao;
@@ -20314,7 +20326,7 @@ var abrirMelhores11Selecao = function abrirMelhores11Selecao(){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
-      <button type="button" class="gold-btn" onclick="salvarMelhores11ComoConvocacao()">💾 Salvar escalação</button>
+      <button type="button" class="gold-btn" id="salvarEscalacaoBtn" onclick="salvarMelhores11ComoConvocacao()">💾 Salvar escalação</button>
     </div>
     <div id="melhores11Resultado"></div>
   `;
@@ -20380,6 +20392,9 @@ var atualizarMelhores11TotalLabel = function atualizarMelhores11TotalLabel(){
 }
 
 var salvarMelhores11ComoConvocacao = async function salvarMelhores11ComoConvocacao(){
+  const btn = $("salvarEscalacaoBtn");
+  if(btn && btn.disabled) return;
+
   const qtdBox = $("melhores11QtdBox");
   if(!qtdBox) return;
 
@@ -20397,6 +20412,8 @@ var salvarMelhores11ComoConvocacao = async function salvarMelhores11ComoConvocac
 
   const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId)) || {};
   const nomeConvocacoesExistentes = getTable("SELECAO_CONVOCACOES").filter(c=>String(c.carreira_temporada_id)===String(selecaoSeasonId)).length;
+
+  setButtonSaving(btn);
 
   try{
     const res = await apiPost({
@@ -20432,11 +20449,13 @@ var salvarMelhores11ComoConvocacao = async function salvarMelhores11ComoConvocac
     });
     if(!r2 || !r2.ok) throw new Error((r2&&r2.error)||"Erro ao salvar jogadores da escalação.");
 
+    clearButtonSaving(btn);
     closeModal();
     await loadData();
     renderSelecaoConvocacoesList();
     setStatus(`Escalação salva com ${escolhidos.length} jogadores, junto das convocações.`,"ok");
   }catch(err){
+    clearButtonSaving(btn);
     setStatus("Erro ao salvar escalação: "+err.message,"error");
   }
 }
