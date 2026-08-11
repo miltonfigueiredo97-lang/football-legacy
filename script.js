@@ -18369,7 +18369,7 @@ var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
           <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
         </div>
       </div>
-      <small>Convocações: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
+      <small>Jogos: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Nota máx: ${r.nota_maxima||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
       <div class="entity-actions">
         <button onclick="openSelecaoJogadorForm('${r.id}')">Editar</button>
         <button class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
@@ -19162,7 +19162,7 @@ var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
           <div class="selecao-avatar" style="width:56px;height:56px">${jogador.foto_url?`<img src="${escapeAttr(jogador.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
           <strong>${escapeHtml(jogador.nome||"-")}</strong>
           <small>${escapeHtml(jogador.time||"-")} • OVR ${escapeHtml(String(jogador.overall||"-"))}</small>
-          <small>${jogador.convocacoes_qtd||0}x • Nota ${jogador.nota_media||"-"}</small>
+          <small>${jogador.convocacoes_qtd||0}x jogos • Nota ${jogador.nota_media||"-"}</small>
           <div class="selecao-slot-actions">
             <button type="button" onclick="abrirEscolhaSlot('${escapeAttr(pos)}',${idx})">Trocar</button>
             <button type="button" class="delete" onclick="removerSlotConvocacao('${escapeAttr(pos)}',${idx})">Remover</button>
@@ -19253,7 +19253,7 @@ var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
     ${candidatos.map(c=>`
       <button type="button" class="selecao-candidato-card" onclick="escolherCandidatoSlot('${c.id}')">
         <div class="selecao-avatar" style="width:48px;height:48px">${c.foto_url?`<img src="${escapeAttr(c.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
-        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small><br><small>${c.convocacoes_qtd||0}x convocado • Nota real: ${c.nota_media||"-"}</small></div>
+        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small><br><small>${c.convocacoes_qtd||0}x jogos • Nota real: ${c.nota_media||"-"}</small></div>
       </button>
     `).join("") || "<small>Nenhum jogador disponível nessa posição (todos já usados em outra vaga, ou base vazia).</small>"}
     <button type="button" class="ghost-btn" onclick="fecharEscolhaSlot()">Cancelar</button>
@@ -19456,15 +19456,19 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
                     <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
                     <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall))}</span>
                   </div>
-                  <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x convocado • Nota real: ${j.nota_media||"-"}</small>
+                  <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x jogos • Nota média: ${j.nota_media||"-"} • Nota máx: ${j.nota_maxima||"-"}</small>
                 </div>
               </div>
               <div class="selecao-conv-avaliacao">
-                <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 1" title="Nota do 1º jogo">
-                <input name="nota2_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 2" title="Nota do 2º jogo">
-                <div class="selecao-conv-joias">
-                  <label title="Foi bem"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
-                  <label title="Foi mal"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
+                <div class="selecao-conv-jogo-linha">
+                  <input name="nota_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 1" title="Nota do 1º jogo">
+                  <label title="Foi bem no 1º jogo"><input type="checkbox" name="bem_${j.convocadoId}">👍</label>
+                  <label title="Foi mal no 1º jogo"><input type="checkbox" name="mal_${j.convocadoId}">👎</label>
+                </div>
+                <div class="selecao-conv-jogo-linha">
+                  <input name="nota2_${j.convocadoId}" type="number" step="0.1" placeholder="Nota 2" title="Nota do 2º jogo">
+                  <label title="Foi bem no 2º jogo"><input type="checkbox" name="bem2_${j.convocadoId}">👍</label>
+                  <label title="Foi mal no 2º jogo"><input type="checkbox" name="mal2_${j.convocadoId}">👎</label>
                 </div>
               </div>
             </div>
@@ -19531,11 +19535,15 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       const nota2Input = grid.querySelector(`[name="nota2_${j.id}"]`);
       const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
       const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
+      const bem2Input = grid.querySelector(`[name="bem2_${j.id}"]`);
+      const mal2Input = grid.querySelector(`[name="mal2_${j.id}"]`);
       const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
       if(notaInput) notaInput.value = j.nota || "";
       if(nota2Input) nota2Input.value = j.nota2 || "";
       if(bemInput) bemInput.checked = (j.foi_bem===true||j.foi_bem==="true"||j.foi_bem==="SIM"||j.foi_bem==="sim");
       if(malInput) malInput.checked = (j.foi_mal===true||j.foi_mal==="true"||j.foi_mal==="SIM"||j.foi_mal==="sim");
+      if(bem2Input) bem2Input.checked = (j.foi_bem2===true||j.foi_bem2==="true"||j.foi_bem2==="SIM"||j.foi_bem2==="sim");
+      if(mal2Input) mal2Input.checked = (j.foi_mal2===true||j.foi_mal2==="true"||j.foi_mal2==="SIM"||j.foi_mal2==="sim");
       if(obsInput) obsInput.value = j.observacao || "";
     });
   });
@@ -19547,29 +19555,38 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
 var atualizarAgregadosSelecaoBaseLocal = function atualizarAgregadosSelecaoBaseLocal(jogadorBaseIds){
   const convocados = getTable("SELECAO_CONVOCADOS");
   const base = getTable("SELECAO_BASE_TEMPORADA");
+  const ehPositivo = v => v===true||v==="true"||v==="TRUE"||v==="SIM"||v==="sim";
 
   jogadorBaseIds.forEach(jogadorBaseId=>{
     if(!jogadorBaseId) return;
     const doJogador = convocados.filter(c=>String(c.jogador_base_id)===String(jogadorBaseId));
-    const qtd = doJogador.length;
 
-    const notasReais = [];
+    // Cada nota preenchida (1 ou 2) é um jogo, com seu próprio joinha
+    // ajustando a nota só pra essa conta (+0.5 positivo, -0.5 negativo).
+    const jogos = [];
     doJogador.forEach(c=>{
-      const n1 = num(c.nota), n2 = num(c.nota2);
-      const validas = [];
-      if(c.nota!==undefined && c.nota!=="" && n1>0) validas.push(n1);
-      if(c.nota2!==undefined && c.nota2!=="" && n2>0) validas.push(n2);
-      if(validas.length) notasReais.push(Math.max(...validas));
+      const n1 = num(c.nota);
+      if(c.nota!==undefined && c.nota!=="" && n1>0){
+        jogos.push(n1 + (ehPositivo(c.foi_bem)?0.5:0) - (ehPositivo(c.foi_mal)?0.5:0));
+      }
+      const n2 = num(c.nota2);
+      if(c.nota2!==undefined && c.nota2!=="" && n2>0){
+        jogos.push(n2 + (ehPositivo(c.foi_bem2)?0.5:0) - (ehPositivo(c.foi_mal2)?0.5:0));
+      }
     });
-    const notaMedia = notasReais.length ? Math.round((notasReais.reduce((a,b)=>a+b,0)/notasReais.length)*100)/100 : "";
 
-    const bomQtd = doJogador.filter(c=>c.foi_bem===true||c.foi_bem==="true"||c.foi_bem==="TRUE"||c.foi_bem==="SIM"||c.foi_bem==="sim").length;
-    const ruimQtd = doJogador.filter(c=>c.foi_mal===true||c.foi_mal==="true"||c.foi_mal==="TRUE"||c.foi_mal==="SIM"||c.foi_mal==="sim").length;
+    const qtdJogos = jogos.length;
+    const notaMedia = qtdJogos ? Math.round((jogos.reduce((a,b)=>a+b,0)/qtdJogos)*100)/100 : "";
+    const notaMaxima = qtdJogos ? Math.round(Math.max(...jogos)*100)/100 : "";
+
+    const bomQtd = doJogador.filter(c=>ehPositivo(c.foi_bem)).length + doJogador.filter(c=>ehPositivo(c.foi_bem2)).length;
+    const ruimQtd = doJogador.filter(c=>ehPositivo(c.foi_mal)).length + doJogador.filter(c=>ehPositivo(c.foi_mal2)).length;
 
     const registro = base.find(r=>String(r.id)===String(jogadorBaseId));
     if(registro){
-      registro.convocacoes_qtd = qtd;
+      registro.convocacoes_qtd = qtdJogos; // agora representa numero de JOGOS
       registro.nota_media = notaMedia;
+      registro.nota_maxima = notaMaxima;
       registro.bom_qtd = bomQtd;
       registro.ruim_qtd = ruimQtd;
     }
@@ -19587,6 +19604,8 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
     const nota2Input = grid.querySelector(`[name="nota2_${j.id}"]`);
     const bemInput = grid.querySelector(`[name="bem_${j.id}"]`);
     const malInput = grid.querySelector(`[name="mal_${j.id}"]`);
+    const bem2Input = grid.querySelector(`[name="bem2_${j.id}"]`);
+    const mal2Input = grid.querySelector(`[name="mal2_${j.id}"]`);
     const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
 
     return {
@@ -19595,6 +19614,8 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
       nota2: nota2Input ? nota2Input.value : "",
       foi_bem: bemInput ? bemInput.checked : false,
       foi_mal: malInput ? malInput.checked : false,
+      foi_bem2: bem2Input ? bem2Input.checked : false,
+      foi_mal2: mal2Input ? mal2Input.checked : false,
       observacao: obsInput ? obsInput.value : ""
     };
   });
@@ -19617,6 +19638,8 @@ var saveConvocacaoNotas = async function saveConvocacaoNotas(convocacaoId){
         registro.nota2 = n.nota2;
         registro.foi_bem = n.foi_bem;
         registro.foi_mal = n.foi_mal;
+        registro.foi_bem2 = n.foi_bem2;
+        registro.foi_mal2 = n.foi_mal2;
         registro.observacao = n.observacao;
         if(registro.jogador_base_id) afetados.add(String(registro.jogador_base_id));
       }
@@ -20115,7 +20138,7 @@ var renderSelecaoEstatisticasPage = function renderSelecaoEstatisticasPage(){
           const registro = j.porTemporada[s.id];
           if(!registro) return `<td><span class="selecao-stats-ausente">—</span></td>`;
           const qtdConv = j.convocacoesPorTemporada[s.id] || 0;
-          return `<td>${escapeHtml(String(registro.overall||"-"))}<br><small class="selecao-stats-conv">${qtdConv}x convocado</small></td>`;
+          return `<td>${escapeHtml(String(registro.overall||"-"))}<br><small class="selecao-stats-conv">${qtdConv}x jogos</small></td>`;
         }).join("")}
         <td style="color:${tendencia.cor};font-weight:700">${tendencia.simbolo}</td>
       </tr>
@@ -20466,7 +20489,7 @@ var gerarMelhores11Selecao = function gerarMelhores11Selecao(){
                   <div class="selecao-conv-escudo">${j.escudo_time_url ? `<img src="${escapeAttr(j.escudo_time_url)}" onerror="this.parentElement.textContent='🛡'">` : "🛡"}</div>
                   <span class="selecao-conv-overall">OVR ${escapeHtml(String(j.overall||"-"))}</span>
                 </div>
-                <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x convocado • Nota real: ${escapeHtml(String(j.nota_media||"-"))}</small>
+                <small class="selecao-conv-historico">${j.convocacoes_qtd||0}x jogos • Nota real: ${escapeHtml(String(j.nota_media||"-"))}</small>
               </div>
             </div>
           </div>
