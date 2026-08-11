@@ -19123,6 +19123,7 @@ var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(c
   form.className = "form-grid";
 
   form.innerHTML = `
+    <div id="selecaoSlotsTotalLabel" class="selecao-slots-total"></div>
     <div id="selecaoSlotsContainer"></div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
@@ -19136,10 +19137,17 @@ var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(c
 
 var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
   const container = $("selecaoSlotsContainer");
+  const totalLabel = $("selecaoSlotsTotalLabel");
   if(!container) return;
 
   const { slots, base } = selecaoSlotState;
   const posicoesComVaga = Object.keys(slots);
+
+  if(totalLabel){
+    const totalVagas = Object.values(slots).reduce((a,arr)=>a+arr.length,0);
+    const totalPreenchidos = Object.values(slots).reduce((a,arr)=>a+arr.filter(Boolean).length,0);
+    totalLabel.innerHTML = `<strong style="color:${totalPreenchidos>totalVagas?"#f87171":"var(--gold)"}">${totalPreenchidos} / ${totalVagas} jogadores escolhidos no total</strong>`;
+  }
 
   if(!posicoesComVaga.length){
     container.innerHTML = emptyCard("Nenhuma vaga definida. Feche e crie a convocação novamente definindo quantidade por posição.");

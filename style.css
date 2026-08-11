@@ -31,6 +31,7 @@
 .selecao-candidato-card strong{font-size:0.85em}
 .selecao-candidato-card small{font-size:0.72em;color:var(--muted)}
 .selecao-qtd-lista{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;padding-right:4px}
+.selecao-slots-total{text-align:center;padding:10px;margin-bottom:12px;border-radius:12px;background:rgba(255,255,255,.04);font-size:1.05em}
 .selecao-qtd-linha{display:grid;grid-template-columns:90px 1fr 70px;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04)}
 .selecao-qtd-posicao{font-weight:800;color:var(--gold)}
 .selecao-qtd-disponivel{color:var(--muted)}
