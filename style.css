@@ -2959,6 +2959,51 @@ body[data-current-page="museu"] #museu{
   margin:0;
 }
 
+.league-winners-card-v3782:hover{
+  border-color:rgba(251,191,36,.4);
+  background:linear-gradient(135deg,rgba(251,191,36,.06),rgba(2,6,23,.22));
+}
+
+.comp-detalhe-v3784{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+.comp-detalhe-coluna-v3784 h4{
+  color:#fbbf24;
+  margin:0 0 12px;
+  font-size:16px;
+}
+.comp-detalhe-ranking-v3784,.comp-detalhe-anos-v3784{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:420px;
+  overflow:auto;
+  padding-right:6px;
+}
+.comp-detalhe-ranking-v3784 li,.comp-detalhe-anos-v3784 li{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  color:#fff;
+  font-weight:700;
+  padding:8px 10px;
+  border-radius:8px;
+  background:rgba(255,255,255,.03);
+}
+.comp-detalhe-ranking-v3784 li b,.comp-detalhe-anos-v3784 li span{
+  color:#fbbf24;
+  font-weight:900;
+}
+@media (max-width:640px){
+  .comp-detalhe-v3784{ grid-template-columns:1fr; }
+}
+
 
 /* ===== V3.7.83 BOLA DE OURO MODAL + BRASILEIRÃO + ESCUDO SELEÇÃO ===== */
 #ballon-best-v3780,

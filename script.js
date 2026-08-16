@@ -11766,7 +11766,10 @@ const FL_MAJOR_COMPETITIONS_V3782 = [
   {name:"Europa League", aliases:["europa league","uefa europa league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_League_Trophy.jpg?width=220"},
   {name:"Conference League", aliases:["conference league","uefa conference league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_Conference_League_Trophy.jpg?width=220"},
   {name:"Copa do Mundo", aliases:["copa do mundo","world cup"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_World_Cup_Trophy.jpg?width=220"},
-  {name:"Copa América", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"}
+  {name:"Copa América", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"},
+  {name:"Libertadores", aliases:["libertadores","copa libertadores"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Libertadores_trophy.jpg?width=220"},
+  {name:"Mundial de Clubes", aliases:["mundial de clubes","fifa club world cup","copa mundial de clubes","super mundial"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_Club_World_Cup_trophy.png?width=220"},
+  {name:"Intercontinental", aliases:["intercontinental","copa intercontinental","taca intercontinental","taça intercontinental"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Intercontinental_Cup_trophy.png?width=220"}
 ];
 
 var FL_matchMajorCompV3782 = function FL_matchMajorCompV3782(comp){
@@ -11778,12 +11781,25 @@ var FL_matchMajorCompV3782 = function FL_matchMajorCompV3782(comp){
 
 var FL_championsRowsV3782 = function FL_championsRowsV3782(){
   const carreiraId = FL_activeCareerIdV3782();
-  return (getTable("CAMPEOES_CARREIRA") || []).filter(r =>
+
+  const daCarreira = (getTable("CAMPEOES_CARREIRA") || []).filter(r =>
     !carreiraId || String(r.carreira_id || "") === String(carreiraId)
   );
+
+  // Histórico real (Copa do Mundo, Champions League etc, ano a ano) — a
+  // carreira do usuário continua essa mesma linha do tempo pra frente,
+  // automaticamente, conforme ele registra campeões nas temporadas dele.
+  const historicoReal = (getTable("COMPETICOES_CAMPEOES_BASE") || []).map(r => ({
+    competicao: r.competicao,
+    clube: r.clube,
+    temporada: r.temporada,
+    _real: true
+  }));
+
+  return [...historicoReal, ...daCarreira];
 }
 
-var FL_topWinnersByCompetitionV3782 = function FL_topWinnersByCompetitionV3782(major){
+var FL_topWinnersByCompetitionV3782 = function FL_topWinnersByCompetitionV3782(major, limite){
   const map = new Map();
 
   FL_championsRowsV3782().forEach(r=>{
@@ -11805,9 +11821,19 @@ var FL_topWinnersByCompetitionV3782 = function FL_topWinnersByCompetitionV3782(m
     if(r.temporada) item.seasons.push(r.temporada);
   });
 
-  return [...map.values()]
-    .sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name))
-    .slice(0,5);
+  const ordenado = [...map.values()].sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name));
+  return limite ? ordenado.slice(0, limite) : ordenado;
+}
+
+var FL_championsByYearV3782 = function FL_championsByYearV3782(major){
+  return FL_championsRowsV3782()
+    .filter(r=>{
+      const comp = r.competicao || "";
+      const match = FL_matchMajorCompV3782(comp);
+      return match && match.name === major.name && r.clube;
+    })
+    .map(r=>({temporada: r.temporada||"-", clube: r.clube}))
+    .sort((a,b)=>String(b.temporada).localeCompare(String(a.temporada)));
 }
 
 var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajorLeaguesV3782(){
@@ -11831,10 +11857,10 @@ var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajor
       </div>
     </div>
     <div class="stats-leagues-grid-v3782">
-      ${FL_MAJOR_COMPETITIONS_V3782.map(comp=>{
-        const winners = FL_topWinnersByCompetitionV3782(comp);
+      ${FL_MAJOR_COMPETITIONS_V3782.map((comp,idx)=>{
+        const winners = FL_topWinnersByCompetitionV3782(comp, 5);
         return `
-          <article class="league-winners-card-v3782">
+          <article class="league-winners-card-v3782" onclick="abrirDetalheCompeticaoV3784(${idx})" style="cursor:pointer">
             <div class="league-icon-v3782">
               <img src="${FL_escapeAttrV3782(comp.icon)}" onerror="this.parentElement.innerHTML='🏆'">
             </div>
@@ -11865,6 +11891,44 @@ var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajor
 var renderEstatisticas = function renderEstatisticas(){
   FL_renderEstatisticasMajorLeaguesV3782();
 }
+
+var abrirDetalheCompeticaoV3784 = function abrirDetalheCompeticaoV3784(idx){
+  const comp = FL_MAJOR_COMPETITIONS_V3782[idx];
+  if(!comp) return;
+
+  const ranking = FL_topWinnersByCompetitionV3782(comp);
+  const porAno = FL_championsByYearV3782(comp);
+
+  modalTitle.textContent = comp.name;
+  modalBox.classList.add("wide");
+  form.className = "form-grid";
+  form.innerHTML = `
+    <div class="comp-detalhe-v3784">
+      <div class="comp-detalhe-coluna-v3784">
+        <h4>🏆 Ranking de títulos</h4>
+        ${ranking.length ? `
+          <ol class="comp-detalhe-ranking-v3784">
+            ${ranking.map(w=>`<li><span>${FL_escapeV3782(w.name)}</span><b>${w.count}</b></li>`).join("")}
+          </ol>
+        ` : `<p>Sem campeões cadastrados ainda.</p>`}
+      </div>
+      <div class="comp-detalhe-coluna-v3784">
+        <h4>📅 Campeões por ano</h4>
+        ${porAno.length ? `
+          <ol class="comp-detalhe-anos-v3784">
+            ${porAno.map(w=>`<li><span>${FL_escapeV3782(String(w.temporada))}</span><b>${FL_escapeV3782(w.clube)}</b></li>`).join("")}
+          </ol>
+        ` : `<p>Sem campeões cadastrados ainda.</p>`}
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="ghost-btn" onclick="closeModal()">Fechar</button>
+    </div>
+  `;
+
+  modal.classList.add("active");
+}
+window.abrirDetalheCompeticaoV3784 = abrirDetalheCompeticaoV3784;
 
 window.renderEstatisticas = renderEstatisticas;
 window.renderStats = renderEstatisticas;
