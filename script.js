@@ -18409,11 +18409,24 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   const exportarBtn = $("selecaoExportarBtn");
   if(exportarBtn) exportarBtn.onclick = exportarPlanilhaSelecaoBase;
 
+  // FIX: a importação sempre mexia na temporada que estava sendo VISTA na
+  // tela. Agora você escolhe pra qual temporada importar (útil pra jogar a
+  // planilha nova do FIFA direto numa temporada seguinte que ainda nem tem
+  // ninguém, sem precisar trocar de tela antes).
+  const importSelect = $("selecaoImportarSeasonSelect");
+  if(importSelect){
+    importSelect.innerHTML = seasons.map(s=>`<option value="${s.id}" ${String(s.id)===String(selecaoSeasonId)?"selected":""}>${escapeHtml(s.temporada||"-")}</option>`).join("");
+  }
+
   const importarBtn = $("selecaoImportarBtn");
   const importarInput = $("selecaoImportarInput");
   if(importarBtn && importarInput){
     importarBtn.onclick = ()=>importarInput.click();
-    importarInput.onchange = (e)=>importarPlanilhaSelecaoBase(e.target.files[0]);
+    importarInput.onchange = (e)=>{
+      const seasonAlvo = importSelect ? importSelect.value : selecaoSeasonId;
+      importarPlanilhaSelecaoBase(e.target.files[0], seasonAlvo);
+      e.target.value = "";
+    };
   }
 
   renderSelecaoBaseGrouped();
@@ -20066,11 +20079,15 @@ var exportarPlanilhaSelecaoBase = function exportarPlanilhaSelecaoBase(){
   setStatus(`Planilha exportada com ${linhas.length} jogadores.`,"ok");
 }
 
-var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(file){
+var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(file, seasonAlvo){
   if(!file) return;
   if(typeof XLSX === "undefined"){ setStatus("Biblioteca de planilha não carregou. Recarregue a página.","error"); return; }
 
-  setStatus("Lendo planilha...","");
+  const seasonId = seasonAlvo || selecaoSeasonId;
+  const seasonRecord = getSelecaoSeasonRecords().find(s=>String(s.id)===String(seasonId));
+  if(!seasonRecord){ setStatus("Temporada-alvo inválida.","error"); return; }
+
+  setStatus(`Lendo planilha e importando pra ${seasonRecord.temporada}...`,"");
 
   try{
     const buffer = await file.arrayBuffer();
@@ -20080,7 +20097,7 @@ var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(fil
 
     if(!linhas.length){ setStatus("Planilha vazia ou em formato não reconhecido.","error"); return; }
 
-    const base = getSelecaoBaseForSeason();
+    const base = getSelecaoBaseForSeason(seasonId);
     const baseIndexPorNome = {};
     base.forEach(r=>{ baseIndexPorNome[normalizarNomeParaComparar(r.nome)] = r; });
 
@@ -20117,8 +20134,8 @@ var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(fil
           table:"SELECAO_BASE_TEMPORADA",
           record:{
             carreira_id: active.carreira_id,
-            carreira_temporada_id: selecaoSeasonId,
-            temporada: (getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId))||{}).temporada || "",
+            carreira_temporada_id: seasonId,
+            temporada: seasonRecord.temporada || "",
             nome: nomeLinha,
             posicao: posicaoLinha,
             idade: novaIdade !== undefined ? novaIdade : "",
@@ -20134,9 +20151,10 @@ var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(fil
     }
 
     await loadData();
+    selecaoSeasonId = seasonId;
     renderSelecaoBaseGrouped();
 
-    setStatus(`${atualizados} jogador(es) atualizado(s), ${adicionados} jogador(es) novo(s) adicionado(s) a partir da planilha.`, "ok");
+    setStatus(`${atualizados} jogador(es) atualizado(s), ${adicionados} jogador(es) novo(s) adicionado(s) em ${seasonRecord.temporada}.`, "ok");
   }catch(err){
     setStatus("Erro ao importar planilha: "+err.message,"error");
     console.error(err);
