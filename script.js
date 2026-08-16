@@ -20085,34 +20085,58 @@ var importarPlanilhaSelecaoBase = async function importarPlanilhaSelecaoBase(fil
     base.forEach(r=>{ baseIndexPorNome[normalizarNomeParaComparar(r.nome)] = r; });
 
     let atualizados = 0;
-    let naoEncontrados = [];
+    let adicionados = 0;
 
     for(const linha of linhas){
       const nomeLinha = linha.Nome || linha.nome || linha.NOME || "";
       if(!nomeLinha) continue;
 
-      const jogador = baseIndexPorNome[normalizarNomeParaComparar(nomeLinha)];
-      if(!jogador){ naoEncontrados.push(nomeLinha); continue; }
-
+      const posicaoLinha = linha["Posição"] || linha.Posicao || linha.posicao || linha.POSIÇÃO || "";
       const novaIdade = linha.Idade ?? linha.idade ?? linha.IDADE;
       const novoOverall = linha.Overall ?? linha.overall ?? linha.OVERALL;
 
-      const record = {};
-      if(novaIdade !== undefined && novaIdade !== "") record.idade = novaIdade;
-      if(novoOverall !== undefined && novoOverall !== "") record.overall = novoOverall;
+      const jogador = baseIndexPorNome[normalizarNomeParaComparar(nomeLinha)];
 
-      if(Object.keys(record).length){
-        await apiPost({action:"update", table:"SELECAO_BASE_TEMPORADA", id:jogador.id, record});
-        atualizados++;
+      if(jogador){
+        // Jogador já existe nessa temporada — só atualiza idade/overall.
+        const record = {};
+        if(novaIdade !== undefined && novaIdade !== "") record.idade = novaIdade;
+        if(novoOverall !== undefined && novoOverall !== "") record.overall = novoOverall;
+
+        if(Object.keys(record).length){
+          await apiPost({action:"update", table:"SELECAO_BASE_TEMPORADA", id:jogador.id, record});
+          atualizados++;
+        }
+      }else{
+        // FIX: antes só listava como "não encontrado" e não fazia nada.
+        // Agora cria automaticamente como jogador novo nessa temporada —
+        // cobre o caso de um jogador novo que apareceu na planilha do FIFA
+        // (ex: promovido das categorias de base, ou primeira convocação).
+        const res = await apiPost({
+          action:"create",
+          table:"SELECAO_BASE_TEMPORADA",
+          record:{
+            carreira_id: active.carreira_id,
+            carreira_temporada_id: selecaoSeasonId,
+            temporada: (getSelecaoSeasonRecords().find(s=>String(s.id)===String(selecaoSeasonId))||{}).temporada || "",
+            nome: nomeLinha,
+            posicao: posicaoLinha,
+            idade: novaIdade !== undefined ? novaIdade : "",
+            overall: novoOverall !== undefined ? novoOverall : "",
+            convocacoes_qtd: 0,
+            nota_media: "",
+            bom_qtd: 0,
+            ruim_qtd: 0
+          }
+        });
+        if(res && res.ok) adicionados++;
       }
     }
 
     await loadData();
     renderSelecaoBaseGrouped();
 
-    let msg = `${atualizados} jogador(es) atualizado(s) a partir da planilha.`;
-    if(naoEncontrados.length) msg += ` ${naoEncontrados.length} não encontrado(s) na base: ${naoEncontrados.slice(0,5).join(", ")}${naoEncontrados.length>5?"...":""}.`;
-    setStatus(msg, naoEncontrados.length ? "error" : "ok");
+    setStatus(`${atualizados} jogador(es) atualizado(s), ${adicionados} jogador(es) novo(s) adicionado(s) a partir da planilha.`, "ok");
   }catch(err){
     setStatus("Erro ao importar planilha: "+err.message,"error");
     console.error(err);
