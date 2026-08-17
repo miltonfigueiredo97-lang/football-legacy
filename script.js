@@ -115,6 +115,23 @@ var escapeHtml = function escapeHtml(value){
 
 var seasonKey = function seasonKey(value){const m=String(value||"").match(/\d{4}/g); return m?Number(m[m.length-1]):0}
 
+// FIX V2.1: várias telas (Top 11 principalmente) guardam qual item está
+// selecionado numa variável global (window.FL_..._SELECTED_...) que nunca
+// era resetada ao trocar de carreira/usuário. Isso fazia, por exemplo, o
+// Top 11 continuar mostrando a temporada/carreira antiga depois de trocar
+// de carreira no seletor. Chamado sempre que a carreira ou o usuário ativo
+// mudam.
+var resetStickyPerCareiraSelectionsV21 = function resetStickyPerCareiraSelectionsV21(){
+  window.FL_TOP11_EDITING_V3787 = false;
+  window.FL_TOP11_SELECTED_UNIFIED_KEY_V3790 = null;
+  window.FL_TOP11_SELECTED_UNIFIED_KEY_V3796 = null;
+  window.FL_TOP11_SELECTED_UNIFIED_KEY_V3797 = null;
+  window.FL_TOP11_SELECTED_KEY_V3787 = null;
+  window.FL_TOP11_VIEW_MODE_V3789 = null;
+  window.FL_TOP11_BASE_YEAR_V3789 = "";
+}
+window.resetStickyPerCareiraSelectionsV21 = resetStickyPerCareiraSelectionsV21;
+
 // FIX V2.0: antes a ordem das temporadas era só pelo ano dentro do texto
 // (ex: "2025/2026" -> 2026). Isso quebrava quando duas temporadas linha a
 // linha tinham o mesmo texto (ex: jogou 2 clubes na mesma "2020/2021"), ou
@@ -4484,6 +4501,7 @@ var startFootballLegacy = function startFootballLegacy(){
         active.carreira_id = c[0] ? String(c[0].id) : "";
         active.protagonista_id = "";
         active.temporada = "";
+        resetStickyPerCareiraSelectionsV21();
         saveActive();
         renderAll();
       };
@@ -4496,6 +4514,7 @@ var startFootballLegacy = function startFootballLegacy(){
         active.temporada = "";
         const ch = getCareerCharacters();
         if(ch[0]) active.protagonista_id = String(ch[0].id);
+        resetStickyPerCareiraSelectionsV21();
         saveActive();
         renderAll();
       };
@@ -6881,7 +6900,6 @@ var openSeasonFlow = function openSeasonFlow(existingId=null){
           <select name="status">
             <option value="em andamento" ${existing?.status==="em andamento"?"selected":""}>Em andamento</option>
             <option value="finalizada" ${existing?.status==="finalizada"?"selected":""}>Finalizada</option>
-            <option value="transferido" ${existing?.status==="transferido"?"selected":""}>Transferido</option>
           </select>
         </div>
       </div>
@@ -17424,9 +17442,14 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     const all = (typeof getTable === "function" ? getTable("TOP11_CARREIRA") : (window.db?.TOP11_CARREIRA || [])) || [];
     const carreiraId = window.active?.carreira_id || "";
 
-    const rows = all
-      .filter(r => !carreiraId || String(pick(r, ["carreira_id","CARREIRA_ID"]) || "") === String(carreiraId))
-      .map((r,i)=>Object.assign({__source:"career", __top11Source:"career", __rawIndex:i}, r));
+    // FIX V2.1: antes, se carreiraId estivesse vazio (ex: durante uma
+    // troca de carreira, um instante antes do active.carreira_id ser
+    // preenchido de novo), o filtro "!carreiraId ||" deixava passar TODAS
+    // as carreiras juntas. Agora, sem carreira ativa definida, não mostra
+    // nada em vez de misturar tudo.
+    const rows = carreiraId ? all
+      .filter(r => String(pick(r, ["carreira_id","CARREIRA_ID"]) || "") === String(carreiraId))
+      .map((r,i)=>Object.assign({__source:"career", __top11Source:"career", __rawIndex:i}, r)) : [];
 
     const bySeason = new Map();
     rows.forEach(r=>{
