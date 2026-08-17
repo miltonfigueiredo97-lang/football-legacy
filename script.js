@@ -1844,7 +1844,7 @@ async function buscarTimesApiMelhoradoV200(query){
 
   async function chamar(termo){
     try{
-      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(termo)}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(termo)}`;
       const res = await fetch(url);
       const json = await res.json();
       return (json.teams || [])
@@ -7973,7 +7973,7 @@ var fetchClubBadgeApiV3744 = async function fetchClubBadgeApiV3744(clubName){
   }
 
   try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(first)}`;
+    const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(first)}`;
     const res = await fetch(url);
     const data = await res.json();
     const teams = data?.teams || [];
@@ -10994,7 +10994,7 @@ var FL_fetchNationalBadgeV3780 = async function FL_fetchNationalBadgeV3780(name)
     ];
 
     for(const q of queries){
-      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(q)}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(q)}`;
       const res = await fetch(url, {cache:"force-cache"});
       const data = await res.json();
       const teams = data?.teams || [];
@@ -11499,7 +11499,7 @@ var FL_fetchPlayerPhotoV3781 = async function FL_fetchPlayerPhotoV3781(name){
   if(FL_PLAYER_PHOTO_CACHE_V3781[key] !== undefined) return FL_PLAYER_PHOTO_CACHE_V3781[key];
 
   try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(clean)}`;
+    const url = `https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(clean)}`;
     const res = await fetch(url, {cache:"force-cache"});
     const data = await res.json();
     const players = data?.player || [];
@@ -12855,7 +12855,7 @@ var FL_fetchClubBadgeV3785 = async function FL_fetchClubBadgeV3785(name){
     ].filter(Boolean);
 
     for(const q of [...new Set(variants)]){
-      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(q)}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(q)}`;
       const res = await fetch(url, {cache:"force-cache"});
       const data = await res.json();
       const teams = data?.teams || [];
@@ -13215,7 +13215,7 @@ var FL_fetchPlayerPhotoV3786 = async function FL_fetchPlayerPhotoV3786(name){
   if(!clean) return "";
 
   try{
-    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
     const data = await res.json();
     const p = (data?.player || [])[0];
     return p?.strCutout || p?.strRender || p?.strThumb || "";
@@ -13689,7 +13689,7 @@ var FL_fetchPlayerPhotoV3787 = async function FL_fetchPlayerPhotoV3787(name){
   if(!clean) return "";
 
   try{
-    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
     const data = await res.json();
     const p = (data?.player || [])[0];
     return p?.strCutout || p?.strRender || p?.strThumb || "";
@@ -14646,7 +14646,7 @@ var FL_fetchPlayerPhotoV3790 = async function FL_fetchPlayerPhotoV3790(name){
   }
 
   try{
-    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(clean)}`, {cache:"force-cache"});
     const data = await res.json();
     const players = data?.player || [];
     const found = players.find(p => FL_normV3790(p.strPlayer || "") === key) || players[0];
@@ -17069,7 +17069,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       }catch(e){}
     }
     try{
-      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
+      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
       const data = await res.json();
       const p = (data?.player || [])[0];
       const img = p?.strCutout || p?.strRender || p?.strThumb || "";
@@ -17621,7 +17621,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
     }
 
     try{
-      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
+      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(name)}`, {cache:"force-cache"});
       const data = await res.json();
       const p = (data?.player || [])[0];
       const img = p?.strCutout || p?.strRender || p?.strThumb || "";
@@ -20024,7 +20024,7 @@ var buscarEscudoTimeFantasy = async function buscarEscudoTimeFantasy(nomeTime){
 
   const tentarBusca = async (termo)=>{
     try{
-      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(termo)}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(termo)}`;
       const res = await fetch(url);
       const json = await res.json();
       const time = (json.teams||[]).find(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
