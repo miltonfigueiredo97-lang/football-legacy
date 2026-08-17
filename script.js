@@ -1866,26 +1866,38 @@ async function buscarTimesApiMelhoradoV200(query){
     }
   }
 
-  let teams = await chamar(q);
-
-  // Se veio pouco resultado (menos de 4), tenta variações da busca:
-  // sem a última palavra (nomes compostos tipo "Manchester City FC" -> "Manchester City"),
-  // e só a primeira palavra (pega o "núcleo" do nome, tipo "Corinthians" de "SC Corinthians Paulista").
-  if(teams.length < 4){
-    const palavras = q.split(/\s+/).filter(Boolean);
-    const tentativas = [];
-    if(palavras.length > 1) tentativas.push(palavras.slice(0, -1).join(" "));
-    if(palavras.length > 1) tentativas.push(palavras[0]);
-
-    for(const tentativa of tentativas){
-      if(teams.length >= 4) break;
-      if(!tentativa || tentativa.toLowerCase() === q.toLowerCase()) continue;
-      const extras = await chamar(tentativa);
-      extras.forEach(t=>{
-        if(!teams.some(existing => existing.idTeam === t.idTeam)) teams.push(t);
-      });
-    }
+  // FIX V2.5: a chave de teste gratuita da TheSportsDB devolve só 1
+  // resultado por chamada (não é uma lista de opções parecidas). Pra
+  // conseguir mostrar várias opções de verdade, disparamos várias buscas
+  // em paralelo com variações do nome digitado (nome completo, sem a
+  // última palavra, sem a primeira palavra, só a primeira palavra, só a
+  // última palavra) e juntamos os times diferentes que cada uma achar.
+  const palavras = q.split(/\s+/).filter(Boolean);
+  const variacoes = new Set([q]);
+  if(palavras.length > 1){
+    variacoes.add(palavras.slice(0, -1).join(" ")); // sem a última palavra
+    variacoes.add(palavras.slice(1).join(" "));      // sem a primeira palavra
+    variacoes.add(palavras[0]);                       // só a primeira palavra
+    variacoes.add(palavras[palavras.length-1]);        // só a última palavra
+  }else{
+    // Busca de uma palavra só: tenta variações comuns de nome de clube
+    // pra não ficar limitado a um único resultado da API.
+    variacoes.add(q + " FC");
+    variacoes.add("FC " + q);
+    variacoes.add(q + " City");
+    if(q.length > 4) variacoes.add(q.slice(0, Math.ceil(q.length*0.7)));
   }
+
+  const resultados = await Promise.all([...variacoes].map(chamar));
+
+  const teams = [];
+  const vistos = new Set();
+  resultados.flat().forEach(t=>{
+    const id = t.idTeam || t.strTeam;
+    if(vistos.has(id)) return;
+    vistos.add(id);
+    teams.push(t);
+  });
 
   // Ordena colocando primeiro os times cujo nome começa com o termo buscado
   // (mais provável de ser o que a pessoa quer), evitando que um resultado
