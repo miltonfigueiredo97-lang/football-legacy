@@ -11,6 +11,17 @@ let active = {
   protagonista_id: localStorage.getItem("fl_active_protagonista_id") || "",
   temporada: localStorage.getItem("fl_active_temporada") || ""
 };
+// FIX V2.4: "let" no topo do arquivo NÃO vira propriedade de window
+// automaticamente (diferente de "var"). Vários trechos do código liam
+// window.active.carreira_id esperando achar a carreira ativa e sempre
+// recebiam undefined, fazendo filtros por carreira falharem silenciosamente
+// (mostrando tudo misturado, ou nada, dependendo do trecho). Isso expõe
+// window.active como um espelho sempre atualizado do objeto active.
+Object.defineProperty(window, "active", {
+  get(){ return active; },
+  set(v){ active = v; },
+  configurable: true
+});
 
 const tableMap = {usuario:"USUARIOS",universo:"UNIVERSOS",carreira:"CARREIRAS",personagem:"PERSONAGENS",clube:"CLUBES",temporada:"TEMPORADAS",competicao:"COMPETICOES",campeao:"CAMPEOES",estatistica:"ESTATISTICAS",bolaouro:"BOLA_DE_OURO_CARREIRA",bolaourobase:"BOLA_DE_OURO_BASE",top11:"TOP11",midia:"MIDIAS"};
 
@@ -16942,7 +16953,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 
   var careerRows = function careerRows(){
     const all = (typeof getTable === "function" ? getTable("TOP11_CARREIRA") : (window.db?.TOP11_CARREIRA || [])) || [];
-    const carreiraId = window.active?.carreira_id || "";
+    const carreiraId = active?.carreira_id || "";
     return all.filter(r => !carreiraId || String(r.carreira_id || "") === String(carreiraId))
       .map((r,i)=>Object.assign({__source:"career", __top11Source:"career", __slotIndex:i}, r));
   }
@@ -17440,7 +17451,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
 
   var careerRows = function careerRows(){
     const all = (typeof getTable === "function" ? getTable("TOP11_CARREIRA") : (window.db?.TOP11_CARREIRA || [])) || [];
-    const carreiraId = window.active?.carreira_id || "";
+    const carreiraId = active?.carreira_id || "";
 
     // FIX V2.1: antes, se carreiraId estivesse vazio (ex: durante uma
     // troca de carreira, um instante antes do active.carreira_id ser
@@ -17799,7 +17810,7 @@ window.renderTop11 = FL_renderTop11UnifiedV3795;
       setStatus("Salvando posições do Top 11...", "loading");
       const result = await apiPost({
         action:"saveTop11CareerV2",
-        carreira_id: window.active?.carreira_id || "",
+        carreira_id: active?.carreira_id || "",
         carreira_temporada_id: group.carreira_temporada_id || "",
         temporada: group.label || "",
         mapa_url: TOP11_BG_V3797,
