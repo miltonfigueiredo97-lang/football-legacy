@@ -114,7 +114,33 @@ var escapeHtml = function escapeHtml(value){
 
 
 var seasonKey = function seasonKey(value){const m=String(value||"").match(/\d{4}/g); return m?Number(m[m.length-1]):0}
-var compareSeasonsDesc = function compareSeasonsDesc(a,b){return seasonKey(b)-seasonKey(a)}
+
+// FIX V2.0: antes a ordem das temporadas era só pelo ano dentro do texto
+// (ex: "2025/2026" -> 2026). Isso quebrava quando duas temporadas linha a
+// linha tinham o mesmo texto (ex: jogou 2 clubes na mesma "2020/2021"), ou
+// quando a carreira não seguia a ordem cronológica real dos anos. Agora,
+// se as duas temporadas sendo comparadas têm um registro em
+// CARREIRA_TEMPORADAS com "ordem_na_carreira" preenchido, usa essa ordem
+// (a ordem que você realmente foi lançando/jogando) — só cai pro ano do
+// texto como fallback pra comparações que não têm esse dado (ex: comparar
+// só strings soltas, sem uma temporada real por trás).
+var getOrdemNaCarreiraPorTemporada = function getOrdemNaCarreiraPorTemporada(temporadaTexto){
+  if(typeof db === "undefined" || !db || !Array.isArray(db.CARREIRA_TEMPORADAS)) return null;
+  const carreiraIdAtiva = (typeof active !== "undefined" && active) ? active.carreira_id : null;
+  const candidatos = db.CARREIRA_TEMPORADAS.filter(t=>
+    String(t.temporada) === String(temporadaTexto) &&
+    (!carreiraIdAtiva || String(t.carreira_id) === String(carreiraIdAtiva))
+  );
+  if(!candidatos.length) return null;
+  const comOrdem = candidatos.find(t=>t.ordem_na_carreira !== undefined && t.ordem_na_carreira !== null && t.ordem_na_carreira !== "");
+  return comOrdem ? Number(comOrdem.ordem_na_carreira) : null;
+}
+var compareSeasonsDesc = function compareSeasonsDesc(a,b){
+  const ordemA = getOrdemNaCarreiraPorTemporada(a);
+  const ordemB = getOrdemNaCarreiraPorTemporada(b);
+  if(ordemA !== null && ordemB !== null && ordemA !== ordemB) return ordemB - ordemA;
+  return seasonKey(b)-seasonKey(a);
+}
 var getAvailableSeasonsForActivePlayer = function getAvailableSeasonsForActivePlayer(){
   const stats=getProtagonistStats().map(s=>s.temporada).filter(Boolean);
   const seasons=getCareerSeasons().map(s=>s.temporada).filter(Boolean);
@@ -492,7 +518,8 @@ var getSeasonRecordLabel = function getSeasonRecordLabel(row){
   const inicio = row.data_inicio || row.periodo_inicio || "";
   const fim = row.data_fim || row.periodo_fim || "";
   const periodo = inicio || fim ? ` • ${inicio || "?"} até ${fim || "?"}` : "";
-  return `${row.temporada || "-"} • ${row.clube_nome || row.time || "-"}${periodo}`;
+  const emprestimo = row.emprestado === "sim" ? ` • 🔄 Emprestado${row.clube_emprestimo_nome ? " por " + row.clube_emprestimo_nome : ""}` : "";
+  return `${row.temporada || "-"} • ${row.clube_nome || row.time || "-"}${periodo}${emprestimo}`;
 }
 
 var getCompetitionsFromSeasonRecord = function getCompetitionsFromSeasonRecord(row){
@@ -1770,6 +1797,93 @@ var competitionSuggestions = function competitionSuggestions(team){
   return [...new Set(list.filter(Boolean))];
 }
 
+// FIX V2.0: busca central de times, usada tanto no Editar Temporada quanto
+// na Seleção Brasileira. Antes cada tela tinha sua própria busca simples,
+// que às vezes trazia poucos resultados (menos de 4) ou incluía times
+// femininos misturados. Agora:
+// - Nunca mostra times femininos (verifica strTeam, strLeague e strGender)
+// - Sempre tenta trazer pelo menos 4 resultados, com uma segunda tentativa
+//   de busca mais ampla (por substring, ignorando maiúsculas/acentos) se a
+//   busca exata da API devolver poucos ou nenhum resultado
+async function buscarTimesApiMelhoradoV200(query){
+  const q = String(query || "").trim();
+  if(!q) return [];
+
+  function ehFeminino(t){
+    const alvo = normalizarBuscaTimeV200(
+      (t.strTeam || "") + " " + (t.strLeague || "") + " " + (t.strGender || "")
+    );
+    return (
+      t.strGender === "Female" ||
+      alvo.includes(" women") ||
+      alvo.includes(" woman") ||
+      alvo.includes(" feminin") ||
+      alvo.includes(" feminine") ||
+      alvo.includes(" ladies") ||
+      alvo.includes("(w)") ||
+      / w$/.test(alvo)
+    );
+  }
+
+  async function chamar(termo){
+    try{
+      const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(termo)}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      return (json.teams || [])
+        .filter(t => String(t.strSport || "").toLowerCase().includes("soccer"))
+        .filter(t => !ehFeminino(t));
+    }catch(err){
+      return [];
+    }
+  }
+
+  let teams = await chamar(q);
+
+  // Se veio pouco resultado (menos de 4), tenta variações da busca:
+  // sem a última palavra (nomes compostos tipo "Manchester City FC" -> "Manchester City"),
+  // e só a primeira palavra (pega o "núcleo" do nome, tipo "Corinthians" de "SC Corinthians Paulista").
+  if(teams.length < 4){
+    const palavras = q.split(/\s+/).filter(Boolean);
+    const tentativas = [];
+    if(palavras.length > 1) tentativas.push(palavras.slice(0, -1).join(" "));
+    if(palavras.length > 1) tentativas.push(palavras[0]);
+
+    for(const tentativa of tentativas){
+      if(teams.length >= 4) break;
+      if(!tentativa || tentativa.toLowerCase() === q.toLowerCase()) continue;
+      const extras = await chamar(tentativa);
+      extras.forEach(t=>{
+        if(!teams.some(existing => existing.idTeam === t.idTeam)) teams.push(t);
+      });
+    }
+  }
+
+  // Ordena colocando primeiro os times cujo nome começa com o termo buscado
+  // (mais provável de ser o que a pessoa quer), evitando que um resultado
+  // "errado" apareça em primeiro só por causa da ordem que a API devolveu.
+  const qNorm = normalizarBuscaTimeV200(q);
+  teams.sort((a, b)=>{
+    const an = normalizarBuscaTimeV200(a.strTeam || "");
+    const bn = normalizarBuscaTimeV200(b.strTeam || "");
+    const aStarts = an.startsWith(qNorm) ? 0 : 1;
+    const bStarts = bn.startsWith(qNorm) ? 0 : 1;
+    if(aStarts !== bStarts) return aStarts - bStarts;
+    return 0;
+  });
+
+  return teams;
+}
+
+function normalizarBuscaTimeV200(v){
+  return String(v || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+window.buscarTimesApiMelhoradoV200 = buscarTimesApiMelhoradoV200;
+
 var searchTeamsForSeason = async function searchTeamsForSeason(){
   const query = $("seasonTeamSearch")?.value?.trim();
   const results = $("seasonTeamResults");
@@ -1779,17 +1893,14 @@ var searchTeamsForSeason = async function searchTeamsForSeason(){
   results.innerHTML = `<div class="entity-card"><small>Buscando time...</small></div>`;
 
   try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    const teams = (json.teams || []).filter(t => String(t.strSport || "").toLowerCase().includes("soccer"));
+    const teams = await buscarTimesApiMelhoradoV200(query);
 
     if(!teams.length){
       results.innerHTML = `<div class="entity-card"><small>Nenhum time encontrado. Digite outro nome.</small></div>`;
       return;
     }
 
-    results.innerHTML = teams.slice(0,10).map(t=>{
+    results.innerHTML = teams.slice(0,15).map(t=>{
       const team = {
         name:t.strTeam || "",
         league:t.strLeague || "",
@@ -6775,6 +6886,15 @@ var openSeasonFlow = function openSeasonFlow(existingId=null){
         </div>
       </div>
 
+      <div class="form-field" style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <input type="checkbox" name="emprestado" id="seasonEmprestadoCheck" style="width:auto" ${existing?.emprestado==="sim"?"checked":""} onchange="document.getElementById('seasonEmprestadoClubeWrap').style.display=this.checked?'block':'none'; if(typeof renderSeasonStatsRows==='function') renderSeasonStatsRows();">
+        <label for="seasonEmprestadoCheck" style="margin:0">Estou jogando emprestado nessa temporada</label>
+      </div>
+      <div class="form-field" id="seasonEmprestadoClubeWrap" style="display:${existing?.emprestado==="sim"?"block":"none"}">
+        <label>Clube dono (que me emprestou pro time abaixo)</label>
+        <input name="clube_emprestimo_nome" placeholder="Ex: Real Madrid" value="${escapeAttr(existing?.clube_emprestimo_nome || "")}" onchange="if(typeof renderSeasonStatsRows==='function') renderSeasonStatsRows();">
+      </div>
+
       <div class="team-search-row">
         <div class="form-field">
           <label>Selecionar time pela API</label>
@@ -7154,10 +7274,27 @@ var renderSeasonStatsRows = function renderSeasonStatsRows(existingStats=null){
     return;
   }
 
+  const emprestadoAgora = !!$("seasonEmprestadoCheck")?.checked;
+  const clubeEmprestimoAgora = form?.querySelector("[name='clube_emprestimo_nome']")?.value?.trim() || "";
+  const nomeTimeAtual = selectedSeasonTeam?.name || "";
+
   wrap.innerHTML = comps.map(comp=>{
     const label = normalizeCompetitionLabelV3738(comp);
     const old = getExistingStatForCompV3738(stats, label);
     const key = compKeyV3738(label);
+    const clubeSalvo = old.clube_nome || nomeTimeAtual;
+
+    // FIX V2.0: quando a temporada está marcada como emprestado, deixa
+    // escolher por qual dos 2 clubes (o time atual ou o dono) cada
+    // competição foi disputada — cobre o caso de jogar 2 clubes na mesma
+    // temporada (ex: metade emprestado, metade não, ou trocou de time no
+    // meio do ano).
+    const seletorClube = (emprestadoAgora && clubeEmprestimoAgora) ? `
+        <select data-field="clube_nome" name="clube_nome_${key}" style="grid-column:1/-1;margin-top:4px">
+          <option value="${escapeAttr(nomeTimeAtual)}" ${clubeSalvo===nomeTimeAtual?"selected":""}>Jogado por: ${escapeHtml(nomeTimeAtual)}</option>
+          <option value="${escapeAttr(clubeEmprestimoAgora)}" ${clubeSalvo===clubeEmprestimoAgora?"selected":""}>Jogado por: ${escapeHtml(clubeEmprestimoAgora)}</option>
+        </select>
+    ` : "";
 
     return `
       <div class="season-stats-row" data-competition="${escapeAttr(label)}">
@@ -7167,6 +7304,7 @@ var renderSeasonStatsRows = function renderSeasonStatsRows(existingStats=null){
         <input data-field="assistencias" name="assistencias_${key}" type="number" placeholder="Assist." value="${escapeAttr(old.assistencias || "")}">
         <input data-field="cartoes" name="cartoes_${key}" type="number" placeholder="Cartões" value="${escapeAttr(old.cartoes || "")}">
         <input data-field="nota_geral" name="media_geral_${key}" type="number" step="0.1" placeholder="Nota" value="${escapeAttr(old.nota_geral || old.media_geral || "")}">
+        ${seletorClube}
       </div>
     `;
   }).join("");
@@ -7199,13 +7337,17 @@ var readSeasonStatsRowsFromDomV3738 = function readSeasonStatsRowsFromDomV3738()
       }
     });
 
+    const selectClube = row.querySelector("select[data-field='clube_nome']");
+    if(selectClube) byField.clube_nome = selectClube.value;
+
     return {
       competicao: normalizeCompetitionLabelV3738(comp),
       jogos: byField.jogos || "",
       gols: byField.gols || "",
       assistencias: byField.assistencias || "",
       cartoes: byField.cartoes || "",
-      nota_geral: byField.nota_geral || ""
+      nota_geral: byField.nota_geral || "",
+      clube_nome: byField.clube_nome || ""
     };
   }).filter(s=>s.competicao);
 }
@@ -7284,7 +7426,8 @@ var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, exi
       gols: saved.gols || "",
       assistencias: saved.assistencias || "",
       cartoes: saved.cartoes || "",
-      nota_geral: saved.nota_geral || ""
+      nota_geral: saved.nota_geral || "",
+      clube_nome: saved.clube_nome || ""
     };
   });
 
@@ -7317,11 +7460,13 @@ var buildSeasonFullPayloadV3736 = function buildSeasonFullPayloadV3736(data, exi
     status: data.status || existing?.status || "em andamento",
     data_inicio: data.data_inicio || "",
     data_fim: data.data_fim || "",
+    emprestado: !!data.emprestado,
     team: {
       name: selectedSeasonTeam.name || "",
       country: selectedSeasonTeam.country || "",
       badge: selectedSeasonTeam.badge || "",
-      league: selectedSeasonTeam.league || ""
+      league: selectedSeasonTeam.league || "",
+      loan_club_name: data.clube_emprestimo_nome || ""
     },
     competitions: comps,
     stats: finalStats,
@@ -18511,17 +18656,14 @@ var searchTeamsForSelecao = async function searchTeamsForSelecao(){
   results.innerHTML = `<div class="entity-card"><small>Buscando time...</small></div>`;
 
   try{
-    const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    const teams = (json.teams||[]).filter(t=>String(t.strSport||"").toLowerCase().includes("soccer"));
+    const teams = await buscarTimesApiMelhoradoV200(query);
 
     if(!teams.length){
       results.innerHTML = `<div class="entity-card"><small>Nenhum time encontrado. Pode digitar manualmente no campo acima.</small></div>`;
       return;
     }
 
-    results.innerHTML = teams.slice(0,8).map(t=>{
+    results.innerHTML = teams.slice(0,15).map(t=>{
       const team = {name:t.strTeam||"", badge:t.strBadge||""};
       return `<div class="team-result">
         <img src="${team.badge}" onerror="this.style.display='none'">

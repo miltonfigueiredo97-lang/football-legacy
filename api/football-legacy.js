@@ -488,11 +488,20 @@ async function handleSaveSeasonFull(payload) {
     }
   }
 
+  let ordemNaCarreira = payload.ordem_na_carreira;
+  if ((ordemNaCarreira === undefined || ordemNaCarreira === null || ordemNaCarreira === "") && !existingSeasonId) {
+    const temporadasDaCarreira = await readTable("CARREIRA_TEMPORADAS");
+    const ordens = temporadasDaCarreira
+      .filter((t) => String(t.carreira_id) === String(carreiraId))
+      .map((t) => Number(t.ordem_na_carreira))
+      .filter((n) => !Number.isNaN(n));
+    ordemNaCarreira = ordens.length ? Math.max(...ordens) + 1 : 1;
+  }
+
   const seasonRecord = {
     carreira_id: carreiraId,
     temporada_base_id: "",
     temporada: payload.temporada,
-    ordem_na_carreira: payload.ordem_na_carreira !== undefined ? payload.ordem_na_carreira : "",
     clube_id: clube.id,
     clube_nome: team.name,
     escudo: team.badge || clube.escudo || "",
@@ -505,6 +514,10 @@ async function handleSaveSeasonFull(payload) {
     clube_emprestimo_id: clubeEmprestimo ? clubeEmprestimo.id : "",
     clube_emprestimo_nome: clubeEmprestimo ? clubeEmprestimo.nome : ""
   };
+
+  if (ordemNaCarreira !== undefined && ordemNaCarreira !== null && ordemNaCarreira !== "") {
+    seasonRecord.ordem_na_carreira = ordemNaCarreira;
+  }
 
   let season;
   if (existingSeasonId) {
