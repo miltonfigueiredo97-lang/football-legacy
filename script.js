@@ -8128,6 +8128,11 @@ var renderRecordRowsList = function renderRecordRowsList(containerId, allRows, c
     return;
   }
 
+  const temRegistroReal = sortedAll.some(r=>!r.isProtagonist);
+  const avisoSemBase = !temRegistroReal
+    ? `<div class="record-empty" style="margin-bottom:8px;font-size:0.85em">⚠️ Ainda não há recorde real cadastrado pra esse filtro na base — os números abaixo são só da sua carreira.</div>`
+    : "";
+
   const rowsToRender = [...top3];
 
   if(protagonist && !protagonistInTop3){
@@ -8137,12 +8142,13 @@ var renderRecordRowsList = function renderRecordRowsList(containerId, allRows, c
     }));
   }
 
-  el.innerHTML = rowsToRender.map((r,i)=>`
+  el.innerHTML = avisoSemBase + rowsToRender.map((r,i)=>`
     <article class="record-row ${r.isProtagonist ? "is-player-record" : ""} ${r.__myNumber ? "my-record-outside-top" : ""}">
       <div class="record-rank">${r.__myNumber ? "Meu" : i+1}</div>
       <div class="record-main">
         <strong>${escapeHtml(r.jogador)}</strong>
         <small>
+          <span class="record-source-tag-v210 ${r.isProtagonist ? "record-source-carreira" : "record-source-real"}">${r.isProtagonist ? "SUA CARREIRA" : "RECORDE REAL"}</span>
           ${r.__myNumber ? `Meu número no filtro • posição ${r.__realRank}` : escapeHtml(r.clube || r.competicao || r.escopo_nome || "Base real")}
           ${!r.__myNumber && r.temporada ? " • " + escapeHtml(r.temporada) : ""}
           ${r.__myNumber && r.temporada ? " • " + escapeHtml(r.temporada) : ""}

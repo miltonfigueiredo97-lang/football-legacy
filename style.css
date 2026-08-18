@@ -1198,6 +1198,25 @@ button.saving::before,
   gap:10px;
 }
 
+.record-source-tag-v210{
+  display:inline-block;
+  font-size:0.68em;
+  font-weight:800;
+  letter-spacing:0.04em;
+  padding:2px 6px;
+  border-radius:5px;
+  margin-right:6px;
+  vertical-align:middle;
+}
+.record-source-tag-v210.record-source-real{
+  background:rgba(96,165,250,.15);
+  color:#60a5fa;
+}
+.record-source-tag-v210.record-source-carreira{
+  background:rgba(251,191,36,.15);
+  color:#fbbf24;
+}
+
 .record-row{
   display:grid;
   grid-template-columns:44px 1fr auto;
