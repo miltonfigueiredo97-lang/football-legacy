@@ -295,7 +295,12 @@ async function updateNotasConvocacao(payload) {
 }
 
 function ehPositivo(v) {
-  return v === true || v === "true" || v === "TRUE" || v === "SIM" || v === "sim";
+  if (v === true) return true;
+  if (v === null || v === undefined || v === "") return false;
+  const s = String(v).trim().toLowerCase();
+  if (s === "true" || s === "sim") return true;
+  const n = Number(s);
+  return !Number.isNaN(n) && n >= 1;
 }
 
 async function recalcularAgregadosSelecaoBase(jogadorBaseIds) {

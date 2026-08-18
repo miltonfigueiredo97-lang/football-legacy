@@ -18682,6 +18682,15 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
 // temporada cria uma linha nova em SELECAO_BASE_TEMPORADA pro mesmo
 // jogador (com id diferente).
 var getSelecaoTotaisCarreira = function getSelecaoTotaisCarreira(nomeJogador){
+  const ehPositivoLocal = v => {
+    if(v === true) return true;
+    if(v === null || v === undefined || v === "") return false;
+    const s = String(v).trim().toLowerCase();
+    if(s === "true" || s === "sim") return true;
+    const n = Number(s);
+    return !Number.isNaN(n) && n >= 1;
+  };
+
   const nomeNorm = normalizarNomeParaComparar(nomeJogador || "");
   if(!nomeNorm) return {jogos:0, notaMedia:"", notaMaxima:"", bom:0, ruim:0};
 
@@ -18697,16 +18706,16 @@ var getSelecaoTotaisCarreira = function getSelecaoTotaisCarreira(nomeJogador){
   todosConvocados.forEach(c=>{
     const n1 = Number(c.nota);
     if(c.nota !== undefined && c.nota !== "" && !Number.isNaN(n1) && n1 > 0){
-      notas.push(n1 + (c.foi_bem==="true"||c.foi_bem===true?0.5:0) - (c.foi_mal==="true"||c.foi_mal===true?0.5:0));
+      notas.push(n1 + (ehPositivoLocal(c.foi_bem)?0.5:0) - (ehPositivoLocal(c.foi_mal)?0.5:0));
     }
     const n2 = Number(c.nota2);
     if(c.nota2 !== undefined && c.nota2 !== "" && !Number.isNaN(n2) && n2 > 0){
-      notas.push(n2 + (c.foi_bem2==="true"||c.foi_bem2===true?0.5:0) - (c.foi_mal2==="true"||c.foi_mal2===true?0.5:0));
+      notas.push(n2 + (ehPositivoLocal(c.foi_bem2)?0.5:0) - (ehPositivoLocal(c.foi_mal2)?0.5:0));
     }
   });
 
-  const bom = todosConvocados.filter(c=>c.foi_bem==="true"||c.foi_bem===true).length + todosConvocados.filter(c=>c.foi_bem2==="true"||c.foi_bem2===true).length;
-  const ruim = todosConvocados.filter(c=>c.foi_mal==="true"||c.foi_mal===true).length + todosConvocados.filter(c=>c.foi_mal2==="true"||c.foi_mal2===true).length;
+  const bom = todosConvocados.filter(c=>ehPositivoLocal(c.foi_bem)).length + todosConvocados.filter(c=>ehPositivoLocal(c.foi_bem2)).length;
+  const ruim = todosConvocados.filter(c=>ehPositivoLocal(c.foi_mal)).length + todosConvocados.filter(c=>ehPositivoLocal(c.foi_mal2)).length;
 
   return {
     jogos: notas.length,
@@ -19959,10 +19968,18 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
       const obsInput = grid.querySelector(`[name="obs_${j.id}"]`);
       if(notaInput) notaInput.value = j.nota || "";
       if(nota2Input) nota2Input.value = j.nota2 || "";
-      if(bemInput) bemInput.checked = (j.foi_bem===true||j.foi_bem==="true"||j.foi_bem==="SIM"||j.foi_bem==="sim");
-      if(malInput) malInput.checked = (j.foi_mal===true||j.foi_mal==="true"||j.foi_mal==="SIM"||j.foi_mal==="sim");
-      if(bem2Input) bem2Input.checked = (j.foi_bem2===true||j.foi_bem2==="true"||j.foi_bem2==="SIM"||j.foi_bem2==="sim");
-      if(mal2Input) mal2Input.checked = (j.foi_mal2===true||j.foi_mal2==="true"||j.foi_mal2==="SIM"||j.foi_mal2==="sim");
+      const ehPositivoLocal210 = v => {
+        if(v === true) return true;
+        if(v === null || v === undefined || v === "") return false;
+        const s = String(v).trim().toLowerCase();
+        if(s === "true" || s === "sim") return true;
+        const n = Number(s);
+        return !Number.isNaN(n) && n >= 1;
+      };
+      if(bemInput) bemInput.checked = ehPositivoLocal210(j.foi_bem);
+      if(malInput) malInput.checked = ehPositivoLocal210(j.foi_mal);
+      if(bem2Input) bem2Input.checked = ehPositivoLocal210(j.foi_bem2);
+      if(mal2Input) mal2Input.checked = ehPositivoLocal210(j.foi_mal2);
       if(obsInput) obsInput.value = j.observacao || "";
     });
   });
@@ -19974,7 +19991,14 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
 var atualizarAgregadosSelecaoBaseLocal = function atualizarAgregadosSelecaoBaseLocal(jogadorBaseIds){
   const convocados = getTable("SELECAO_CONVOCADOS");
   const base = getTable("SELECAO_BASE_TEMPORADA");
-  const ehPositivo = v => v===true||v==="true"||v==="TRUE"||v==="SIM"||v==="sim";
+  const ehPositivo = v => {
+    if(v === true) return true;
+    if(v === null || v === undefined || v === "") return false;
+    const s = String(v).trim().toLowerCase();
+    if(s === "true" || s === "sim") return true;
+    const n = Number(s);
+    return !Number.isNaN(n) && n >= 1;
+  };
 
   jogadorBaseIds.forEach(jogadorBaseId=>{
     if(!jogadorBaseId) return;
