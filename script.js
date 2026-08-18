@@ -11992,10 +11992,16 @@ var FL_championsRowsV3782 = function FL_championsRowsV3782(){
   // Histórico real (Copa do Mundo, Champions League etc, ano a ano) — a
   // carreira do usuário continua essa mesma linha do tempo pra frente,
   // automaticamente, conforme ele registra campeões nas temporadas dele.
+  // FIX V2.8: a tabela física por trás de COMPETICOES_CAMPEOES_BASE
+  // (campeoes_base) tem as colunas nomeadas de forma trocada desde a
+  // migração original: o NOME da competição fica em "campeao", o CLUBE
+  // campeão fica em "vice", e o ANO/temporada fica em "competicao_id".
+  // Sem esse ajuste, todas as competições apareciam "sem campeões
+  // cadastrados" mesmo tendo centenas de linhas de dado real.
   const historicoReal = (getTable("COMPETICOES_CAMPEOES_BASE") || []).map(r => ({
-    competicao: r.competicao,
-    clube: r.clube,
-    temporada: r.temporada,
+    competicao: r.campeao || r.competicao,
+    clube: r.vice || r.clube,
+    temporada: r.competicao_id || r.temporada,
     _real: true
   }));
 
