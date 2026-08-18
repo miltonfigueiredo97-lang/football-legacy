@@ -637,7 +637,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
         <div class="season-stat"><small>Cartões</small><strong>${cartoes}</strong></div>
         <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
         <div class="season-titles">${titles}</div>
-        <div class="season-actions"><button onclick="editSeasonRecord('${r.id}')">Editar</button></div>
+        <div class="season-actions"><button type="button" onclick="editSeasonRecord('${r.id}')">Editar</button></div>
       </article>
     `;
   }).join("");
@@ -658,20 +658,20 @@ var trophyIcon = function trophyIcon(name){
 var renderPersonagens = function renderPersonagens(){
   const el=$("personagens-list"); if(!el)return;
   const chars=getCareerCharacters();
-  el.innerHTML=chars.map(p=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar" style="${p.foto?`background-image:url('${p.foto}')`:''}">${p.foto?'':initials(p.nome)}</div><div><h3><button class="clickable-player-name" onclick="openForm('personagem','${p.id}')">${p.nome||"-"}</button></h3><small>${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div><small>Nacionalidade: ${p.nacionalidade||"-"}</small><div class="entity-actions"><button onclick="setActiveProtagonist('${p.id}')">Selecionar</button><button onclick="openForm('personagem','${p.id}')">Editar</button><button class="delete" onclick="removeRecord('personagem','${p.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum personagem nesta carreira.");
+  el.innerHTML=chars.map(p=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar" style="${p.foto?`background-image:url('${p.foto}')`:''}">${p.foto?'':initials(p.nome)}</div><div><h3><button type="button" class="clickable-player-name" onclick="openForm('personagem','${p.id}')">${p.nome||"-"}</button></h3><small>${p.tipo||"-"} • ${p.posicao||"-"}</small></div></div><small>Nacionalidade: ${p.nacionalidade||"-"}</small><div class="entity-actions"><button type="button" onclick="event.stopPropagation();setActiveProtagonist('${p.id}')">Selecionar</button><button type="button" onclick="openForm('personagem','${p.id}')">Editar</button><button type="button" class="delete" onclick="removeRecord('personagem','${p.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum personagem nesta carreira.");
 }
 
 var renderStats = function renderStats(){
   const el=$("stats-table"); if(!el)return;
   const season=getCurrentSeason(); const rows=getProtagonistStats().filter(s=>!season||String(s.temporada)===String(season));
   el.innerHTML=`<div class="table-row header"><div>Temporada</div><div>Competição</div><div>Jogos</div><div>Gols</div><div>Assist.</div><div>G/J</div><div>A/J</div><div>Ações</div></div>`+
-  rows.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return`<div class="table-row"><div>${s.temporada}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
+  rows.map(s=>{const g=num(s.jogos),go=num(s.gols),a=num(s.assistencias);return`<div class="table-row"><div>${s.temporada}</div><div>${compName(s.competicao_id)}</div><div>${g}</div><div>${go}</div><div>${a}</div><div>${g?(go/g).toFixed(2):"0.00"}</div><div>${g?(a/g).toFixed(2):"0.00"}</div><div><button type="button" onclick="openForm('estatistica','${s.id}')">Editar</button></div></div>`}).join("");
 }
 
 var renderTrofeus = function renderTrofeus(){
   const el=$("trophy-grid"); if(!el)return;
   const rows=getTable("CAMPEOES");
-  el.innerHTML=rows.map(t=>`<article class="trophy-card"><h3>${compName(t.competicao_id)}</h3><div style="font-size:36px;margin:12px 0">🏆</div><span>${t.temporada||"-"} • ${t.clube||"-"}</span><div class="entity-actions"><button onclick="openForm('campeao','${t.id}')">Editar</button><button class="delete" onclick="removeRecord('campeao','${t.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum título cadastrado.");
+  el.innerHTML=rows.map(t=>`<article class="trophy-card"><h3>${compName(t.competicao_id)}</h3><div style="font-size:36px;margin:12px 0">🏆</div><span>${t.temporada||"-"} • ${t.clube||"-"}</span><div class="entity-actions"><button type="button" onclick="openForm('campeao','${t.id}')">Editar</button><button type="button" class="delete" onclick="removeRecord('campeao','${t.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum título cadastrado.");
 }
 
 var renderTop11 = function renderTop11(){
@@ -784,11 +784,11 @@ var renderBolaOuro = function renderBolaOuro(){
     <div>${r.posicao||"-"}</div>
     <div class="ballon-player-cell">
       <span class="flag-dot">${flagFrom(r.nacionalidade)}</span>
-      <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
+      <button type="button" onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
     </div>
     <div>${r.idade||"-"}</div>
     <div>${r.valor_mercado||"-"}</div>
-    <div class="ballon-actions"><button onclick="openBallonRankingForm('${r.id}')">Editar</button></div>
+    <div class="ballon-actions"><button type="button" onclick="openBallonRankingForm('${r.id}')">Editar</button></div>
   </div>`).join("")+
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
 }
@@ -796,13 +796,13 @@ var renderBolaOuro = function renderBolaOuro(){
 var renderClubes = function renderClubes(){
   const el=$("clubes-list"); if(!el)return;
   const rows=getTable("CLUBES");
-  el.innerHTML=rows.map(c=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar">${c.escudo?`<img src="${c.escudo}">`:"🏟"}</div><div><h3>${c.nome||"-"}</h3><small>${c.pais||"-"}</small></div></div><small>Estádio: ${c.estadio||"-"}</small><div class="entity-actions"><button onclick="openForm('clube','${c.id}')">Editar</button><button class="delete" onclick="removeRecord('clube','${c.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum clube.");
+  el.innerHTML=rows.map(c=>`<article class="entity-card"><div class="entity-top"><div class="entity-avatar">${c.escudo?`<img src="${c.escudo}">`:"🏟"}</div><div><h3>${c.nome||"-"}</h3><small>${c.pais||"-"}</small></div></div><small>Estádio: ${c.estadio||"-"}</small><div class="entity-actions"><button type="button" onclick="openForm('clube','${c.id}')">Editar</button><button type="button" class="delete" onclick="removeRecord('clube','${c.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhum clube.");
 }
 
 var renderMuseu = function renderMuseu(){
   const el=$("media-grid"); if(!el)return;
   const rows=getCareerMedia();
-  el.innerHTML=rows.map(m=>`<article class="media-card"><div style="font-size:34px">${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button onclick="openForm('midia','${m.id}')">Editar</button><button class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia.");
+  el.innerHTML=rows.map(m=>`<article class="media-card"><div style="font-size:34px">${m.tipo==="video"?"🎥":"📸"}</div><strong>${m.titulo||"-"}</strong><span>${m.temporada||"-"} • ${m.descricao||""}</span>${m.url?`<a href="${m.url}" target="_blank">Abrir mídia</a>`:""}<div class="entity-actions"><button type="button" onclick="openForm('midia','${m.id}')">Editar</button><button type="button" class="delete" onclick="removeRecord('midia','${m.id}')">Excluir</button></div></article>`).join("")||emptyCard("Nenhuma mídia.");
 }
 
 var renderPrimaryButton = function renderPrimaryButton(){
@@ -988,7 +988,7 @@ var openForm = function openForm(kind,id=null){
   }).join("") + `
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar</button>
     </div>`;
 
   form.onsubmit = async e=>{
@@ -1028,7 +1028,7 @@ var openForm = function openForm(kind,id=null){
 
 var openQuickCareerForm = function openQuickCareerForm(){
   modalTitle.textContent="Criar carreira";form.className="form-grid";
-  form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar</button></div>`;
   form.onsubmit=async e=>{
     e.preventDefault();
     const btn=$("saveBtn");
@@ -1069,7 +1069,7 @@ var openTop11BatchForm = function openTop11BatchForm(){
   modalTitle.textContent="Novo Top 11";modalBox.classList.add("wide");form.className="form-grid top11-batch";
   const season=getCurrentSeason();
   const rows=Array.from({length:11},(_,i)=>i+1).map(i=>`<div class="batch-row"><strong>${i}</strong><input name="posicao_${i}" placeholder="POS"><input name="jogador_${i}" placeholder="Jogador"><input name="overall_${i}" type="number" placeholder="OVR"></div>`).join("");
-  form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar Top 11</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar Top 11</button></div>`;
   form.onsubmit=async e=>{
     e.preventDefault();
     const btn=$("saveBtn");
@@ -1165,7 +1165,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar Ranking</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar Ranking</button>
     </div>`;
 
   form.onsubmit=async e=>{
@@ -1222,7 +1222,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
 
 var openSeasonFlow = function openSeasonFlow(){
   modalTitle.textContent="Nova temporada";form.className="form-grid";modalBox.classList.add("wide");
-  form.innerHTML=`<div class="form-field"><label>Temporada</label><input name="temporada" placeholder="2025/2026"></div><div class="form-field"><label>Ano</label><input name="ano" placeholder="2026"></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button class="gold-btn" id="saveBtn">Salvar temporada</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Temporada</label><input name="temporada" placeholder="2025/2026"></div><div class="form-field"><label>Ano</label><input name="ano" placeholder="2026"></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar temporada</button></div>`;
   form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());const r=await apiPost({action:"create",table:"TEMPORADAS",record:{carreira_id:active.carreira_id,temporada:data.temporada,ano:data.ano,status:"ativa"}});active.temporada=data.temporada;saveActive();closeModal();await loadData()};
   modal.classList.add("active");
 }
@@ -1383,12 +1383,12 @@ var renderBolaOuro = function renderBolaOuro(){
       <div>${r.posicao||"-"}</div>
       <div class="ballon-player-cell">
         <span class="flag-dot">${flagFrom(r.nacionalidade || r.pais)}</span>
-        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
+        <button type="button" onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
         <span class="ballon-source-pill">${escapeHtml(sourceLabel)}</span>
       </div>
       <div>${escapeHtml(r.idade || r.idade_na_premiacao || "-")}</div>
       <div>${escapeHtml(r.valor_mercado || "-")}</div>
-      <div class="ballon-actions"><button onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
+      <div class="ballon-actions"><button type="button" onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
     </div>`;
   }).join("")+
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
@@ -1501,7 +1501,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar Ranking da Carreira</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar Ranking da Carreira</button>
     </div>`;
 
   form.onsubmit=async e=>{
@@ -1639,7 +1639,7 @@ var openSeasonFlow = function openSeasonFlow(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar passagem</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar passagem</button>
     </div>
   `;
 
@@ -2352,7 +2352,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
         <div class="season-stat"><small>A/J</small><strong>${avgAssists}</strong></div>
         <div class="season-stat"><small>Cartões</small><strong>${cartoes}</strong></div>
         <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
-        <div class="season-actions"><button onclick="editSeasonRecord('${r.id}')">Editar</button></div>
+        <div class="season-actions"><button type="button" onclick="editSeasonRecord('${r.id}')">Editar</button></div>
       </article>
     `;
   }).join("");
@@ -2456,7 +2456,7 @@ var renderHero = function renderHero(){
       </div>
       <div class="club-journey-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -2518,7 +2518,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
         <div class="season-stat"><small>A/J</small><strong>${avgAssists}</strong></div>
         <div class="season-stat"><small>Cartões</small><strong>${cartoes}</strong></div>
         <div class="season-stat"><small>Nota média</small><strong>${avgRating}</strong></div>
-        <div class="season-actions"><button onclick="editSeasonRecord('${r.id}')">Editar</button></div>
+        <div class="season-actions"><button type="button" onclick="editSeasonRecord('${r.id}')">Editar</button></div>
       </article>
     `;
   }).join("");
@@ -2696,7 +2696,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -3137,7 +3137,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip clean-club-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap clean-club-crest">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -3615,7 +3615,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip clean-club-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap clean-club-crest">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -4074,7 +4074,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip clean-club-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap clean-club-crest">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -4292,7 +4292,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip clean-club-strip">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap clean-club-crest">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -5120,7 +5120,7 @@ var openBallonRankingForm = function openBallonRankingForm(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar ranking"}</button>
     </div>
   `;
 
@@ -5280,7 +5280,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -5429,7 +5429,7 @@ var openBallonFormSingle = function openBallonFormSingle(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar edição</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar edição</button>
     </div>
   `;
 
@@ -5579,7 +5579,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -5704,7 +5704,7 @@ var openBallonFormSingle = function openBallonFormSingle(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Salvar edição</button>
+      <button type="button" class="gold-btn" id="saveBtn">Salvar edição</button>
     </div>
   `;
 
@@ -5995,7 +5995,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -6630,7 +6630,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -8098,12 +8098,12 @@ var renderBolaOuro = function renderBolaOuro(){
       <div>${r.posicao||"-"}</div>
       <div class="ballon-player-cell ballon-player-cell-v3744">
         <span class="flag-dot">${flagFrom(r.nacionalidade || r.pais)}</span>
-        <button onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
+        <button type="button" onclick="openPlayerByName('${escapeAttr(r.jogador||"")}')">${escapeHtml(r.jogador||"-")}</button>
         ${ballonClubBadgeHtmlV3744(r)}
       </div>
       <div>${escapeHtml(r.idade || r.idade_na_premiacao || "-")}</div>
       <div>${escapeHtml(r.valor_mercado || "-")}</div>
-      <div class="ballon-actions"><button onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
+      <div class="ballon-actions"><button type="button" onclick="openForm('${r.__source==="base" ? "bolaourobase" : "bolaouro"}','${r.id}')">Editar</button></div>
     </div>`;
   }).join("")+
   (!rows.length?`<div class="ballon-row"><div>-</div><div>Nenhum ranking cadastrado para esta temporada.</div><div>-</div><div>-</div><div></div></div>`:"");
@@ -8568,7 +8568,7 @@ var renderDashboardJourney = function renderDashboardJourney(){
       </div>
       <div class="club-journey-strip clean-club-strip club-strip-with-selection-v3760">
         ${journey.length ? journey.map(c=>`
-          <button class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
+          <button type="button" class="club-journey-item clean-club-item" onclick="openClubJourney('${escapeAttr(c.key)}')" title="${escapeAttr(c.clube_nome)}">
             <span class="club-crest-wrap clean-club-crest">
               ${c.escudo ? `<img src="${escapeAttr(c.escudo)}" onerror="this.parentElement.innerHTML='<b>⚽</b>'">` : `<b>⚽</b>`}
             </span>
@@ -8616,7 +8616,7 @@ var renderSelectionCellV3760 = function renderSelectionCellV3760(season){
           ${row?.titulos ? `<small class="season-selection-title-v3760">${escapeHtml(row.titulos)}</small>` : ""}
         </div>
       </div>
-      <button onclick="openSelectionSeasonModalV3760('${escapeAttr(season.id)}')">Editar seleção</button>
+      <button type="button" onclick="openSelectionSeasonModalV3760('${escapeAttr(season.id)}')">Editar seleção</button>
     </div>
   `;
 }
@@ -8673,7 +8673,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
         ${renderSelectionCellV3760(r)}
 
         <div class="season-actions season-actions-v3760">
-          <button onclick="editSeasonRecord('${escapeAttr(r.id)}')">Editar temporada</button>
+          <button type="button" onclick="editSeasonRecord('${escapeAttr(r.id)}')">Editar temporada</button>
         </div>
       </article>
     `;
@@ -8749,7 +8749,7 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
 
       <div class="form-actions">
         <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-        <button class="gold-btn" id="saveBtn">Salvar seleção</button>
+        <button type="button" class="gold-btn" id="saveBtn">Salvar seleção</button>
       </div>
     </div>
   `;
@@ -11410,7 +11410,7 @@ var FL_renderBallonBestViewsV3780 = function FL_renderBallonBestViewsV3780(){
       </div>
       <div class="ballon-best-tabs-v3780">
         ${modes.map(([id,label])=>`
-          <button class="${id===FL_BALLON_BEST_MODE_V3780 ? "active" : ""}" onclick="FL_BALLON_BEST_MODE_V3780='${id}'; FL_renderBallonBestViewsV3780();">${label}</button>
+          <button type="button" class="${id===FL_BALLON_BEST_MODE_V3780 ? "active" : ""}" onclick="FL_BALLON_BEST_MODE_V3780='${id}'; FL_renderBallonBestViewsV3780();">${label}</button>
         `).join("")}
       </div>
     </div>
@@ -12406,7 +12406,7 @@ var FL_renderBallonBestModalV3783 = function FL_renderBallonBestModalV3783(){
   modal.innerHTML = `
     <div class="fl-ballon-best-backdrop-v3783" onclick="FL_closeBallonBestModalV3783()"></div>
     <div class="fl-ballon-best-panel-v3783">
-      <button class="fl-ballon-best-close-v3783" onclick="FL_closeBallonBestModalV3783()">×</button>
+      <button type="button" class="fl-ballon-best-close-v3783" onclick="FL_closeBallonBestModalV3783()">×</button>
       <div class="fl-ballon-best-title-v3783">
         <div>
           <h2>Os melhores da Bola de Ouro</h2>
@@ -12416,7 +12416,7 @@ var FL_renderBallonBestModalV3783 = function FL_renderBallonBestModalV3783(){
 
       <div class="fl-ballon-best-tabs-v3783">
         ${modes.map(([id,label])=>`
-          <button class="${id===FL_BALLON_BEST_MODE_V3783 ? "active" : ""}" onclick="FL_BALLON_BEST_MODE_V3783='${id}'; FL_renderBallonBestModalV3783();">${label}</button>
+          <button type="button" class="${id===FL_BALLON_BEST_MODE_V3783 ? "active" : ""}" onclick="FL_BALLON_BEST_MODE_V3783='${id}'; FL_renderBallonBestModalV3783();">${label}</button>
         `).join("")}
       </div>
 
@@ -13080,7 +13080,7 @@ var FL_renderBallonBestModalV3785 = function FL_renderBallonBestModalV3785(){
   modal.innerHTML = `
     <div class="fl-ballon-best-backdrop-v3783" onclick="FL_closeBallonBestModalV3783()"></div>
     <div class="fl-ballon-best-panel-v3783 fl-ballon-best-panel-v3785">
-      <button class="fl-ballon-best-close-v3783" onclick="FL_closeBallonBestModalV3783()">×</button>
+      <button type="button" class="fl-ballon-best-close-v3783" onclick="FL_closeBallonBestModalV3783()">×</button>
       <div class="fl-ballon-best-title-v3783">
         <div>
           <h2>Os melhores da Bola de Ouro</h2>
@@ -13090,7 +13090,7 @@ var FL_renderBallonBestModalV3785 = function FL_renderBallonBestModalV3785(){
 
       <div class="fl-ballon-best-tabs-v3783">
         ${modes.map(([id,label])=>`
-          <button class="${id===activeMode ? "active" : ""}" onclick="window.FL_BALLON_BEST_MODE_V3783='${id}'; FL_renderBallonBestModalV3785();">${label}</button>
+          <button type="button" class="${id===activeMode ? "active" : ""}" onclick="window.FL_BALLON_BEST_MODE_V3783='${id}'; FL_renderBallonBestModalV3785();">${label}</button>
         `).join("")}
       </div>
 
@@ -18710,8 +18710,8 @@ var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
       </div>
       <small title="${escapeAttr(rotulo)}">[${escapeHtml(rotulo)}] Jogos: ${stats.jogos||0} • Nota média: ${stats.notaMedia||"-"} • Nota máx: ${stats.notaMaxima||"-"} • Bom: ${stats.bom||0} • Ruim: ${stats.ruim||0}</small>
       <div class="entity-actions">
-        <button onclick="openSelecaoJogadorForm('${r.id}')">Editar</button>
-        <button class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
+        <button type="button" onclick="openSelecaoJogadorForm('${r.id}')">Editar</button>
+        <button type="button" class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
       </div>
     </article>
   `;
@@ -18883,7 +18883,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">${existing?"Salvar edição":"Adicionar"}</button>
+      <button type="button" class="gold-btn" id="saveBtn">${existing?"Salvar edição":"Adicionar"}</button>
     </div>
   `;
 
@@ -19253,7 +19253,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field full"><label>Observações</label><textarea name="observacoes"></textarea></div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button class="gold-btn" id="saveBtn">Criar convocação</button>
+      <button type="button" class="gold-btn" id="saveBtn">Criar convocação</button>
     </div>
   `;
 
@@ -19876,11 +19876,11 @@ var renderSelecaoConvocacoesList = function renderSelecaoConvocacoesList(){
         </div>
 
         <div class="entity-actions" style="margin-top:0;margin-bottom:16px">
-          <button onclick="toggleMinimizarConvocacao('${c.id}')">${minimizada ? "🔽 Expandir" : "🔼 Minimizar"}</button>
-          <button onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
-          <button onclick="toggleVisaoRapidaSelecao('${c.id}')">${visaoRapidaAtiva ? "📋 Visão detalhada" : "👁️ Visão rápida"}</button>
-          <button onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
-          <button class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
+          <button type="button" onclick="toggleMinimizarConvocacao('${c.id}')">${minimizada ? "🔽 Expandir" : "🔼 Minimizar"}</button>
+          <button type="button" onclick="openSelecaoConvocadosSlotPicker('${c.id}')">Editar convocados</button>
+          <button type="button" onclick="toggleVisaoRapidaSelecao('${c.id}')">${visaoRapidaAtiva ? "📋 Visão detalhada" : "👁️ Visão rápida"}</button>
+          <button type="button" onclick="saveConvocacaoNotas('${c.id}')">Salvar notas</button>
+          <button type="button" class="delete" onclick="deleteSelecaoConvocacao('${c.id}')">Excluir</button>
         </div>
 
         <div id="convocadosGrid_${c.id}" style="display:${minimizada?"none":""}">${rosterHtml}</div>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Football Legacy</title>
-  <link rel="stylesheet" href="style.css?v=2.8" />
+  <link rel="stylesheet" href="style.css?v=2.9" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -12,22 +12,22 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">FL</div><div><h1>Football Legacy</h1><p>Career Universe <span id="appVersionTag" style="opacity:0.6;font-size:0.75em;border:1px solid currentColor;border-radius:4px;padding:1px 5px;margin-left:4px">v2.8</span></p></div></div>
+      <div class="brand"><div class="brand-mark">FL</div><div><h1>Football Legacy</h1><p>Career Universe <span id="appVersionTag" style="opacity:0.6;font-size:0.75em;border:1px solid currentColor;border-radius:4px;padding:1px 5px;margin-left:4px">v2.9</span></p></div></div>
       <div class="career-switch"><span>Carreira ativa</span><strong id="careerNameSide">Football Legacy</strong><small id="careerMetaSide">Google Sheets</small></div>
       <nav class="menu">
-        <button class="menu-item active" data-page="dashboard">🏠 <span>Resumo</span></button>
-        <button class="menu-item" data-page="personagens">👤 <span>Personagens</span></button>
-        <button class="menu-item" data-page="estatisticas">📊 <span>Estatísticas</span></button>
-        <button class="menu-item" data-page="trofeus">🏆 <span>Troféus</span></button>
-        <button class="menu-item" data-page="top11">⚽ <span>Top 11</span></button>
-        <button class="menu-item" data-page="bolaouro">⭐ <span>Bola de Ouro</span></button>
-        <button class="menu-item" data-page="records">
+        <button type="button" class="menu-item active" data-page="dashboard">🏠 <span>Resumo</span></button>
+        <button type="button" class="menu-item" data-page="personagens">👤 <span>Personagens</span></button>
+        <button type="button" class="menu-item" data-page="estatisticas">📊 <span>Estatísticas</span></button>
+        <button type="button" class="menu-item" data-page="trofeus">🏆 <span>Troféus</span></button>
+        <button type="button" class="menu-item" data-page="top11">⚽ <span>Top 11</span></button>
+        <button type="button" class="menu-item" data-page="bolaouro">⭐ <span>Bola de Ouro</span></button>
+        <button type="button" class="menu-item" data-page="records">
           <span>📜</span>
           <strong>Records</strong>
         </button>
-        <button class="menu-item" data-page="clubes">🏟 <span>Clubes</span></button>
-        <button class="menu-item" data-page="museu">🖼 <span>Museu</span></button>
-        <button class="menu-item" data-page="selecaobrasileira">🇧🇷 <span>Seleção Brasileira</span></button>
+        <button type="button" class="menu-item" data-page="clubes">🏟 <span>Clubes</span></button>
+        <button type="button" class="menu-item" data-page="museu">🖼 <span>Museu</span></button>
+        <button type="button" class="menu-item" data-page="selecaobrasileira">🇧🇷 <span>Seleção Brasileira</span></button>
       </nav>
     </aside>
 
@@ -40,11 +40,11 @@
           <label>Protagonista<select id="protagonistSelect"></select></label>
         </div>
         <div class="top-actions">
-          <button class="ghost-btn" id="syncBtn">🔄 Atualizar</button>
-          <button class="ghost-btn" id="newCareerBtn">+ Nova Carreira</button>
-          <button class="ghost-btn" id="seasonCreateBtn">+ Temporada</button>
-          <button class="ghost-btn" id="fantasyBtn">🎮 Fantasy</button>
-          <button class="gold-btn" id="primaryCreateBtn">+ Criar Carreira</button>
+          <button type="button" class="ghost-btn" id="syncBtn">🔄 Atualizar</button>
+          <button type="button" class="ghost-btn" id="newCareerBtn">+ Nova Carreira</button>
+          <button type="button" class="ghost-btn" id="seasonCreateBtn">+ Temporada</button>
+          <button type="button" class="ghost-btn" id="fantasyBtn">🎮 Fantasy</button>
+          <button type="button" class="gold-btn" id="primaryCreateBtn">+ Criar Carreira</button>
         </div>
       </header>
 
@@ -73,28 +73,28 @@
         </div>
 
         <div class="season-table-panel">
-          <div class="panel-header"><h3>Temporadas jogadas</h3><button class="link-btn" id="openSeasonBtn">+ Temporada</button></div>
+          <div class="panel-header"><h3>Temporadas jogadas</h3><button type="button" class="link-btn" id="openSeasonBtn">+ Temporada</button></div>
           <div class="season-cards" id="playedSeasonsCards"></div>
         </div>
       </section>
 
       <section class="page" id="personagens">
-        <div class="section-header"><div><h3>Personagens</h3><p>Jogadores e coadjuvantes da carreira selecionada.</p></div><button class="gold-btn" data-form="personagem">+ Novo Personagem</button></div>
+        <div class="section-header"><div><h3>Personagens</h3><p>Jogadores e coadjuvantes da carreira selecionada.</p></div><button type="button" class="gold-btn" data-form="personagem">+ Novo Personagem</button></div>
         <div class="cards-list" id="personagens-list"></div>
       </section>
 
       <section class="page" id="estatisticas">
-        <div class="section-header"><div><h3>Estatísticas</h3><p>Dados por temporada e competição.</p></div><button class="gold-btn" data-form="estatistica">+ Estatística</button></div>
+        <div class="section-header"><div><h3>Estatísticas</h3><p>Dados por temporada e competição.</p></div><button type="button" class="gold-btn" data-form="estatistica">+ Estatística</button></div>
         <div class="data-table" id="stats-table"></div>
       </section>
 
       <section class="page" id="trofeus">
-        <div class="section-header"><div><h3>Troféus</h3><p>Títulos e prêmios cadastrados.</p></div><button class="gold-btn" data-form="campeao">+ Título</button></div>
+        <div class="section-header"><div><h3>Troféus</h3><p>Títulos e prêmios cadastrados.</p></div><button type="button" class="gold-btn" data-form="campeao">+ Título</button></div>
         <div class="trophy-grid" id="trophy-grid"></div>
       </section>
 
       <section class="page" id="top11">
-        <div class="section-header"><div><h3>Top 11</h3><p>Melhor onze da temporada.</p></div><button class="gold-btn" id="top11BatchBtn">+ Top 11</button></div>
+        <div class="section-header"><div><h3>Top 11</h3><p>Melhor onze da temporada.</p></div><button type="button" class="gold-btn" id="top11BatchBtn">+ Top 11</button></div>
         <div class="pitch" id="top11Pitch"></div>
       </section>
 
@@ -103,7 +103,7 @@
           <div><h3>Bola de Ouro</h3><p>Ranking do 1º ao 10º usando a arte do vencedor como fundo.</p></div>
           <div class="ballon-header-actions">
             <label>Temporada<select id="ballonSeasonSelect"></select></label>
-            <button class="ghost-btn" id="ballonBestBtn">🏆 Os melhores</button><button class="gold-btn" id="ballonBatchBtn">+ Ranking</button>
+            <button type="button" class="ghost-btn" id="ballonBestBtn">🏆 Os melhores</button><button type="button" class="gold-btn" id="ballonBatchBtn">+ Ranking</button>
           </div>
         </div>
         <div class="ballon-poster" id="ballon-poster">
@@ -163,12 +163,12 @@
       </section>
 
       <section class="page" id="clubes">
-        <div class="section-header"><div><h3>Clubes</h3><p>Clubes usados nas carreiras.</p></div><button class="gold-btn" data-form="clube">+ Novo Clube</button></div>
+        <div class="section-header"><div><h3>Clubes</h3><p>Clubes usados nas carreiras.</p></div><button type="button" class="gold-btn" data-form="clube">+ Novo Clube</button></div>
         <div class="cards-list" id="clubes-list"></div>
       </section>
 
       <section class="page" id="museu">
-        <div class="section-header"><div><h3>Museu</h3><p>Imagens e vídeos da carreira.</p></div><button class="gold-btn" data-form="midia">+ Nova Mídia</button></div>
+        <div class="section-header"><div><h3>Museu</h3><p>Imagens e vídeos da carreira.</p></div><button type="button" class="gold-btn" data-form="midia">+ Nova Mídia</button></div>
         <div class="media-grid" id="media-grid"></div>
       </section>
 
@@ -181,17 +181,17 @@
         <div class="section-header">
           <div><h4>Base de jogadores da temporada</h4></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="ghost-btn" id="selecaoCopyPrevBtn">Copiar base da temporada anterior</button>
-            <button class="ghost-btn" id="selecaoExportarBtn">⬇️ Exportar planilha</button>
+            <button type="button" class="ghost-btn" id="selecaoCopyPrevBtn">Copiar base da temporada anterior</button>
+            <button type="button" class="ghost-btn" id="selecaoExportarBtn">⬇️ Exportar planilha</button>
             <label style="display:flex;align-items:center;gap:6px;font-size:0.85em;color:var(--muted)">
               Importar pra:
               <select id="selecaoImportarSeasonSelect" style="min-width:140px"></select>
             </label>
-            <button class="ghost-btn" id="selecaoImportarBtn">⬆️ Importar planilha</button>
+            <button type="button" class="ghost-btn" id="selecaoImportarBtn">⬆️ Importar planilha</button>
             <input type="file" id="selecaoImportarInput" accept=".xlsx,.xls" style="display:none">
-            <button class="ghost-btn" onclick="navigate('selecaoconvocacoes')">📋 Convocações</button>
-            <button class="ghost-btn" onclick="navigate('selecaoestatisticas')">📊 Estatísticas</button>
-            <button class="gold-btn" id="selecaoAddJogadorBtn">+ Jogador</button>
+            <button type="button" class="ghost-btn" onclick="navigate('selecaoconvocacoes')">📋 Convocações</button>
+            <button type="button" class="ghost-btn" onclick="navigate('selecaoestatisticas')">📊 Estatísticas</button>
+            <button type="button" class="gold-btn" id="selecaoAddJogadorBtn">+ Jogador</button>
           </div>
         </div>
         <div class="section-header" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -208,10 +208,10 @@
         </div>
 
         <div class="section-header">
-          <div><button class="ghost-btn" onclick="navigate('selecaobrasileira')">← Voltar pra base</button></div>
+          <div><button type="button" class="ghost-btn" onclick="navigate('selecaobrasileira')">← Voltar pra base</button></div>
           <div style="display:flex;gap:8px">
-            <button class="ghost-btn" id="selecaoMelhores11Btn">🏆 Melhores 11</button>
-            <button class="gold-btn" id="selecaoNovaConvocacaoBtn">+ Nova Convocação</button>
+            <button type="button" class="ghost-btn" id="selecaoMelhores11Btn">🏆 Melhores 11</button>
+            <button type="button" class="gold-btn" id="selecaoNovaConvocacaoBtn">+ Nova Convocação</button>
           </div>
         </div>
         <div class="selecao-convocacoes-lista" id="selecaoConvocacoesList"></div>
@@ -223,7 +223,7 @@
         </div>
 
         <div class="section-header">
-          <div><button class="ghost-btn" onclick="navigate('selecaobrasileira')">← Voltar pra base</button></div>
+          <div><button type="button" class="ghost-btn" onclick="navigate('selecaobrasileira')">← Voltar pra base</button></div>
           <label style="min-width:220px"><small>Ordenar por</small>
             <select id="selecaoStatsOrdemSelect">
               <option value="posicao">Posição</option>
@@ -237,10 +237,10 @@
 
   </div>
 
-  <div class="modal" id="modal"><div class="modal-box" id="modalBox"><button class="close-modal" id="close-modal">×</button><h3 id="modal-title">Novo registro</h3><form id="dynamic-form"></form></div></div>
+  <div class="modal" id="modal"><div class="modal-box" id="modalBox"><button type="button" class="close-modal" id="close-modal">×</button><h3 id="modal-title">Novo registro</h3><form id="dynamic-form"></form></div></div>
   <div class="modal" id="bestBallonModal">
     <div class="modal-box wide">
-      <button class="close-modal" id="closeBestBallon">×</button>
+      <button type="button" class="close-modal" id="closeBestBallon">×</button>
       <h3>Maiores vencedores da Bola de Ouro</h3>
       <p class="modal-subtitle">Soma a base real global com os vencedores da carreira selecionada.</p>
       <div id="bestBallonList" class="best-ballon-list"></div>
@@ -250,7 +250,7 @@
 
   <div class="modal" id="clubJourneyModal">
     <div class="modal-box wide">
-      <button class="close-modal" id="closeClubJourney">×</button>
+      <button type="button" class="close-modal" id="closeClubJourney">×</button>
       <h3 id="clubJourneyTitle">Detalhe do clube</h3>
       <div id="clubJourneyContent"></div>
     </div>
@@ -263,6 +263,6 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="script.js?v=2.8"></script>
+  <script src="script.js?v=2.9"></script>
 </body>
 </html>
