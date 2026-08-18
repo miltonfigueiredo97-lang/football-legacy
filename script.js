@@ -1854,8 +1854,9 @@ async function buscarTimesApiMelhoradoV200(query){
   }
 
   async function chamar(termo){
+    if(!termo || !termo.trim()) return [];
     try{
-      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(termo)}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(termo.trim())}`;
       const res = await fetch(url);
       const json = await res.json();
       return (json.teams || [])
@@ -1866,52 +1867,68 @@ async function buscarTimesApiMelhoradoV200(query){
     }
   }
 
-  // FIX V2.5: a chave de teste gratuita da TheSportsDB devolve só 1
-  // resultado por chamada (não é uma lista de opções parecidas). Pra
-  // conseguir mostrar várias opções de verdade, disparamos várias buscas
-  // em paralelo com variações do nome digitado (nome completo, sem a
-  // última palavra, sem a primeira palavra, só a primeira palavra, só a
-  // última palavra) e juntamos os times diferentes que cada uma achar.
-  const palavras = q.split(/\s+/).filter(Boolean);
-  const variacoes = new Set([q]);
+  // FIX V2.6: a chave de teste gratuita da TheSportsDB devolve só 1
+  // resultado por chamada, então disparamos várias buscas em paralelo com
+  // variações do nome pra juntar mais opções. Mas nomes com "&" (ex:
+  // "Brighton & Hove Albion") quebravam a busca completa, e a variação de
+  // "só uma palavra" (ex: "Albion") às vezes trazia um time completamente
+  // errado (outro país/liga) que a API "achou parecido". Agora cada
+  // variação ganha uma pontuação de o quão parecida ela é do que você
+  // digitou, e as variações de palavra única só entram na lista se não
+  // houver opções melhores — não empurram um resultado bom pra baixo.
+  const qNorm = normalizarBuscaTimeV200(q);
+  const qSemE = normalizarBuscaTimeV200(q.replace(/&/g, " "));
+  const palavras = qNorm.split(/\s+/).filter(Boolean);
+
+  const variacoesFortes = new Set([q, q.replace(/&/g, " e "), q.replace(/&/g, "and"), q.replace(/&/g, " ")]);
+  const variacoesFracas = new Set();
   if(palavras.length > 1){
-    variacoes.add(palavras.slice(0, -1).join(" ")); // sem a última palavra
-    variacoes.add(palavras.slice(1).join(" "));      // sem a primeira palavra
-    variacoes.add(palavras[0]);                       // só a primeira palavra
-    variacoes.add(palavras[palavras.length-1]);        // só a última palavra
+    variacoesFortes.add(palavras.slice(0, -1).join(" "));
+    variacoesFracas.add(palavras.slice(1).join(" "));
+    variacoesFracas.add(palavras[0]);
+    variacoesFracas.add(palavras[palavras.length-1]);
   }else{
-    // Busca de uma palavra só: tenta variações comuns de nome de clube
-    // pra não ficar limitado a um único resultado da API.
-    variacoes.add(q + " FC");
-    variacoes.add("FC " + q);
-    variacoes.add(q + " City");
-    if(q.length > 4) variacoes.add(q.slice(0, Math.ceil(q.length*0.7)));
+    variacoesFracas.add(q + " FC");
+    variacoesFracas.add("FC " + q);
   }
 
-  const resultados = await Promise.all([...variacoes].map(chamar));
+  const [fortesResultados, fracosResultados] = await Promise.all([
+    Promise.all([...variacoesFortes].map(chamar)),
+    Promise.all([...variacoesFracas].map(chamar))
+  ]);
 
-  const teams = [];
+  function pontuar(t){
+    const nome = normalizarBuscaTimeV200(t.strTeam || "");
+    if(nome === qNorm || nome === qSemE) return 100;
+    if(nome.startsWith(qNorm) || qNorm.startsWith(nome)) return 80;
+    if(nome.includes(qNorm) || qNorm.includes(nome)) return 60;
+    // conta quantas palavras da busca aparecem no nome do time
+    const bateuPalavras = palavras.filter(p => p.length > 2 && nome.includes(p)).length;
+    if(palavras.length && bateuPalavras === palavras.length) return 50;
+    if(bateuPalavras > 0) return 20 + bateuPalavras * 5;
+    return 5;
+  }
+
   const vistos = new Set();
-  resultados.flat().forEach(t=>{
-    const id = t.idTeam || t.strTeam;
-    if(vistos.has(id)) return;
-    vistos.add(id);
-    teams.push(t);
-  });
+  const teams = [];
+  function adicionar(lista, minPontuacao){
+    lista.flat().forEach(t=>{
+      const id = t.idTeam || t.strTeam;
+      if(vistos.has(id)) return;
+      const pontos = pontuar(t);
+      if(pontos < minPontuacao) return;
+      vistos.add(id);
+      teams.push({...t, __score: pontos});
+    });
+  }
 
-  // Ordena colocando primeiro os times cujo nome começa com o termo buscado
-  // (mais provável de ser o que a pessoa quer), evitando que um resultado
-  // "errado" apareça em primeiro só por causa da ordem que a API devolveu.
-  const qNorm = normalizarBuscaTimeV200(q);
-  teams.sort((a, b)=>{
-    const an = normalizarBuscaTimeV200(a.strTeam || "");
-    const bn = normalizarBuscaTimeV200(b.strTeam || "");
-    const aStarts = an.startsWith(qNorm) ? 0 : 1;
-    const bStarts = bn.startsWith(qNorm) ? 0 : 1;
-    if(aStarts !== bStarts) return aStarts - bStarts;
-    return 0;
-  });
+  adicionar(fortesResultados, 0);
+  // Resultados das buscas "fracas" (uma palavra só) só entram se não
+  // tivermos ainda pelo menos 3 opções boas, e mesmo assim só se tiverem
+  // alguma relação real com o que foi digitado (pontuação mínima).
+  if(teams.length < 3) adicionar(fracosResultados, 20);
 
+  teams.sort((a,b)=>b.__score - a.__score);
   return teams;
 }
 
@@ -20075,7 +20092,16 @@ var abrirFantasyAnalise = function abrirFantasyAnalise(){
   if(!protagonista){ alert("Selecione um protagonista primeiro."); return; }
   if(!active.carreira_id){ alert("Selecione uma carreira primeiro."); return; }
 
-  const seasons = getCareerSeasonRecords().slice().sort((a,b)=>compareSeasonsDesc(a.temporada,b.temporada));
+  // FIX V2.6: ordenar direto pelo ordem_na_carreira numérico de cada linha
+  // (quando existir), em vez de comparar só o texto da temporada — isso
+  // evita ambiguidade quando duas temporadas têm o mesmo texto (2 clubes
+  // na mesma temporada, ex: 3 entradas "2020/2021" pra 3 clubes).
+  const seasons = getCareerSeasonRecords().slice().sort((a,b)=>{
+    const oa = Number(a.ordem_na_carreira);
+    const ob = Number(b.ordem_na_carreira);
+    if(!Number.isNaN(oa) && !Number.isNaN(ob) && a.ordem_na_carreira!=="" && b.ordem_na_carreira!=="") return ob - oa;
+    return compareSeasonsDesc(a.temporada,b.temporada);
+  });
   if(!seasons.length){ alert("Esse protagonista ainda não tem temporadas registradas."); return; }
 
   modalTitle.textContent = "Fantasy — Análise de Mercado";
@@ -20119,6 +20145,7 @@ var executarFantasyAnalise = async function executarFantasyAnalise(personagemId)
       personagem_id: protagonista.id,
       carreira_id: active.carreira_id,
       idade_atual: idadeAtual,
+      season_id: currentSeasonRecord ? currentSeasonRecord.id : "",
       temporada_atual: currentSeasonRecord ? currentSeasonRecord.temporada : "",
       temporada_status: currentSeasonRecord ? currentSeasonRecord.status : ""
     });

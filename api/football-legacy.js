@@ -763,7 +763,31 @@ async function saveBallonCareerRankingV2(payload) {
 
 // ---------- Fantasy (Claude / Anthropic) ----------
 
-async function coletarResumoTemporadasFantasy(carreiraId, personagemId, nomeJogador, temporadaAtual) {
+function mesesEntreDatas(inicio, fim){
+  if(!inicio) return null;
+  const d1 = new Date(inicio);
+  if(Number.isNaN(d1.getTime())) return null;
+  const d2 = fim ? new Date(fim) : new Date();
+  if(Number.isNaN(d2.getTime())) return null;
+  const meses = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  return Math.max(1, meses);
+}
+
+// FIX V2.6: reescrito do zero. Antes, a "temporada de referência" era
+// identificada só pelo TEXTO (ex: "2020/2021"), o que quebrava quando
+// existiam 2+ temporadas com o mesmo texto (2 clubes na mesma temporada -
+// muito comum em empréstimo no meio do ano). Agora:
+// - Recebe o ID exato da linha de CARREIRA_TEMPORADAS de referência
+//   (season_id), não só o texto, e usa "ordem_na_carreira" (numérico, sem
+//   ambiguidade) pra cortar a carreira até ali.
+// - Agrupa automaticamente linhas com o mesmo texto de temporada e ordem
+//   adjacente (ex: joguei 2 clubes na "2020/2021") numa ÚNICA temporada
+//   lógica, em vez de tratar como temporadas separadas.
+// - Calcula quantos meses cada passagem durou (baseado em data_inicio/
+//   data_fim), pra avaliar amostras pequenas (empréstimo curto) com o
+//   contexto correto, em vez de tratar 1 jogo como se fosse a temporada
+//   inteira.
+async function coletarResumoTemporadasFantasy(carreiraId, personagemId, nomeJogador, seasonIdRef, temporadaAtualTexto){
   const temporadas = await readTable("CARREIRA_TEMPORADAS");
   const stats = await readTable("ESTATISTICAS_CARREIRA");
   const camposCompeticao = await readTable("CAMPEOES_CARREIRA");
@@ -773,55 +797,95 @@ async function coletarResumoTemporadasFantasy(carreiraId, personagemId, nomeJoga
 
   let temporadasDaCarreira = temporadas
     .filter((t) => String(t.carreira_id) === String(carreiraId))
-    .sort((a, b) => String(a.temporada).localeCompare(String(b.temporada)));
+    .map((t) => ({ ...t, __ordem: t.ordem_na_carreira !== undefined && t.ordem_na_carreira !== null && t.ordem_na_carreira !== "" ? Number(t.ordem_na_carreira) : null }))
+    .sort((a, b) => {
+      if (a.__ordem !== null && b.__ordem !== null) return a.__ordem - b.__ordem;
+      return String(a.temporada).localeCompare(String(b.temporada));
+    });
 
-  if (temporadaAtual) {
-    const idxAtual = temporadasDaCarreira.findIndex((t) => String(t.temporada) === String(temporadaAtual));
-    if (idxAtual !== -1) temporadasDaCarreira = temporadasDaCarreira.slice(0, idxAtual + 1);
+  // Agrupa linhas adjacentes com o mesmo texto de temporada (2+ clubes na
+  // mesma temporada) numa só entrada lógica.
+  const grupos = [];
+  temporadasDaCarreira.forEach((t) => {
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && String(ultimo.temporada) === String(t.temporada)) {
+      ultimo.__stints.push(t);
+    } else {
+      grupos.push({ temporada: t.temporada, __ordem: t.__ordem, __stints: [t] });
+    }
+  });
+
+  // Determina até onde cortar: pelo ID exato da temporada de referência
+  // (preferencial), com fallback pro texto se o ID não vier.
+  let indiceCorte = grupos.length - 1;
+  if (seasonIdRef) {
+    const idx = grupos.findIndex((g) => g.__stints.some((s) => String(s.id) === String(seasonIdRef)));
+    if (idx !== -1) indiceCorte = idx;
+  } else if (temporadaAtualTexto) {
+    const idx = grupos.findIndex((g) => String(g.temporada) === String(temporadaAtualTexto));
+    if (idx !== -1) indiceCorte = idx;
   }
+  const gruposAteReferencia = grupos.slice(0, indiceCorte + 1);
 
-  return temporadasDaCarreira.map((t) => {
-    const statsDaTemporada = stats.filter((s) => String(s.carreira_temporada_id) === String(t.id));
-    const golsTotais = statsDaTemporada.reduce((a, s) => a + (Number(s.gols) || 0), 0);
-    const assistTotais = statsDaTemporada.reduce((a, s) => a + (Number(s.assistencias) || 0), 0);
-    const jogosTotais = statsDaTemporada.reduce((a, s) => a + (Number(s.jogos) || 0), 0);
-    const camposDaTemporada = camposCompeticao.filter((c) => String(c.carreira_temporada_id) === String(t.id));
-    const ballonDaTemporada = ballon.find((b) => String(b.carreira_temporada_id) === String(t.id));
-    const top11DaTemporada = top11.find((t2) => String(t2.carreira_temporada_id) === String(t.id));
-    const selecaoDaTemporada = selecao.find((s) => String(s.carreira_temporada_id) === String(t.id));
+  return gruposAteReferencia.map((grupo) => {
+    const stints = grupo.__stints.map((t) => {
+      const statsDoStint = stats.filter((s) => String(s.carreira_temporada_id) === String(t.id));
+      const golsStint = statsDoStint.reduce((a, s) => a + (Number(s.gols) || 0), 0);
+      const assistStint = statsDoStint.reduce((a, s) => a + (Number(s.assistencias) || 0), 0);
+      const jogosStint = statsDoStint.reduce((a, s) => a + (Number(s.jogos) || 0), 0);
+      const meses = mesesEntreDatas(t.data_inicio, t.data_fim);
+
+      return {
+        id: t.id,
+        clube: t.clube_nome,
+        emprestado: t.emprestado === "sim",
+        clube_emprestimo_nome: t.clube_emprestimo_nome || "",
+        status: t.status || "",
+        data_inicio: t.data_inicio || "",
+        data_fim: t.data_fim || "",
+        duracao_meses: meses,
+        jogos: jogosStint,
+        gols: golsStint,
+        assistencias: assistStint,
+        competicoes: statsDoStint.map((s) => ({
+          competicao: s.competicao,
+          jogos: s.jogos,
+          gols: s.gols,
+          assistencias: s.assistencias,
+          nota: s.nota_geral,
+          clube_nome: s.clube_nome || t.clube_nome
+        }))
+      };
+    });
+
+    const camposDoGrupo = camposCompeticao.filter((c) => stints.some((st) => String(c.carreira_temporada_id) === String(st.id)));
+    const ballonDoGrupo = ballon.find((b) => stints.some((st) => String(b.carreira_temporada_id) === String(st.id)));
+    const top11DoGrupo = top11.find((t2) => stints.some((st) => String(t2.carreira_temporada_id) === String(st.id)));
+    const selecaoDoGrupo = selecao.find((s) => stints.some((st) => String(s.carreira_temporada_id) === String(st.id)));
 
     return {
-      id: t.id,
-      temporada: t.temporada,
-      clube: t.clube_nome,
-      emprestado: t.emprestado === "sim",
-      clube_emprestimo_nome: t.clube_emprestimo_nome || "",
-      jogos: jogosTotais,
-      gols: golsTotais,
-      assistencias: assistTotais,
-      competicoes: statsDaTemporada.map((s) => ({
-        competicao: s.competicao,
-        jogos: s.jogos,
-        gols: s.gols,
-        assistencias: s.assistencias,
-        nota: s.nota_geral
-      })),
-      titulos: camposDaTemporada.filter((c) => c.status === "titulo_ganho").map((c) => c.competicao),
-      premios_individuais: camposDaTemporada.reduce((arr, c) => {
+      temporada: grupo.temporada,
+      stints,
+      em_andamento: stints.some((s) => s.status === "em andamento"),
+      jogos: stints.reduce((a, s) => a + s.jogos, 0),
+      gols: stints.reduce((a, s) => a + s.gols, 0),
+      assistencias: stints.reduce((a, s) => a + s.assistencias, 0),
+      titulos: camposDoGrupo.filter((c) => c.status === "titulo_ganho").map((c) => c.competicao),
+      premios_individuais: camposDoGrupo.reduce((arr, c) => {
         if (sameText(c.artilheiro || "", nomeJogador)) arr.push("Artilheiro de " + c.competicao);
         if (sameText(c.lider_assistencias || "", nomeJogador)) arr.push("Líder de assistências de " + c.competicao);
         if (sameText(c.melhor_jogador || "", nomeJogador)) arr.push("Melhor jogador de " + c.competicao);
         return arr;
       }, []),
-      bola_de_ouro_posicao: ballonDaTemporada ? ballonDaTemporada.posicao : null,
-      top11: !!top11DaTemporada,
-      selecao_nacional: selecaoDaTemporada
+      bola_de_ouro_posicao: ballonDoGrupo ? ballonDoGrupo.posicao : null,
+      top11: !!top11DoGrupo,
+      selecao_nacional: selecaoDoGrupo
         ? {
-            selecao: selecaoDaTemporada.selecao,
-            jogos: selecaoDaTemporada.jogos,
-            gols: selecaoDaTemporada.gols,
-            assistencias: selecaoDaTemporada.assistencias,
-            titulos: selecaoDaTemporada.titulos
+            selecao: selecaoDoGrupo.selecao,
+            jogos: selecaoDoGrupo.jogos,
+            gols: selecaoDoGrupo.gols,
+            assistencias: selecaoDoGrupo.assistencias,
+            titulos: selecaoDoGrupo.titulos
           }
         : null
     };
@@ -831,8 +895,10 @@ async function coletarResumoTemporadasFantasy(carreiraId, personagemId, nomeJoga
 async function coletarRecordsRelevantesFantasy(resumoTemporadas, posicao) {
   const competicoesJogadas = {};
   resumoTemporadas.forEach((t) => {
-    (t.competicoes || []).forEach((c) => {
-      if (c.competicao) competicoesJogadas[normKey(c.competicao)] = true;
+    (t.stints || []).forEach((stint) => {
+      (stint.competicoes || []).forEach((c) => {
+        if (c.competicao) competicoesJogadas[normKey(c.competicao)] = true;
+      });
     });
   });
 
@@ -858,18 +924,13 @@ function montarPromptFantasy(personagem, idadeAtual, temporadaAtual, resumoTempo
   linhas.push("Nacionalidade: " + (personagem.nacionalidade || "não informada"));
   linhas.push("IMPORTANTE: a idade ATUAL do jogador, agora, é EXATAMENTE " + (idadeAtual || "não informada") + ". Use esse valor exato.");
   linhas.push("A temporada de referência é: " + (temporadaAtual || "não informada") + ". Ignore qualquer temporada depois dessa.");
-  if (temporadaStatus === "em andamento") {
-    linhas.push("IMPORTANTE: essa temporada ainda está EM ANDAMENTO — os números são parciais.");
-  } else if (temporadaStatus === "finalizada" || temporadaStatus === "transferido") {
-    linhas.push("Essa temporada já está FINALIZADA — os números são o resultado final.");
-  }
   linhas.push("");
 
   let totalBolaDeOuroVencida = 0;
   let totalTop3BolaDeOuro = 0;
   let totalTop11 = 0;
   const totalTitulosPorCompeticao = {};
-  let temporadaAtualObj = null;
+  const grupoAtual = resumoTemporadas[resumoTemporadas.length - 1] || null;
 
   resumoTemporadas.forEach((t) => {
     const pos = Number(t.bola_de_ouro_posicao);
@@ -879,8 +940,19 @@ function montarPromptFantasy(personagem, idadeAtual, temporadaAtual, resumoTempo
     (t.titulos || []).forEach((nomeTitulo) => {
       totalTitulosPorCompeticao[nomeTitulo] = (totalTitulosPorCompeticao[nomeTitulo] || 0) + 1;
     });
-    if (String(t.temporada) === String(temporadaAtual)) temporadaAtualObj = t;
   });
+
+  // FIX V2.6: a temporada de referência agora informa explicitamente se
+  // ela está EM ANDAMENTO (parcial) ou FINALIZADA, olhando o(s) stint(s)
+  // reais dela — não um parâmetro solto que podia ficar desatualizado
+  // quando havia temporadas com texto duplicado.
+  const statusReal = grupoAtual && grupoAtual.em_andamento ? "em andamento" : (temporadaStatus || "finalizada");
+  if (statusReal === "em andamento") {
+    linhas.push("IMPORTANTE: essa temporada ainda está EM ANDAMENTO — os números são parciais, ainda não é o resultado final da temporada.");
+  } else {
+    linhas.push("Essa temporada já está FINALIZADA — os números são o resultado final dela.");
+  }
+  linhas.push("");
 
   linhas.push("RESUMO DE PRÊMIOS NA CARREIRA INTEIRA (já contado, use estes números exatos):");
   linhas.push("- Bolas de Ouro vencidas: " + totalBolaDeOuroVencida + " vez(es).");
@@ -889,17 +961,27 @@ function montarPromptFantasy(personagem, idadeAtual, temporadaAtual, resumoTempo
   const listaTitulos = Object.keys(totalTitulosPorCompeticao).map((nome) => totalTitulosPorCompeticao[nome] + "x " + nome);
   if (listaTitulos.length) linhas.push("- Títulos na carreira: " + listaTitulos.join(", ") + ".");
   linhas.push("");
-  linhas.push("Histórico temporada a temporada:");
+  linhas.push("Histórico temporada a temporada (cada temporada pode ter mais de uma passagem/clube, ex: metade emprestado):");
 
   resumoTemporadas.forEach((t) => {
-    let linhaClube = "- " + t.temporada + " (" + (t.clube || "-") + ")";
-    if (t.emprestado && t.clube_emprestimo_nome) linhaClube += " [EMPRESTADO para " + t.clube_emprestimo_nome + "]";
-    linhas.push(linhaClube + ": " + t.jogos + " jogos, " + t.gols + " gols, " + t.assistencias + " assistências no total.");
+    linhas.push("- " + t.temporada + (t.em_andamento ? " [EM ANDAMENTO]" : "") + ": " + t.jogos + " jogos, " + t.gols + " gols, " + t.assistencias + " assistências no total (somando todas as passagens dessa temporada).");
 
-    t.competicoes.forEach((c) => {
-      let linha = "    " + c.competicao + ": " + c.jogos + " jogos, " + c.gols + " gols, " + c.assistencias + " assistências";
-      if (c.nota) linha += ", nota média " + c.nota;
-      linhas.push(linha + ".");
+    t.stints.forEach((stint) => {
+      let linhaStint = "    Passagem: " + (stint.clube || "-");
+      if (stint.emprestado && stint.clube_emprestimo_nome) linhaStint += " [EMPRESTADO — pertence ao " + stint.clube_emprestimo_nome + "]";
+      if (stint.duracao_meses) linhaStint += " (aproximadamente " + stint.duracao_meses + " mes(es), de " + (stint.data_inicio || "?") + " até " + (stint.data_fim || "agora") + ")";
+      linhas.push(linhaStint + ":");
+
+      if (stint.duracao_meses && stint.duracao_meses <= 3 && stint.jogos <= 6) {
+        linhas.push("      ATENÇÃO: essa passagem foi CURTA (só " + stint.duracao_meses + " mes(es), " + stint.jogos + " jogo(s)). NÃO trate essa amostra pequena como se fosse o desempenho de uma temporada inteira — pondere pelo tamanho real da amostra.");
+      }
+
+      stint.competicoes.forEach((c) => {
+        let linha = "      " + c.competicao + ": " + c.jogos + " jogos, " + c.gols + " gols, " + c.assistencias + " assistências";
+        if (c.nota) linha += ", nota média " + c.nota;
+        if (c.clube_nome && c.clube_nome !== stint.clube) linha += " (por " + c.clube_nome + ")";
+        linhas.push(linha + ".");
+      });
     });
 
     if (t.titulos.length) linhas.push("    Títulos: " + t.titulos.join(", ") + ".");
@@ -929,11 +1011,13 @@ function montarPromptFantasy(personagem, idadeAtual, temporadaAtual, resumoTempo
   linhas.push("");
   linhas.push("Use também seu próprio conhecimento real sobre futebol pra comparar e contextualizar esse jogador.");
   linhas.push("");
-  linhas.push("IMPORTANTE — analise a TRAJETÓRIA do jogador ao longo das temporadas, não só a atual isolada.");
+  linhas.push("IMPORTANTE — analise a TRAJETÓRIA do jogador ao longo das temporadas, não só a atual isolada. Dê peso proporcional ao TAMANHO DA AMOSTRA de cada passagem — poucos jogos (ex: empréstimo curto de 1-2 meses) não define uma tendência sozinho.");
   linhas.push("");
   linhas.push("IMPORTANTE — TETO FINANCEIRO REAL DE CADA CLUBE: respeite o orçamento real de cada clube ao propor valores.");
   linhas.push("");
-  linhas.push("IMPORTANTE — REGRA CRÍTICA SOBRE EMPRÉSTIMOS: o clube ATUAL do jogador nessa temporada é \"" + (temporadaAtualObj ? temporadaAtualObj.clube : "-") + "\"" + (temporadaAtualObj && temporadaAtualObj.emprestado ? " (jogador está emprestado lá)" : "") + ". NUNCA proponha \"Empréstimo\" ou \"Empréstimo com opção de compra\" tendo como destino esse MESMO clube atual — um clube não empresta o próprio jogador pra si mesmo. Se o jogador já está emprestado nesse clube atual, uma proposta desse mesmo clube só pode ser \"Transferência definitiva\".");
+
+  const clubeAtualReal = grupoAtual && grupoAtual.stints.length ? grupoAtual.stints[grupoAtual.stints.length - 1] : null;
+  linhas.push("IMPORTANTE — REGRA CRÍTICA SOBRE EMPRÉSTIMOS: o clube ATUAL do jogador (a passagem mais recente da temporada de referência) é \"" + (clubeAtualReal ? clubeAtualReal.clube : "-") + "\"" + (clubeAtualReal && clubeAtualReal.emprestado ? " — o jogador está EMPRESTADO lá, e pertence de fato ao \"" + clubeAtualReal.clube_emprestimo_nome + "\"" : "") + ". NUNCA proponha \"Empréstimo\" ou \"Empréstimo com opção de compra\" tendo como destino o mesmo clube ONDE ELE JÁ ESTÁ jogando agora — um clube não empresta o próprio jogador pra si mesmo, nem paga por um empréstimo de alguém que já está lá. Se o jogador está emprestado, uma proposta do clube ATUAL (o que já o tem emprestado) só pode ser \"Transferência definitiva\" (comprar em definitivo). Proposta do clube DONO (que já é dele) também não faz sentido como \"transferência\" ou \"empréstimo\" — só listar esse clube se for pra \"encerrar o empréstimo e reintegrar\".");
   linhas.push("");
   linhas.push("IMPORTANTE sobre coerência financeira: se houver proposta de RENOVAÇÃO do clube atual, ela vem SEMPRE em primeiro lugar. Depois, ordene as demais da MAIOR pra MENOR valor de transferência.");
   linhas.push("");
@@ -949,6 +1033,7 @@ async function gerarFantasyAnalise(payload) {
   const personagemId = payload.personagem_id;
   const carreiraId = payload.carreira_id;
   const idadeAtual = payload.idade_atual || "";
+  const seasonIdRef = payload.season_id || "";
   const temporadaAtual = payload.temporada_atual || "";
   const temporadaStatus = payload.temporada_status || "";
 
@@ -958,7 +1043,7 @@ async function gerarFantasyAnalise(payload) {
   const personagem = await findById("PERSONAGENS", personagemId);
   if (!personagem) throw new Error("Personagem não encontrado.");
 
-  const resumoTemporadas = await coletarResumoTemporadasFantasy(carreiraId, personagemId, personagem.nome, temporadaAtual);
+  const resumoTemporadas = await coletarResumoTemporadasFantasy(carreiraId, personagemId, personagem.nome, seasonIdRef, temporadaAtual);
   if (!resumoTemporadas.length) throw new Error("Esse jogador ainda não tem temporadas registradas para analisar.");
 
   const temporadaAtualDados = resumoTemporadas[resumoTemporadas.length - 1];
@@ -982,8 +1067,11 @@ async function gerarFantasyAnalise(payload) {
   try {
     const textoLimpo = textoResposta.replace(/```json/gi, "").replace(/```/g, "").trim();
     const dadosResposta = JSON.parse(textoLimpo);
-    if (dadosResposta && dadosResposta.nota_temporada !== undefined && temporadaAtualDados && temporadaAtualDados.id) {
-      await updateRow("CARREIRA_TEMPORADAS", temporadaAtualDados.id, { nota_fantasy: dadosResposta.nota_temporada });
+    if (dadosResposta && dadosResposta.nota_temporada !== undefined && temporadaAtualDados && temporadaAtualDados.stints && temporadaAtualDados.stints.length) {
+      const ultimoStint = temporadaAtualDados.stints[temporadaAtualDados.stints.length - 1];
+      if (ultimoStint && ultimoStint.id) {
+        await updateRow("CARREIRA_TEMPORADAS", ultimoStint.id, { nota_fantasy: dadosResposta.nota_temporada });
+      }
     }
   } catch (errNota) {
     // Se não vier JSON válido, só não salva a nota.
