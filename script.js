@@ -8655,6 +8655,7 @@ var renderPlayedSeasons = function renderPlayedSeasons(){
           ${ageLabel ? `<span class="season-age-v3760">${ageLabel}</span>` : ""}
           ${r.nota_fantasy ? `<span class="season-age-v3760 season-nota-fantasy-v3760" title="Nota Fantasy">⭐ ${escapeHtml(String(r.nota_fantasy))}</span>` : ""}
           ${r.status ? `<span class="season-age-v3760 season-status-v3760 season-status-${escapeAttr((r.status||"").replace(/\s+/g,"-"))}">${escapeHtml(r.status==="em andamento"?"Em andamento":r.status==="finalizada"?"Finalizada":r.status==="transferido"?"Transferido":r.status)}</span>` : ""}
+          ${r.emprestado==="sim" ? `<span class="season-age-v3760 season-status-emprestado-v210" title="${r.clube_emprestimo_nome ? "Emprestado por "+escapeAttr(r.clube_emprestimo_nome) : "Emprestado"}">🔄 Emprestado${r.clube_emprestimo_nome ? " por "+escapeHtml(r.clube_emprestimo_nome) : ""}</span>` : ""}
           <div class="season-club-info-v3760">
             <strong>${escapeHtml(r.temporada || "-")}</strong>
             <h4>${escapeHtml(r.clube_nome || r.time || "-")}</h4>
@@ -11883,9 +11884,16 @@ var FL_trophyImageV3782 = function FL_trophyImageV3782(name){
   if(n.includes("nations")) return file("UEFA_Nations_League_Trophy.jpg");
   if(n.includes("premier")) return file("Premier_League_Trophy.jpg");
   if(n.includes("la") && n.includes("liga")) return file("LaLiga_trophy.jpg");
-  if(n.includes("serie") && n.includes("a")) return file("Scudetto.svg");
+  if(n.includes("serie") && n.includes("a") && !n.includes("sul")) return file("Scudetto.svg");
   if(n.includes("bundesliga")) return file("Bundesliga_logo_(2017).svg");
   if(n.includes("ligue") && n.includes("1")) return file("Ligue_1_Uber_Eats_trophy.svg");
+  if(n.includes("mundial") && n.includes("clube")) return file("FIFA_Club_World_Cup_Trophy.png");
+  if(n.includes("intercontinental")) return file("Intercontinental_Cup_(football)_trophy.png");
+  if(n.includes("copa") && n.includes("brasil")) return file("Copa_do_Brasil_trophy.png");
+  if(n.includes("brasileir") || n.includes("brasileirão")) return file("Ta%C3%A7a_Campeonato_Brasileiro_S%C3%A9rie_A.png");
+  if(n.includes("recopa")) return file("Copa_Libertadores_trophy.jpg");
+  if(n.includes("sul") && n.includes("americana")) return file("Copa_Sudamericana_trophy.png");
+  if(n.includes("paulist")) return file("Association_football_trophy.jpg");
   if(n.includes("super")) return file("Association_football_trophy.jpg");
   return file("Association_football_trophy.jpg");
 }
@@ -11960,19 +11968,20 @@ window.renderTrofeus = renderTrofeus;
 
 // ---------- Estatísticas: maiores ligas e Top 5 vencedores ----------
 const FL_MAJOR_COMPETITIONS_V3782 = [
-  {name:"Champions League", aliases:["champions league","uefa champions league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Champions_League_trophy.jpg?width=220"},
-  {name:"Premier League", aliases:["premier league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Premier_League_Trophy.jpg?width=220"},
-  {name:"La Liga", aliases:["la liga","spanish la liga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/LaLiga_trophy.jpg?width=220"},
-  {name:"Serie A Italiana", aliases:["serie a italiana","italian serie a","serie a"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Scudetto.svg?width=220"},
-  {name:"Bundesliga", aliases:["bundesliga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Bundesliga_logo_(2017).svg?width=220"},
-  {name:"Ligue 1", aliases:["ligue 1"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Ligue_1_Uber_Eats_trophy.svg?width=220"},
-  {name:"Europa League", aliases:["europa league","uefa europa league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_League_Trophy.jpg?width=220"},
-  {name:"Conference League", aliases:["conference league","uefa conference league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_Conference_League_Trophy.jpg?width=220"},
-  {name:"Copa do Mundo", aliases:["copa do mundo","world cup"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_World_Cup_Trophy.jpg?width=220"},
-  {name:"Copa América", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"},
-  {name:"Libertadores", aliases:["libertadores","copa libertadores"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Libertadores_trophy.jpg?width=220"},
-  {name:"Mundial de Clubes", aliases:["mundial de clubes","fifa club world cup","copa mundial de clubes","super mundial"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_Club_World_Cup_trophy.png?width=220"},
-  {name:"Intercontinental", aliases:["intercontinental","copa intercontinental","taca intercontinental","taça intercontinental"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Intercontinental_Cup_trophy.png?width=220"}
+  {name:"Champions League", regiao:"Europa - Clubes", aliases:["champions league","uefa champions league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Champions_League_trophy.jpg?width=220"},
+  {name:"Premier League", regiao:"Europa - Ligas", aliases:["premier league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Premier_League_Trophy.jpg?width=220"},
+  {name:"La Liga", regiao:"Europa - Ligas", aliases:["la liga","spanish la liga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/LaLiga_trophy.jpg?width=220"},
+  {name:"Serie A Italiana", regiao:"Europa - Ligas", aliases:["serie a italiana","italian serie a","serie a"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Scudetto.svg?width=220"},
+  {name:"Bundesliga", regiao:"Europa - Ligas", aliases:["bundesliga"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Bundesliga_logo_(2017).svg?width=220"},
+  {name:"Ligue 1", regiao:"Europa - Ligas", aliases:["ligue 1"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Ligue_1_Uber_Eats_trophy.svg?width=220"},
+  {name:"Europa League", regiao:"Europa - Clubes", aliases:["europa league","uefa europa league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_League_Trophy.jpg?width=220"},
+  {name:"Conference League", regiao:"Europa - Clubes", aliases:["conference league","uefa conference league"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/UEFA_Europa_Conference_League_Trophy.jpg?width=220"},
+  {name:"Copa do Mundo", regiao:"Seleções", aliases:["copa do mundo","world cup"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_World_Cup_Trophy.jpg?width=220"},
+  {name:"Copa América", regiao:"Seleções", aliases:["copa america","copa américa"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Am%C3%A9rica_trophy.jpg?width=220"},
+  {name:"Libertadores", regiao:"América - Clubes", aliases:["libertadores","copa libertadores"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Copa_Libertadores_trophy.jpg?width=220"},
+  {name:"Brasileirão", regiao:"América - Ligas", aliases:["brasileirao","brasileirão","serie a brasileira"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Ta%C3%A7a_Campeonato_Brasileiro_S%C3%A9rie_A.png?width=220"},
+  {name:"Mundial de Clubes", regiao:"Mundial - Clubes", aliases:["mundial de clubes","fifa club world cup","copa mundial de clubes","super mundial"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/FIFA_Club_World_Cup_trophy.png?width=220"},
+  {name:"Intercontinental", regiao:"Mundial - Clubes", aliases:["intercontinental","copa intercontinental","taca intercontinental","taça intercontinental"], icon:"https://commons.wikimedia.org/wiki/Special:FilePath/Intercontinental_Cup_trophy.png?width=220"}
 ];
 
 var FL_matchMajorCompV3782 = function FL_matchMajorCompV3782(comp){
@@ -12058,6 +12067,14 @@ var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajor
     old.insertAdjacentElement("beforebegin", host);
   }
 
+  const regioesOrdem = ["Europa - Clubes", "Europa - Ligas", "América - Clubes", "América - Ligas", "Mundial - Clubes", "Seleções"];
+  const porRegiao = {};
+  FL_MAJOR_COMPETITIONS_V3782.forEach((comp, idx) => {
+    const r = comp.regiao || "Outras";
+    if(!porRegiao[r]) porRegiao[r] = [];
+    porRegiao[r].push({comp, idx});
+  });
+
   host.innerHTML = `
     <div class="stats-leagues-head-v3782">
       <div>
@@ -12065,31 +12082,34 @@ var FL_renderEstatisticasMajorLeaguesV3782 = function FL_renderEstatisticasMajor
         <small>Top 5 maiores vencedores conforme você alimenta os campeões das temporadas.</small>
       </div>
     </div>
-    <div class="stats-leagues-grid-v3782">
-      ${FL_MAJOR_COMPETITIONS_V3782.map((comp,idx)=>{
-        const winners = FL_topWinnersByCompetitionV3782(comp, 5);
-        return `
-          <article class="league-winners-card-v3782" onclick="abrirDetalheCompeticaoV3784(${idx})" style="cursor:pointer">
-            <div class="league-icon-v3782">
-              <img src="${FL_escapeAttrV3782(comp.icon)}" onerror="this.parentElement.innerHTML='🏆'">
-            </div>
-            <div class="league-info-v3782">
-              <h3>${FL_escapeV3782(comp.name)}</h3>
-              ${winners.length ? `
-                <ol>
-                  ${winners.map(w=>`
-                    <li>
-                      <span>${FL_escapeV3782(w.name)}</span>
-                      <b>${w.count}</b>
-                    </li>
-                  `).join("")}
-                </ol>
-              ` : `<p>Sem campeões cadastrados ainda.</p>`}
-            </div>
-          </article>
-        `;
-      }).join("")}
-    </div>
+    ${regioesOrdem.filter(r=>porRegiao[r]?.length).map(regiao => `
+      <h3 class="stats-region-title-v210">${FL_escapeV3782(regiao)}</h3>
+      <div class="stats-leagues-grid-v3782">
+        ${porRegiao[regiao].map(({comp, idx})=>{
+          const winners = FL_topWinnersByCompetitionV3782(comp, 5);
+          return `
+            <article class="league-winners-card-v3782" onclick="abrirDetalheCompeticaoV3784(${idx})" style="cursor:pointer">
+              <div class="league-icon-v3782">
+                <img src="${FL_escapeAttrV3782(comp.icon)}" onerror="this.parentElement.innerHTML='🏆'">
+              </div>
+              <div class="league-info-v3782">
+                <h3>${FL_escapeV3782(comp.name)}</h3>
+                ${winners.length ? `
+                  <ol>
+                    ${winners.map(w=>`
+                      <li>
+                        <span>${FL_escapeV3782(w.name)}</span>
+                        <b>${w.count}</b>
+                      </li>
+                    `).join("")}
+                  </ol>
+                ` : `<p>Sem campeões cadastrados ainda.</p>`}
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `).join("")}
   `;
 
   // Esconde a tabela antiga para não duplicar sentido.
@@ -19229,6 +19249,13 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field"><label>Tipo</label><input name="tipo" placeholder="Ex: Amistoso, Eliminatórias, Copa América, Copa do Mundo"></div>
     <div class="form-field"><label>Competição/Contexto</label><input name="competicao_ou_contexto" placeholder="Opcional"></div>
     <div class="form-field"><label>Data</label><input name="data" type="date"></div>
+    <div class="form-field full">
+      <label>Jogadores de referência</label>
+      <select id="selecaoConvocacaoFonteJogadores" onchange="window.__selecaoFonteJogadoresPreferida=this.value;openSelecaoConvocacaoForm();">
+        <option value="temporada" ${(!window.__selecaoFonteJogadoresPreferida || window.__selecaoFonteJogadoresPreferida==="temporada") ? "selected" : ""}>Só desta temporada</option>
+        <option value="todas" ${window.__selecaoFonteJogadoresPreferida==="todas" ? "selected" : ""}>Todas as temporadas (elenco completo já cadastrado)</option>
+      </select>
+    </div>
     <div class="form-field"><label>Modo</label>
       <select name="modo">
         <optgroup label="Manual">
@@ -19257,8 +19284,30 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     </div>
   `;
 
+  // FIX V2.10: quando escolhido "todas as temporadas", junta o elenco de
+  // todas as temporadas cadastradas (deduplicado por nome, ficando com o
+  // registro mais recente de cada jogador) em vez de só a temporada atual.
+  // Resolve tanto o caso de querer usar o elenco completo histórico quanto
+  // o de ter 2 temporadas com o mesmo nome (empréstimo/duplicidade).
+  var getBaseParaConvocacaoAtual = function getBaseParaConvocacaoAtual(){
+    const modo = $("selecaoConvocacaoFonteJogadores")?.value || "temporada";
+    if(modo === "temporada") return getSelecaoBaseForSeason();
+
+    const todas = (getTable("SELECAO_BASE_TEMPORADA")||[]).filter(r=>String(r.carreira_id||"")===String(active.carreira_id||""));
+    const porNome = new Map();
+    todas.forEach(r=>{
+      const chave = normalizarNomeParaComparar(r.nome);
+      if(!chave) return;
+      const existente = porNome.get(chave);
+      // fica com o de id maior (mais recente/ultima temporada cadastrada)
+      if(!existente || Number(r.id) > Number(existente.id)) porNome.set(chave, r);
+    });
+    return [...porNome.values()];
+  }
+  window.getBaseParaConvocacaoAtual = getBaseParaConvocacaoAtual;
+
   const LIMITE_CONVOCACAO = 26;
-  const baseAtual = getSelecaoBaseForSeason();
+  const baseAtual = getBaseParaConvocacaoAtual();
   const contagemPorPosicao = {};
   baseAtual.forEach(r=>{
     const pos = normalizarPosicaoSelecao(r.posicao);
@@ -19429,7 +19478,9 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
 }
 
 var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(convocacaoId, qtdPorPosicaoOpcional){
-  const base = getSelecaoBaseForSeason();
+  const base = window.__selecaoFonteJogadoresPreferida === "todas" && typeof getBaseParaConvocacaoAtual === "function"
+    ? getBaseParaConvocacaoAtual()
+    : getSelecaoBaseForSeason();
   const existingConvocados = getTable("SELECAO_CONVOCADOS").filter(c=>String(c.convocacao_id)===String(convocacaoId));
 
   // Se não veio quantidade por posição (ex: reabrindo uma convocação já existente

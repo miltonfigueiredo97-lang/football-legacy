@@ -2137,6 +2137,12 @@ button[disabled],
   color:#a78bfa;
 }
 
+.season-status-emprestado-v210{
+  background:rgba(251,191,36,.13);
+  border-color:rgba(251,191,36,.4);
+  color:#fbbf24;
+}
+
 .season-club-info-v3760{
   min-width:0;
 }
@@ -2872,6 +2878,15 @@ body[data-current-page="museu"] #museu{
 .stats-leagues-head-v3782 small{
   color:#93c5fd;
   font-weight:800;
+}
+
+.stats-region-title-v210{
+  color:#fbbf24;
+  font-size:1.05em;
+  font-weight:800;
+  margin:22px 0 10px;
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,.12);
 }
 
 .stats-leagues-grid-v3782{
