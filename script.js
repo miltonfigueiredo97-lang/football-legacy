@@ -1973,7 +1973,7 @@ var searchTeamsForSeason = async function searchTeamsForSeason(){
             <strong>${escapeHtml(team.name)}</strong>
             <small>${escapeHtml(team.league || "-")} • ${escapeHtml(team.country || "-")}</small>
           </div>
-          <button type="button" onclick='selectSeasonTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
+          <button type="button" onclick='event.stopPropagation();selectSeasonTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
         </div>
       `;
     }).join("");
@@ -18644,7 +18644,55 @@ var renderSelecaoBrasileira = function renderSelecaoBrasileira(){
   });
 }
 
+// FIX V2.7: calcula os totais de um jogador da Seleção Brasileira somando
+// TODAS as temporadas em que ele apareceu na base (não só a temporada
+// sendo vista agora). Casa jogadores pelo nome normalizado, já que cada
+// temporada cria uma linha nova em SELECAO_BASE_TEMPORADA pro mesmo
+// jogador (com id diferente).
+var getSelecaoTotaisCarreira = function getSelecaoTotaisCarreira(nomeJogador){
+  const nomeNorm = normalizarNomeParaComparar(nomeJogador || "");
+  if(!nomeNorm) return {jogos:0, notaMedia:"", notaMaxima:"", bom:0, ruim:0};
+
+  const todasAsLinhas = (getTable("SELECAO_BASE_TEMPORADA")||[]).filter(r=>
+    String(r.carreira_id||"") === String(active.carreira_id||"") &&
+    normalizarNomeParaComparar(r.nome||"") === nomeNorm
+  );
+
+  const idsLinhas = new Set(todasAsLinhas.map(r=>String(r.id)));
+  const todosConvocados = (getTable("SELECAO_CONVOCADOS")||[]).filter(c=>idsLinhas.has(String(c.jogador_base_id)));
+
+  const notas = [];
+  todosConvocados.forEach(c=>{
+    const n1 = Number(c.nota);
+    if(c.nota !== undefined && c.nota !== "" && !Number.isNaN(n1) && n1 > 0){
+      notas.push(n1 + (c.foi_bem==="true"||c.foi_bem===true?0.5:0) - (c.foi_mal==="true"||c.foi_mal===true?0.5:0));
+    }
+    const n2 = Number(c.nota2);
+    if(c.nota2 !== undefined && c.nota2 !== "" && !Number.isNaN(n2) && n2 > 0){
+      notas.push(n2 + (c.foi_bem2==="true"||c.foi_bem2===true?0.5:0) - (c.foi_mal2==="true"||c.foi_mal2===true?0.5:0));
+    }
+  });
+
+  const bom = todosConvocados.filter(c=>c.foi_bem==="true"||c.foi_bem===true).length + todosConvocados.filter(c=>c.foi_bem2==="true"||c.foi_bem2===true).length;
+  const ruim = todosConvocados.filter(c=>c.foi_mal==="true"||c.foi_mal===true).length + todosConvocados.filter(c=>c.foi_mal2==="true"||c.foi_mal2===true).length;
+
+  return {
+    jogos: notas.length,
+    notaMedia: notas.length ? Math.round((notas.reduce((a,b)=>a+b,0)/notas.length)*100)/100 : "",
+    notaMaxima: notas.length ? Math.round(Math.max(...notas)*100)/100 : "",
+    bom, ruim,
+    temporadas: [...new Set(todasAsLinhas.map(r=>r.temporada).filter(Boolean))].length
+  };
+}
+window.getSelecaoTotaisCarreira = getSelecaoTotaisCarreira;
+
 var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
+  const modoTotal = window.__selecaoModoStats === "total";
+  const stats = modoTotal ? getSelecaoTotaisCarreira(r.nome) : {
+    jogos: r.convocacoes_qtd||0, notaMedia: r.nota_media||"-", notaMaxima: r.nota_maxima||"-", bom: r.bom_qtd||0, ruim: r.ruim_qtd||0
+  };
+  const rotulo = modoTotal ? `Total (${stats.temporadas||1} temp.)` : "Nesta temporada";
+
   return `
     <article class="entity-card">
       <div class="entity-top">
@@ -18654,7 +18702,7 @@ var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
           <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
         </div>
       </div>
-      <small>Jogos: ${r.convocacoes_qtd||0} • Nota média: ${r.nota_media||"-"} • Nota máx: ${r.nota_maxima||"-"} • Bom: ${r.bom_qtd||0} • Ruim: ${r.ruim_qtd||0}</small>
+      <small title="${escapeAttr(rotulo)}">[${escapeHtml(rotulo)}] Jogos: ${stats.jogos||0} • Nota média: ${stats.notaMedia||"-"} • Nota máx: ${stats.notaMaxima||"-"} • Bom: ${stats.bom||0} • Ruim: ${stats.ruim||0}</small>
       <div class="entity-actions">
         <button onclick="openSelecaoJogadorForm('${r.id}')">Editar</button>
         <button class="delete" onclick="deleteSelecaoJogador('${r.id}')">Excluir</button>
@@ -18680,6 +18728,24 @@ var renderSelecaoBaseGrouped = function renderSelecaoBaseGrouped(){
       window.__selecaoBaseBusca = searchInput.value;
       renderSelecaoBaseGrouped();
     };
+  }
+
+  // FIX V2.7: seletor pra ver estatísticas (jogos/nota) da carreira toda
+  // ou só da temporada sendo vista agora.
+  const modoWrap = $("selecaoStatsModoWrap");
+  if(modoWrap){
+    if(!window.__selecaoModoStats) window.__selecaoModoStats = "temporada";
+    modoWrap.innerHTML = `
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.85em;color:var(--muted)">
+        Estatísticas:
+        <select id="selecaoStatsModoSelect">
+          <option value="temporada" ${window.__selecaoModoStats==="temporada"?"selected":""}>Só esta temporada</option>
+          <option value="total" ${window.__selecaoModoStats==="total"?"selected":""}>Total da carreira</option>
+        </select>
+      </label>
+    `;
+    const sel = $("selecaoStatsModoSelect");
+    if(sel) sel.onchange = ()=>{ window.__selecaoModoStats = sel.value; renderSelecaoBaseGrouped(); };
   }
   const termoBusca = normalizarNomeParaComparar(window.__selecaoBaseBusca || "");
 
@@ -18731,7 +18797,7 @@ var searchTeamsForSelecao = async function searchTeamsForSelecao(){
       return `<div class="team-result">
         <img src="${team.badge}" onerror="this.style.display='none'">
         <div><strong>${escapeHtml(team.name)}</strong></div>
-        <button type="button" onclick='selectSelecaoTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
+        <button type="button" onclick='event.stopPropagation();selectSelecaoTeam(${JSON.stringify(team).replace(/'/g,"&apos;")})'>Selecionar</button>
       </div>`;
     }).join("");
   }catch(err){
