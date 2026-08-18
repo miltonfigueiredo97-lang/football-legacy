@@ -11848,6 +11848,12 @@ var FL_seasonByIdV3782 = function FL_seasonByIdV3782(){
 }
 
 var FL_isTruthyWonV3782 = function FL_isTruthyWonV3782(value){
+  // FIX V2.13: valores tipo "1.0" viram "10" depois do FL_normV3782 (que
+  // remove o ponto), o que NAO bate com "1" da lista — checa o numero
+  // original antes de normalizar, como rede de segurança extra.
+  const numOriginal = Number(String(value).trim());
+  if(!Number.isNaN(numOriginal) && numOriginal >= 1) return true;
+
   const v = FL_normV3782(value);
   return ["sim","true","1","yes","y","ganhei","venci","campeao","campeao"].includes(v);
 }
