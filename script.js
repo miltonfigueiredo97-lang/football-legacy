@@ -20270,7 +20270,7 @@ var abrirFantasyAnalise = function abrirFantasyAnalise(){
     <div class="form-field">
       <label>Temporada de referência</label>
       <select id="fantasyTemporadaSelect">
-        ${seasons.map((s,i)=>`<option value="${s.id}" ${i===0?"selected":""}>${escapeHtml(s.temporada||"-")}${s.status?` (${escapeHtml(s.status==="em andamento"?"Em andamento":s.status==="finalizada"?"Finalizada":s.status)})`:""}</option>`).join("")}
+        ${seasons.map((s,i)=>`<option value="${s.id}" ${i===0?"selected":""}>${escapeHtml(s.temporada||"-")} — ${escapeHtml(s.clube_nome||s.time||"-")}${s.emprestado==="sim"?" (emprestado)":""}${s.status?` • ${escapeHtml(s.status==="em andamento"?"Em andamento":s.status==="finalizada"?"Finalizada":s.status)}`:""}</option>`).join("")}
       </select>
       <small>Por padrão, a mais recente (mesmo que ainda esteja em andamento). Se você escolher uma temporada anterior, as posteriores são ignoradas — só as temporadas até a escolhida entram na análise.</small>
     </div>
