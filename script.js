@@ -988,7 +988,7 @@ var openForm = function openForm(kind,id=null){
   }).join("") + `
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar</button>
     </div>`;
 
   form.onsubmit = async e=>{
@@ -1028,7 +1028,7 @@ var openForm = function openForm(kind,id=null){
 
 var openQuickCareerForm = function openQuickCareerForm(){
   modalTitle.textContent="Criar carreira";form.className="form-grid";
-  form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Nome da carreira</label><input name="nome" placeholder="Ex: MILTON V7.0"></div><div class="form-field"><label>Jogo / Universo</label><input name="jogo" value="EA FC"></div><div class="form-field"><label>Descrição</label><textarea name="descricao"></textarea></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar</button></div>`;
   form.onsubmit=async e=>{
     e.preventDefault();
     const btn=$("saveBtn");
@@ -1069,7 +1069,7 @@ var openTop11BatchForm = function openTop11BatchForm(){
   modalTitle.textContent="Novo Top 11";modalBox.classList.add("wide");form.className="form-grid top11-batch";
   const season=getCurrentSeason();
   const rows=Array.from({length:11},(_,i)=>i+1).map(i=>`<div class="batch-row"><strong>${i}</strong><input name="posicao_${i}" placeholder="POS"><input name="jogador_${i}" placeholder="Jogador"><input name="overall_${i}" type="number" placeholder="OVR"></div>`).join("");
-  form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar Top 11</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Temporada</label><select name="temporada">${getAvailableSeasonsForActivePlayer().map(s=>`<option value="${s}" ${s===season?"selected":""}>${s}</option>`).join("")}</select></div><div class="batch-grid"><div class="batch-head"><div>#</div><div>Posição</div><div>Jogador</div><div>Overall</div></div>${rows}</div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar Top 11</button></div>`;
   form.onsubmit=async e=>{
     e.preventDefault();
     const btn=$("saveBtn");
@@ -1165,7 +1165,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar Ranking</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar Ranking</button>
     </div>`;
 
   form.onsubmit=async e=>{
@@ -1222,7 +1222,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
 
 var openSeasonFlow = function openSeasonFlow(){
   modalTitle.textContent="Nova temporada";form.className="form-grid";modalBox.classList.add("wide");
-  form.innerHTML=`<div class="form-field"><label>Temporada</label><input name="temporada" placeholder="2025/2026"></div><div class="form-field"><label>Ano</label><input name="ano" placeholder="2026"></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn">Salvar temporada</button></div>`;
+  form.innerHTML=`<div class="form-field"><label>Temporada</label><input name="temporada" placeholder="2025/2026"></div><div class="form-field"><label>Ano</label><input name="ano" placeholder="2026"></div><div class="form-actions"><button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button><button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar temporada</button></div>`;
   form.onsubmit=async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(form).entries());const r=await apiPost({action:"create",table:"TEMPORADAS",record:{carreira_id:active.carreira_id,temporada:data.temporada,ano:data.ano,status:"ativa"}});active.temporada=data.temporada;saveActive();closeModal();await loadData()};
   modal.classList.add("active");
 }
@@ -1501,7 +1501,7 @@ var openBallonBatchForm = function openBallonBatchForm(){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar Ranking da Carreira</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar Ranking da Carreira</button>
     </div>`;
 
   form.onsubmit=async e=>{
@@ -1639,7 +1639,7 @@ var openSeasonFlow = function openSeasonFlow(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar passagem</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar passagem</button>
     </div>
   `;
 
@@ -5120,7 +5120,7 @@ var openBallonRankingForm = function openBallonRankingForm(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${existing ? "Salvar edição" : "Salvar ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${existing ? "Salvar edição" : "Salvar ranking"}</button>
     </div>
   `;
 
@@ -5280,7 +5280,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -5429,7 +5429,7 @@ var openBallonFormSingle = function openBallonFormSingle(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar edição</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar edição</button>
     </div>
   `;
 
@@ -5579,7 +5579,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -5704,7 +5704,7 @@ var openBallonFormSingle = function openBallonFormSingle(existingId=null){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Salvar edição</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar edição</button>
     </div>
   `;
 
@@ -5995,7 +5995,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -6630,7 +6630,7 @@ var openBallonBatchForm = function openBallonBatchForm(options={}){
 
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${isEdit ? "Salvar edição" : "Salvar novo ranking"}</button>
     </div>
   `;
 
@@ -8756,7 +8756,7 @@ var openSelectionSeasonModalV3760 = function openSelectionSeasonModalV3760(seaso
 
       <div class="form-actions">
         <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-        <button type="button" class="gold-btn" id="saveBtn">Salvar seleção</button>
+        <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Salvar seleção</button>
       </div>
     </div>
   `;
@@ -18924,7 +18924,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
     </div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">${existing?"Salvar edição":"Adicionar"}</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">${existing?"Salvar edição":"Adicionar"}</button>
     </div>
   `;
 
@@ -19301,7 +19301,7 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
     <div class="form-field full"><label>Observações</label><textarea name="observacoes"></textarea></div>
     <div class="form-actions">
       <button type="button" class="ghost-btn" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="gold-btn" id="saveBtn">Criar convocação</button>
+      <button type="button" class="gold-btn" id="saveBtn" onclick="this.closest('form').dispatchEvent(new Event('submit',{cancelable:true}))">Criar convocação</button>
     </div>
   `;
 
