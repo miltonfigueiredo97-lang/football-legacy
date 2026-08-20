@@ -19223,6 +19223,31 @@ var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriterios
   const baseTodo = getSelecaoBaseForSeason();
   const escolhidos = [];
 
+  // FIX V2.21: quando o seletor "Dados usados nos criterios automaticos"
+  // esta em "todas", os campos nota_media/convocacoes_qtd/bom_qtd/ruim_qtd
+  // usados pra ordenar sao trocados pelo AGREGADO de todas as temporadas
+  // do jogador (getSelecaoTotaisCarreira), em vez do valor cru da linha
+  // (que so reflete essa temporada). O elenco/pool de candidatos continua
+  // sempre vindo de baseTodo (essa temporada), so os NUMEROS usados pra
+  // comparar mudam.
+  const usarHistoricoCompleto = ($("selecaoConvocacaoFonteCriterios")?.value || window.__selecaoCriteriosFontePreferida) === "todas";
+  const statsCache = new Map();
+  const getStatsDoJogador = (r) => {
+    if(!usarHistoricoCompleto) return r;
+    const chave = normalizarNomeParaComparar(r.nome);
+    if(statsCache.has(chave)) return statsCache.get(chave);
+    const totais = getSelecaoTotaisCarreira(r.nome);
+    const combinado = {
+      ...r,
+      nota_media: totais.notaMedia !== "" ? totais.notaMedia : r.nota_media,
+      convocacoes_qtd: totais.jogos || 0,
+      bom_qtd: totais.bom || 0,
+      ruim_qtd: totais.ruim || 0
+    };
+    statsCache.set(chave, combinado);
+    return combinado;
+  };
+
   const criteriosFaixa = criteriosEmOrdem.filter(c=>CRITERIOS_TIPO_FAIXA.includes(c.tipo));
 
   // Reordena pela prioridade fixa (convocações antes de qualidade), não pela
@@ -19232,7 +19257,8 @@ var gerarConvocacaoPorCriteriosCombinados = function gerarConvocacaoPorCriterios
     .map(c=>c.tipo.replace("automatica_",""))
     .sort((a,b)=>(PRIORIDADE_FIXA_CRITERIOS[a]||99) - (PRIORIDADE_FIXA_CRITERIOS[b]||99));
 
-  const chaveDoCriterio = (r, criterio)=>{
+  const chaveDoCriterio = (rOriginal, criterio)=>{
+    const r = getStatsDoJogador(rOriginal);
     if(criterio === "maiores_overalls") return -num(r.overall);
     if(criterio === "menores_overalls") return num(r.overall);
     if(criterio === "melhores_notas") return -num(r.nota_media);
@@ -19297,6 +19323,14 @@ var openSelecaoConvocacaoForm = function openSelecaoConvocacaoForm(){
         <option value="temporada" ${(!window.__selecaoFonteJogadoresPreferida || window.__selecaoFonteJogadoresPreferida==="temporada") ? "selected" : ""}>Só desta temporada</option>
         <option value="todas" ${window.__selecaoFonteJogadoresPreferida==="todas" ? "selected" : ""}>Todas as temporadas (elenco completo já cadastrado)</option>
       </select>
+    </div>
+    <div class="form-field full">
+      <label>Dados usados nos critérios automáticos <small style="font-weight:400;opacity:.7">(nota, jogos, joinhas)</small></label>
+      <select id="selecaoConvocacaoFonteCriterios" onchange="window.__selecaoCriteriosFontePreferida=this.value;">
+        <option value="temporada" ${(!window.__selecaoCriteriosFontePreferida || window.__selecaoCriteriosFontePreferida==="temporada") ? "selected" : ""}>Só o que aconteceu nesta temporada</option>
+        <option value="todas" ${window.__selecaoCriteriosFontePreferida==="todas" ? "selected" : ""}>Somar de todas as temporadas (histórico completo do jogador)</option>
+      </select>
+      <small>Só afeta o modo automático por critérios (nota/jogos/joinhas). O elenco de jogadores continua vindo da opção acima.</small>
     </div>
     <div class="form-field"><label>Modo</label>
       <select name="modo">
@@ -19570,6 +19604,13 @@ var openSelecaoConvocadosSlotPicker = function openSelecaoConvocadosSlotPicker(c
   form.className = "form-grid";
 
   form.innerHTML = `
+    <div class="form-field full" style="margin-bottom:6px">
+      <label>Dados exibidos (jogos/nota) <small style="font-weight:400;opacity:.7">(nota, jogos, joinhas)</small></label>
+      <select id="selecaoSlotsFonteStats" onchange="window.__selecaoSlotsStatsFontePreferida=this.value;renderSelecaoSlotsUI();">
+        <option value="temporada" ${(!window.__selecaoSlotsStatsFontePreferida || window.__selecaoSlotsStatsFontePreferida==="temporada") ? "selected" : ""}>Só esta temporada</option>
+        <option value="todas" ${window.__selecaoSlotsStatsFontePreferida==="todas" ? "selected" : ""}>Todas as temporadas (histórico completo)</option>
+      </select>
+    </div>
     <div id="selecaoSlotsTotalLabel" class="selecao-slots-total"></div>
     <div id="selecaoSlotsContainer"></div>
     <div class="form-actions">
@@ -19586,6 +19627,22 @@ var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
   const container = $("selecaoSlotsContainer");
   const totalLabel = $("selecaoSlotsTotalLabel");
   if(!container) return;
+
+  // FIX V2.21: mesma logica do seletor da criacao de convocacao, agora
+  // tambem disponivel aqui (tela de escolher/editar convocados), pra
+  // exibir nota/jogos/joinhas de TODAS as temporadas quando pedido, em
+  // vez de sempre so essa temporada.
+  const usarHistoricoNosSlots = ($("selecaoSlotsFonteStats")?.value || window.__selecaoSlotsStatsFontePreferida) === "todas";
+  const statsParaExibir = (jogador) => {
+    if(!usarHistoricoNosSlots) return jogador;
+    const totais = getSelecaoTotaisCarreira(jogador.nome);
+    return {
+      ...jogador,
+      convocacoes_qtd: totais.jogos || 0,
+      nota_media: totais.notaMedia !== "" ? totais.notaMedia : jogador.nota_media
+    };
+  };
+  window.__selecaoSlotsStatsParaExibir = statsParaExibir;
 
   const { slots, base } = selecaoSlotState;
   const posicoesComVaga = Object.keys(slots);
@@ -19613,11 +19670,12 @@ var renderSelecaoSlotsUI = function renderSelecaoSlotsUI(){
       const jogador = jogId ? base.find(b=>String(b.id)===String(jogId)) : null;
 
       if(jogador){
+        const j = statsParaExibir(jogador);
         return `<div class="selecao-slot filled">
           <div class="selecao-avatar" style="width:56px;height:56px">${jogador.foto_url?`<img src="${escapeAttr(jogador.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
           <strong>${escapeHtml(jogador.nome||"-")}</strong>
           <small>${escapeHtml(jogador.time||"-")} • OVR ${escapeHtml(String(jogador.overall||"-"))}</small>
-          <small>${jogador.convocacoes_qtd||0}x jogos • Nota ${jogador.nota_media||"-"}</small>
+          <small>${j.convocacoes_qtd||0}x jogos • Nota ${j.nota_media||"-"}</small>
           <div class="selecao-slot-actions">
             <button type="button" onclick="abrirEscolhaSlot('${escapeAttr(pos)}',${idx})">Trocar</button>
             <button type="button" class="delete" onclick="removerSlotConvocacao('${escapeAttr(pos)}',${idx})">Remover</button>
@@ -19703,14 +19761,17 @@ var renderSelecaoCandidatosHtml = function renderSelecaoCandidatosHtml(pos){
   });
 
   const candidatos = base.filter(r=>(normalizarPosicaoSelecao(r.posicao)===pos) && !usados.has(String(r.id)));
+  const statsParaExibir = window.__selecaoSlotsStatsParaExibir || (j=>j);
 
   return `<div class="selecao-candidatos-panel">
-    ${candidatos.map(c=>`
+    ${candidatos.map(c=>{
+      const cc = statsParaExibir(c);
+      return `
       <button type="button" class="selecao-candidato-card" onclick="escolherCandidatoSlot('${c.id}')">
         <div class="selecao-avatar" style="width:48px;height:48px">${c.foto_url?`<img src="${escapeAttr(c.foto_url)}" onerror="this.parentElement.textContent='⚽'">`:"⚽"}</div>
-        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small><br><small>${c.convocacoes_qtd||0}x jogos • Nota real: ${c.nota_media||"-"}</small></div>
+        <div><strong>${escapeHtml(c.nome||"-")}</strong><br><small>${escapeHtml(c.time||"-")} • OVR ${escapeHtml(String(c.overall||"-"))}</small><br><small>${cc.convocacoes_qtd||0}x jogos • Nota real: ${cc.nota_media||"-"}</small></div>
       </button>
-    `).join("") || "<small>Nenhum jogador disponível nessa posição (todos já usados em outra vaga, ou base vazia).</small>"}
+    `;}).join("") || "<small>Nenhum jogador disponível nessa posição (todos já usados em outra vaga, ou base vazia).</small>"}
     <button type="button" class="ghost-btn" onclick="fecharEscolhaSlot()">Cancelar</button>
   </div>`;
 }
