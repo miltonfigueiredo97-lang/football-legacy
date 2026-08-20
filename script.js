@@ -18762,7 +18762,7 @@ var selecaoJogadorCardHtml = function selecaoJogadorCardHtml(r){
         <div class="selecao-avatar">${r.foto_url ? `<img src="${escapeAttr(r.foto_url)}" onerror="this.parentElement.textContent='⚽'">` : "⚽"}</div>
         <div>
           <h3>${escapeHtml(r.nome||"-")}</h3>
-          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}</small>
+          <small>${r.escudo_time_url ? `<img src="${escapeAttr(r.escudo_time_url)}" style="height:14px;vertical-align:middle;margin-right:4px" onerror="this.style.display='none'">` : ""}${escapeHtml(r.time||"-")} • ${escapeHtml(String(r.idade||"-"))} anos • OVR ${escapeHtml(String(r.overall||"-"))}${r.fifa_playerid ? ` • <span style="opacity:.6" title="ID no FIFA/EA FC">#${escapeHtml(String(r.fifa_playerid))}</span>` : ` • <span style="color:#f87171" title="Sem ID do FIFA cadastrado">sem ID</span>`}</small>
         </div>
       </div>
       <small title="${escapeAttr(rotulo)}">[${escapeHtml(rotulo)}] Jogos: ${stats.jogos||0} • Nota média: ${stats.notaMedia||"-"} • Nota máx: ${stats.notaMaxima||"-"} • Bom: ${stats.bom||0} • Ruim: ${stats.ruim||0}</small>
@@ -18928,6 +18928,10 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
     </div>
     <div class="form-field"><label>Idade</label><input name="idade" type="number" value="${escapeAttr(existing?.idade||"")}"></div>
     <div class="form-field"><label>Overall</label><input name="overall" type="number" value="${escapeAttr(existing?.overall||"")}"></div>
+    <div class="form-field">
+      <label>ID no FIFA/EA FC <small style="font-weight:400;opacity:.7">(o mesmo do SoFIFA/save)</small></label>
+      <input name="fifa_playerid" value="${escapeAttr(existing?.fifa_playerid||"")}" placeholder="Ex: 238794">
+    </div>
     <div class="form-field full">
       <label>Foto do jogador</label>
       <div class="file-row">
@@ -18983,6 +18987,7 @@ var openSelecaoJogadorForm = function openSelecaoJogadorForm(existingId=null){
         posicao: normalizarPosicaoSelecao(data.posicao),
         idade: data.idade || "",
         overall: data.overall || "",
+        fifa_playerid: data.fifa_playerid ? data.fifa_playerid.trim() : (existing?.fifa_playerid || ""),
         foto_url: foto || "",
         escudo_time_url: escudo || "",
         convocacoes_qtd: existing?.convocacoes_qtd || 0,
