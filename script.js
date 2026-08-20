@@ -89,7 +89,14 @@ var personagemName = function personagemName(id){const p=byId("PERSONAGENS",id);
 var getUserUniverses = function getUserUniverses(uid){return getTable("UNIVERSOS").filter(u=>String(u.usuario_id)===String(uid))}
 var getCareersForUser = function getCareersForUser(uid){const ids=getUserUniverses(uid).map(u=>String(u.id)); return getTable("CARREIRAS").filter(c=>ids.includes(String(c.universo_id)))}
 var getActiveUser = function getActiveUser(){return byId("USUARIOS",active.usuario_id)||getTable("USUARIOS")[0]}
-var getActiveCareer = function getActiveCareer(){return byId("CARREIRAS",active.carreira_id)||getCareersForUser(active.usuario_id)[0]||getTable("CARREIRAS")[0]}
+// FIX V2.19: removido o fallback "getTable('CARREIRAS')[0]" que pegava a
+// PRIMEIRA carreira de TODO o sistema (de qualquer usuário) quando
+// active.carreira_id não batia com nada por algum motivo temporário —
+// isso podia fazer telas como o Bola de Ouro mostrarem dados de uma
+// carreira completamente diferente da selecionada. Agora, se não achar a
+// carreira ativa certa, só cai pra primeira carreira DO MESMO USUÁRIO
+// ativo (nunca de outro).
+var getActiveCareer = function getActiveCareer(){return byId("CARREIRAS",active.carreira_id)||getCareersForUser(active.usuario_id)[0]||null}
 var getCareerCharacters = function getCareerCharacters(){const c=getActiveCareer(); return c?getTable("PERSONAGENS").filter(p=>String(p.carreira_id)===String(c.id)):[]}
 var getActiveProtagonist = function getActiveProtagonist(){return byId("PERSONAGENS",active.protagonista_id)||getCareerCharacters().find(p=>p.tipo==="protagonista")||getCareerCharacters()[0]}
 var getCareerSeasons = function getCareerSeasons(){const c=getActiveCareer(); return c?getTable("TEMPORADAS").filter(t=>String(t.carreira_id)===String(c.id)):[]}
@@ -333,8 +340,17 @@ var apiPost = async function apiPost(payload){
     body:JSON.stringify(payload)
   });
 
+  // FIX V2.19: antes, qualquer erro HTTP virava só "HTTP 500 ao salvar via
+  // proxy Vercel" sem nenhum detalhe do que realmente deu errado - mesmo
+  // o backend sempre mandando a mensagem real no corpo da resposta. Agora
+  // lê o corpo e mostra a mensagem de verdade.
   if(!res.ok){
-    throw new Error("HTTP " + res.status + " ao salvar via proxy Vercel");
+    let detalhe = "";
+    try{
+      const corpo = await res.json();
+      detalhe = corpo?.error || "";
+    }catch(errParse){}
+    throw new Error("HTTP " + res.status + (detalhe ? ": " + detalhe : " ao salvar via proxy Vercel"));
   }
 
   return await res.json();
@@ -4521,7 +4537,7 @@ var startFootballLegacy = function startFootballLegacy(){
     if($("fantasyBtn")) $("fantasyBtn").onclick = abrirFantasyAnalise;
     if($("openSeasonBtn")) $("openSeasonBtn").onclick = openSeasonFlow;
     if($("top11BatchBtn")) $("top11BatchBtn").onclick = openTop11BatchForm;
-    if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = openBallonBatchForm;
+    if($("ballonBatchBtn")) $("ballonBatchBtn").onclick = () => openBallonBatchForm({editExisting:false});
     if($("ballonBestBtn")) $("ballonBestBtn").onclick = openBestBallonModal;
     if($("closeBestBallon")) $("closeBestBallon").onclick = closeBestBallonModal;
 
